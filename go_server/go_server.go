@@ -1,16 +1,17 @@
 package main
 
 import (
-    "encoding/json"
-    "fmt"
-    "math"
-    "math/rand"
-    "time"
-    "os"
-    "strconv"
-    //"strings"
-    //"github.com/bitly/go-simplejson"
-    "github.com/bradfitz/gomemcache/memcache"
+	"encoding/json"
+	"fmt"
+	"math"
+	"math/rand"
+	"os"
+	"runtime"
+	"strconv"
+	"time"
+	//"strings"
+	//"github.com/bitly/go-simplejson"
+	"github.com/bradfitz/gomemcache/memcache"
 )
 
 // 结构体中的变量必须大写才能被json输出 坑
@@ -39,7 +40,7 @@ type Acc struct {
 const G = 0.000021
 const MAX_PARTICLES = 100
 const FOR_TIMES = 10000
-const VELO  = 0.005
+const VELO = 0.005
 
 func initOrbs(num int) []Orb {
 	mapHap := make([]Orb, num)
@@ -156,24 +157,29 @@ func calcDist(x1, y1, x2, y2 float64) float64 {
 
 func main() {
 
-    num_orbs := MAX_PARTICLES
-    num_times := FOR_TIMES
-    var err error
+	num_orbs := MAX_PARTICLES
+	num_times := FOR_TIMES
+	// 使用2核心
+	num_cores := 2
+	var err error
 
-    args := os.Args
-    if args !=nil && len(args) >= 2 {
-        num_orbs, err = strconv.Atoi(os.Args[1])
-    }
-    if args !=nil && len(args) >= 3 {
-        num_times, err = strconv.Atoi(args[2])
-    }
+	args := os.Args
+	if args != nil && len(args) >= 2 {
+		num_orbs, err = strconv.Atoi(os.Args[1])
+	}
+	if args != nil && len(args) >= 3 {
+		num_times, err = strconv.Atoi(args[2])
+	}
 
-    if err != nil {
-        fmt.Println("Args len", len(os.Args), "err:", err)
-    }
+	if err != nil {
+		fmt.Println("Args len", len(os.Args), "err:", err)
+	}
 
-    fmt.Println("useage: go_server.exe $num_orbs $num_times")
-    fmt.Println("    eg: go_server.exe", num_orbs, num_times)
+	fmt.Println("useage: go_server.exe $num_orbs $num_times")
+	fmt.Println("    eg: go_server.exe", num_orbs, num_times)
+
+	// go 编译器自动选择最优核心数
+	//runtime.GOMAXPROCS(num_cores)
 
 	// 根据时间设置随机数种子
 	rand.Seed(int64(time.Now().Nanosecond()))
@@ -188,15 +194,10 @@ func main() {
 	for i := 0; i < num_times; i++ {
 		realTimes += updateOrbs(mapHap)
 	}
-	//fmt.Println("after update mapHap=", mapHap)
-	//for i := 0; i < len(mapHap); i++ {
-	//	fmt.Println("i=", i, mapHap[i].Id, mapHap[i].CalcTimes)
-	//	realTimes += mapHap[i].CalcTimes
-	//}
 	//endTime := time.Now().Unix()
 	endTimeNano := time.Now().UnixNano()
 	timeUsed := float64(endTimeNano-startTimeNano) / 1000000000.0
-	fmt.Println("(USE GO) particles:", num_orbs, "for times:", num_times, "real:", realTimes, "use time:", timeUsed, "sec")
+	fmt.Println("(USE GO, core:", num_cores, "/", runtime.NumCPU(), ") particles:", num_orbs, "for times:", num_times, "real:", realTimes, "use time:", timeUsed, "sec")
 
 	mc := memcache.New("mc.lo:11211", "mc.lo:11211")
 
