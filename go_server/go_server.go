@@ -1,14 +1,16 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
-	"math"
-	"math/rand"
-	"time"
-	//"strings"
-	//"github.com/bitly/go-simplejson"
-	"github.com/bradfitz/gomemcache/memcache"
+    "encoding/json"
+    "fmt"
+    "math"
+    "math/rand"
+    "time"
+    "os"
+    "strconv"
+    //"strings"
+    //"github.com/bitly/go-simplejson"
+    "github.com/bradfitz/gomemcache/memcache"
 )
 
 // 结构体中的变量必须大写才能被json输出 坑
@@ -38,13 +40,9 @@ const G = 0.000021
 const MAX_PARTICLES = 100
 const FOR_TIMES = 10000
 
-func initOrbs() []Orb {
-	n := MAX_PARTICLES
-	//list := make([]Orb, 100)
-	//mapHap := make(map[int]Orb, 100)
-	//var mapHap []Orb
-	mapHap := make([]Orb, n)
-	for i := 0; i < n; i++ {
+func initOrbs(num int) []Orb {
+	mapHap := make([]Orb, num)
+	for i := 0; i < num; i++ {
 		o := &mapHap[i]
 
 		o.X, o.Y = rand.Float64()*1000, rand.Float64()*1000
@@ -65,7 +63,7 @@ func updateOrbs(mapHap []Orb) int {
 	c := make(chan int)
 	for i := 0; i < thelen; i++ {
 		go mapHap[i].update(mapHap, c)
-		//updateOrb(&mapHap[i], mapHap)
+		//go updateOrb(&mapHap[i], mapHap)
 		//fmt.Println("after the rand id=", mapHap[i].Id)
 	}
 	cCount := 0
@@ -110,10 +108,9 @@ func (o *Orb) CalcGravityAll(oList []Orb) Acc {
 		//c <- 1
 		target := &oList[i]
 		if target.Id == o.Id || target.LifeStep != 1 || o.LifeStep != 1 {
-			//fmt.Println("something wrong")
+			//fmt.Println("orb cannot act on self, or life over")
 			continue
 		}
-		//fmt.Println("its ok")
 
 		dist := calcDist(o.X, o.Y, target.X, target.Y)
 		if dist < 1.0 {
@@ -156,29 +153,41 @@ func calcDist(x1, y1, x2, y2 float64) float64 {
 	return math.Sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2))
 }
 
-//func saveOrbs() {
-
-//}
-func calcTick() {
-
-}
-
 func main() {
+
+    num_orbs := MAX_PARTICLES
+    num_times := FOR_TIMES
+    var err error
+
+    args := os.Args
+    if args !=nil && len(args) >= 2 {
+        num_orbs, err = strconv.Atoi(os.Args[1])
+    }
+    if args !=nil && len(args) >= 3 {
+        num_times, err = strconv.Atoi(args[2])
+    }
+
+    if err != nil {
+        fmt.Println("Args len", len(os.Args), "err:", err)
+    }
+
+    fmt.Println("useage: go_server.exe $num_orbs $num_times")
+    fmt.Println("    eg: go_server.exe", num_orbs, num_times)
 
 	// 根据时间设置随机数种子
 	rand.Seed(int64(time.Now().Nanosecond()))
 
-	mapHap := initOrbs()
-	fmt.Println("after init mapHap=", mapHap)
+	mapHap := initOrbs(num_orbs)
+	//fmt.Println("after init mapHap=", mapHap)
 
 	realTimes := 0
 	//startTime := time.Now().Unix()
 	startTimeNano := time.Now().UnixNano()
 
-	for i := 0; i < FOR_TIMES; i++ {
+	for i := 0; i < num_times; i++ {
 		realTimes += updateOrbs(mapHap)
 	}
-	fmt.Println("after update mapHap=", mapHap)
+	//fmt.Println("after update mapHap=", mapHap)
 	//for i := 0; i < len(mapHap); i++ {
 	//	fmt.Println("i=", i, mapHap[i].Id, mapHap[i].CalcTimes)
 	//	realTimes += mapHap[i].CalcTimes
@@ -186,21 +195,23 @@ func main() {
 	//endTime := time.Now().Unix()
 	endTimeNano := time.Now().UnixNano()
 	timeUsed := float64(endTimeNano-startTimeNano) / 1000000000.0
-	fmt.Println("times will:", FOR_TIMES*MAX_PARTICLES, "real:", realTimes, "use time:", timeUsed, "sec")
+	fmt.Println("(USE GO) particles:", num_orbs, "for times:", num_times, "real:", realTimes, "use time:", timeUsed, "sec")
 
 	mc := memcache.New("mc.lo:11211", "mc.lo:11211")
 
 	if strList, err := json.Marshal(mapHap); err == nil {
-		fmt.Println("Marshal(mapHap) success: ", string(strList))
+		//fmt.Println("Marshal(mapHap) success: ", string(strList))
 		theVal := strList //fmt.Sprintf(`{"code":0,"msg":"ok","data":{"list":%s}}`, strList)
 		mc.Set(&memcache.Item{Key: "foo2", Value: []byte(theVal)})
 	} else {
 		fmt.Println("set foo2 error:", err)
 	}
 	if mcMapHap, err := mc.Get("foo2"); err == nil {
-		fmt.Println("key=", mcMapHap.Key, " value=", string(mcMapHap.Value))
+		fmt.Println("key=", mcMapHap.Key, " len(value)=", len(string(mcMapHap.Value)))
 	} else {
 		fmt.Println("get foo2 error:", err)
 	}
-	time.Sleep(time.Second * 1)
+	endTimeNano = time.Now().UnixNano()
+	timeUsed = float64(endTimeNano-startTimeNano) / 1000000000.0
+	fmt.Println("all used time with mc->get/set:", timeUsed, "sec")
 }
