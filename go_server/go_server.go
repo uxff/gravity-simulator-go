@@ -64,17 +64,18 @@ func updateOrbs(mapHap []Orb) int {
 	thelen := len(mapHap)
 	c := make(chan int)
 	for i := 0; i < thelen; i++ {
-		go mapHap[i].update(mapHap, c)
-		//go updateOrb(&mapHap[i], mapHap)
+		//go mapHap[i].update(mapHap, c)
+		go updateOrb(&mapHap[i], mapHap, c) // you can run this not with go
 		//fmt.Println("after the rand id=", mapHap[i].Id)
 	}
 	cCount := 0
-	for {
-		if cCount >= thelen {
-			break
-		}
-		cCount += <-c
-	}
+	cCount += 1
+	//	for {
+	//		if cCount >= thelen {
+	//			break
+	//		}
+	//		cCount += <-c
+	//	}
 	return cCount
 }
 func updateOrb(o *Orb, mapHap []Orb, c chan int) {
@@ -160,7 +161,7 @@ func main() {
 	num_orbs := MAX_PARTICLES
 	num_times := FOR_TIMES
 	// 使用2核心
-	num_cores := 2
+	num_cores := 4
 	var err error
 
 	args := os.Args
