@@ -1,13 +1,15 @@
 package main
 
 import (
+	//"bytes"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"math"
 	"math/rand"
-	"os"
+	//"os"
 	"runtime"
-	"strconv"
+	//"strconv"
 	"time"
 	//"strings"
 	//"github.com/bitly/go-simplejson"
@@ -18,10 +20,12 @@ import (
 type Orb struct {
 	X float64 `json:"x"`
 	Y float64 `json:"y"`
+	//Z float64 `json:"z"`
 	//Ax       float64 `json:"ax"`
 	//Ay       float64 `json:"ay"`
-	Vx       float64 `json:"vx"`
-	Vy       float64 `json:"vy"`
+	Vx float64 `json:"vx"`
+	Vy float64 `json:"vy"`
+	//Vz       float64 `json:"vz"`
 	Dir      float64 `json:"dir"`
 	Mass     float64 `json:"mass"`
 	Size     float32 `json:"size"`
@@ -63,27 +67,25 @@ func initOrbs(num int) []Orb {
 func updateOrbs(mapHap []Orb) int {
 	thelen := len(mapHap)
 	c := make(chan int)
+	cCount := 0
 	for i := 0; i < thelen; i++ {
-		//go mapHap[i].update(mapHap, c)
-		go updateOrb(&mapHap[i], mapHap, c) // you can run this not with go
+		go mapHap[i].update(mapHap, c)
+		//go updateOrb(&mapHap[i], mapHap, c) // you can run this not with go
 		//fmt.Println("after the rand id=", mapHap[i].Id)
 	}
-	cCount := 0
-	cCount += 1
-	//	for {
-	//		if cCount >= thelen {
-	//			break
-	//		}
-	//		cCount += <-c
-	//	}
+	//cCount += 1
+	for {
+		if cCount >= thelen {
+			break
+		}
+		cCount += <-c
+	}
 	return cCount
 }
 func updateOrb(o *Orb, mapHap []Orb, c chan int) {
 	//o.Mass += mapHap[0].Mass
 	aAll := o.CalcGravityAll(mapHap)
 	if o.LifeStep == 1 {
-		//o.Ax = aAll.Ax
-		//o.Ay = aAll.Ay
 		o.Vx += aAll.Ax
 		o.Vy += aAll.Ay
 		o.X += o.Vx
@@ -95,8 +97,6 @@ func (o *Orb) update(mapHap []Orb, c chan int) {
 	//o.Mass += mapHap[0].Mass
 	aAll := o.CalcGravityAll(mapHap)
 	if o.LifeStep == 1 {
-		//o.Ax = aAll.Ax
-		//o.Ay = aAll.Ay
 		o.Vx += aAll.Ax
 		o.Vy += aAll.Ay
 		o.X += o.Vx
@@ -156,37 +156,60 @@ func calcDist(x1, y1, x2, y2 float64) float64 {
 	return math.Sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2))
 }
 
-func main() {
+// 从数据库获取orbList
+func getListFromMc(mc *memcache.Client, mcKey *string) (mapHap []Orb) {
+	var orbListStr string
+	if orbListStrVal, err := mc.Get(*mcKey); err == nil {
+		orbListStr = string(orbListStrVal.Value)
+		err := json.Unmarshal(orbListStrVal.Value, &mapHap)
+		fmt.Println("len(val)=", len(orbListStr), "after unmarshal, len=", len(mapHap), "err:", err)
+	} else {
+		fmt.Println("mc get", *mcKey, "error:", err)
+	}
+	return mapHap
+}
 
+// 将orbList存到数据库
+func saveListToMc(mc *memcache.Client, mcKey *string, mapHap []Orb) {
+	if strList, err := json.Marshal(mapHap); err == nil {
+		theVal := strList //fmt.Sprintf(`{"code":0,"msg":"ok","data":{"list":%s}}`, strList)
+		mc.Set(&memcache.Item{Key: *mcKey, Value: []byte(theVal)})
+	} else {
+		fmt.Println("set", mcKey, "error:", err)
+	}
+}
+
+func main() {
 	num_orbs := MAX_PARTICLES
 	num_times := FOR_TIMES
-	// 使用2核心
-	num_cores := 4
-	var err error
+	doInit := false
 
-	args := os.Args
-	if args != nil && len(args) >= 2 {
-		num_orbs, err = strconv.Atoi(os.Args[1])
-	}
-	if args != nil && len(args) >= 3 {
-		num_times, err = strconv.Atoi(args[2])
-	}
+	var mcHost, mcKey string
+	flag.IntVar(&num_orbs, "num_orbs", 20, "how many orbs init")
+	flag.IntVar(&num_times, "num_times", 100, "how many times calc")
+	flag.StringVar(&mcHost, "mc_host", "mc.lo:11211", "memcache server")
+	flag.StringVar(&mcKey, "mc_key", "mcasync2", "key name save into memcache")
+	flag.BoolVar(&doInit, "doinit", false, "do init orb list and do other")
+	// flags 读取参数，必须要调用 flag.Parse()
+	flag.Parse()
 
-	if err != nil {
-		fmt.Println("Args len", len(os.Args), "err:", err)
-	}
+	//fmt.Println("useage: go_server.exe $num_orbs $num_times")
+	fmt.Println("    eg: go_server.exe -num_orbs", num_orbs, "-num_times", num_times)
 
-	fmt.Println("useage: go_server.exe $num_orbs $num_times")
-	fmt.Println("    eg: go_server.exe", num_orbs, num_times)
-
-	// go 编译器自动选择最优核心数
-	//runtime.GOMAXPROCS(num_cores)
+	var mapHap []Orb
+	//gobDecoder := gob.NewDecoder()
+	mc := memcache.New(mcHost) //New("mc.lo:11211", "mc.lo:11211")
 
 	// 根据时间设置随机数种子
 	rand.Seed(int64(time.Now().Nanosecond()))
 
-	mapHap := initOrbs(num_orbs)
-	//fmt.Println("after init mapHap=", mapHap)
+	if doInit {
+		mapHap = initOrbs(num_orbs)
+		//fmt.Println("after init mapHap=", mapHap)
+	} else {
+		mapHap = getListFromMc(mc, &mcKey)
+	}
+	num_orbs = len(mapHap)
 
 	realTimes := 0
 	//startTime := time.Now().Unix()
@@ -194,26 +217,17 @@ func main() {
 
 	for i := 0; i < num_times; i++ {
 		realTimes += updateOrbs(mapHap)
+		if ((num_orbs * num_orbs * i) % 100000) == 99999 {
+			saveListToMc(mc, &mcKey, mapHap)
+		}
 	}
 	//endTime := time.Now().Unix()
 	endTimeNano := time.Now().UnixNano()
 	timeUsed := float64(endTimeNano-startTimeNano) / 1000000000.0
-	fmt.Println("(USE GO, core:", num_cores, "/", runtime.NumCPU(), ") particles:", num_orbs, "for times:", num_times, "real:", realTimes, "use time:", timeUsed, "sec")
+	fmt.Println("(USE GO, core:", runtime.NumCPU(), ") particles:", num_orbs, "for times:", num_times, "real:", realTimes, "use time:", timeUsed, "sec")
 
-	mc := memcache.New("mc.lo:11211", "mc.lo:11211")
+	saveListToMc(mc, &mcKey, mapHap)
 
-	if strList, err := json.Marshal(mapHap); err == nil {
-		//fmt.Println("Marshal(mapHap) success: ", string(strList))
-		theVal := strList //fmt.Sprintf(`{"code":0,"msg":"ok","data":{"list":%s}}`, strList)
-		mc.Set(&memcache.Item{Key: "foo2", Value: []byte(theVal)})
-	} else {
-		fmt.Println("set foo2 error:", err)
-	}
-	if mcMapHap, err := mc.Get("foo2"); err == nil {
-		fmt.Println("key=", mcMapHap.Key, " len(value)=", len(string(mcMapHap.Value)))
-	} else {
-		fmt.Println("get foo2 error:", err)
-	}
 	endTimeNano = time.Now().UnixNano()
 	timeUsed = float64(endTimeNano-startTimeNano) / 1000000000.0
 	fmt.Println("all used time with mc->get/set:", timeUsed, "sec")
