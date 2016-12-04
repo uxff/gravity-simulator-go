@@ -135,7 +135,7 @@ var lesson1 = {
             //sphere.rotation.y = -Math.PI / 2;
             sphere.position.x = orb.y;
             sphere.position.y = orb.x;
-            sphere.position.z = 0;
+            sphere.position.z = orb.z;
             sphere.castShadow = sphere.receiveShadow = true;
             
             this.scene.add(sphere);
@@ -156,6 +156,7 @@ var lesson1 = {
                 } else {
                     sphere.position.x = orb.y;
                     sphere.position.y = orb.x;
+                    sphere.position.z = orb.z;
                 }
             } else {
                 //console.log('id='+orb.id+' not exist in orbList, will ');
@@ -164,7 +165,7 @@ var lesson1 = {
                 //sphere.rotation.y = -Math.PI / 2;
                 sphere.position.x = orb.y;
                 sphere.position.y = orb.x;
-                sphere.position.z = 0;
+                sphere.position.z = orb.z;
                 sphere.castShadow = sphere.receiveShadow = true;
                 
                 this.scene.add(sphere);

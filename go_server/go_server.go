@@ -20,13 +20,13 @@ import (
 type Orb struct {
 	X float64 `json:"x"`
 	Y float64 `json:"y"`
-	//Z float64 `json:"z"`
+	Z float64 `json:"z"`
 	//Ax       float64 `json:"ax"`
 	//Ay       float64 `json:"ay"`
 	Vx float64 `json:"vx"`
 	Vy float64 `json:"vy"`
-	//Vz       float64 `json:"vz"`
-	Dir      float64 `json:"dir"`
+	Vz float64 `json:"vz"`
+	//Dir      float64 `json:"dir"`
 	Mass     float64 `json:"mass"`
 	Size     float32 `json:"size"`
 	LifeStep int     `json:"lifeStep"`
@@ -37,6 +37,7 @@ type Orb struct {
 type Acc struct {
 	Ax  float64
 	Ay  float64
+	Az  float64
 	A   float64
 	Dir float64
 }
@@ -52,9 +53,10 @@ func initOrbs(num int) []Orb {
 		o := &mapHap[i]
 
 		o.X, o.Y = rand.Float64()*1000, rand.Float64()*1000
+		o.Z = rand.Float64() * 1000
 		//o.Ax = 0.0
 		//o.Ay = 0.0
-		o.Dir = 0.0
+		//o.Dir = 0.0
 		//o.Size = float32(math.Sqrt(o.X * o.Y))
 		o.Mass = rand.Float64() * 2.0
 		o.Id = rand.Int()
@@ -71,7 +73,6 @@ func updateOrbs(mapHap []Orb) int {
 	for i := 0; i < thelen; i++ {
 		go mapHap[i].update(mapHap, c)
 		//go updateOrb(&mapHap[i], mapHap, c) // you can run this not with go
-		//fmt.Println("after the rand id=", mapHap[i].Id)
 	}
 	//cCount += 1
 	for {
@@ -82,25 +83,16 @@ func updateOrbs(mapHap []Orb) int {
 	}
 	return cCount
 }
-func updateOrb(o *Orb, mapHap []Orb, c chan int) {
-	//o.Mass += mapHap[0].Mass
-	aAll := o.CalcGravityAll(mapHap)
-	if o.LifeStep == 1 {
-		o.Vx += aAll.Ax
-		o.Vy += aAll.Ay
-		o.X += o.Vx
-		o.Y += o.Vy
-	}
-	//o.CalcTimes += 1
-}
 func (o *Orb) update(mapHap []Orb, c chan int) {
 	//o.Mass += mapHap[0].Mass
 	aAll := o.CalcGravityAll(mapHap)
 	if o.LifeStep == 1 {
 		o.Vx += aAll.Ax
 		o.Vy += aAll.Ay
+		o.Vz += aAll.Az
 		o.X += o.Vx
 		o.Y += o.Vy
+		o.Z += o.Vz
 	}
 	//o.CalcTimes += 1
 	c <- 1
@@ -115,28 +107,30 @@ func (o *Orb) CalcGravityAll(oList []Orb) Acc {
 			continue
 		}
 
-		dist := calcDist(o.X, o.Y, target.X, target.Y)
+		//dist := calcDist(o.X, o.Y, target.X, target.Y)
+		dist := o.calcDist(target)
 		if dist < 1.0 {
 			if o.Mass > target.Mass {
 				o.Mass += target.Mass
 				o.Vx = (target.Mass*target.Vx + o.Mass*o.Vx) / o.Mass
 				o.Vy = (target.Mass*target.Vy + o.Mass*o.Vy) / o.Mass
+				o.Vz = (target.Mass*target.Vz + o.Mass*o.Vz) / o.Mass
 				target.Mass = 0
 				target.LifeStep = 2
 			} else {
 				target.Mass += target.Mass
 				target.Vx = (target.Mass*target.Vx + o.Mass*o.Vx) / target.Mass
 				target.Vy = (target.Mass*target.Vy + o.Mass*o.Vy) / target.Mass
+				target.Vz = (target.Mass*target.Vz + o.Mass*o.Vz) / target.Mass
 				o.Mass = 0
 				o.LifeStep = 2
 
 			}
 		} else {
 			gTmp := o.CalcGravity(&oList[i], dist)
-			gTmp.Ax = gTmp.A * math.Cos(gTmp.Dir)
-			gTmp.Ay = gTmp.A * math.Sin(gTmp.Dir)
 			gAll.Ax += gTmp.Ax
 			gAll.Ay += gTmp.Ay
+			gAll.Az += gTmp.Az
 		}
 	}
 
@@ -149,11 +143,17 @@ func (o *Orb) CalcGravity(target *Orb, dist float64) Acc {
 	}
 
 	a.A = target.Mass / (dist * dist) * G
-	a.Dir = math.Atan2((o.Y - target.Y), (o.X - target.X))
+	//a.Dir = math.Atan2((o.Y - target.Y), (o.X - target.X))
+	a.Ax = a.A * (o.X - target.X) / dist //a.A * math.Cos(a.Dir)
+	a.Ay = a.A * (o.Y - target.Y) / dist //a.A * math.Sin(a.Dir)
+	a.Az = a.A * (o.Z - target.Z) / dist //a.A * math.Sin(a.Dir)
 	return a
 }
 func calcDist(x1, y1, x2, y2 float64) float64 {
 	return math.Sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2))
+}
+func (o *Orb) calcDist(target *Orb) float64 {
+	return math.Sqrt((o.X-target.X)*(o.X-target.X) + (o.Y-target.Y)*(o.Y-target.Y) + (o.Z-target.Z)*(o.Z-target.Z))
 }
 
 // 从数据库获取orbList
