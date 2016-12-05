@@ -1,4 +1,5 @@
-var wsUri = "ws://yii2a.lo:9501/up";
+var wsUri = "ws://mc.lo:8081/orbs";
+var mcKey = 'mcasync2';
 var MyWebsocket = {
     wsUri: wsUri,
     websocket: null,
@@ -70,7 +71,7 @@ var MyWebsocket = {
             this.websocket.send(message);
             this.lastSendData = message;
         } else {
-            this.writeToScreen("websocket not ready!");
+            this.writeToScreen("try to connect websocket failed!");
         }
     },
 
@@ -82,30 +83,6 @@ var MyWebsocket = {
         this.output.innerHTML = message;
     },
 
-    //window.addEventListener("load", init, false);
-    //draw(ctx, list);
-    //function draw (ctx, list) {
-    //    clear(ctx);
-    //    //console.log(list);
-    //    for (var i=0; i<list.length; ++i) {
-    //        if (list[i].lifeStep==1) {
-    //            var orb = list[i];
-    //            //console.log(orb)
-    //            //console.log(orb.size);
-    //            ctx.strokeStyle = "hsla(" + 50 + ", 90%, 50%, 1)";
-    //            //ctx.shadowColor = "hsla(" + 50 + ", 100%, 55%, 1)";
-    //            //ctx.shadowBlur = orb.size * 1;
-    //            ctx.beginPath();
-    //
-    //            ctx.arc(list[i].x, list[i].y, list[i].size, 0, Math.PI*2 , false);
-    //
-    //            ctx.closePath();
-    //            ctx.stroke();
-    //        }
-    //    }
-    //}
-    //var key='mcasync2';
-    //setInterval('doSend("'+key+'")', 500);
     getOrbList: function () {
         var key='mcasync2';
         //this.

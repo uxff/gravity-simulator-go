@@ -131,7 +131,7 @@ var lesson1 = {
     initOrbs: function(list) {
         for (var i in list) {
             var orb = list[i];
-            var sphere = new THREE.Mesh(new THREE.SphereGeometry(7, 12, 12), new THREE.MeshLambertMaterial({ color: orb.hue }));
+            var sphere = new THREE.Mesh(new THREE.SphereGeometry(7, 12, 12), new THREE.MeshLambertMaterial({ color: orb.id*88 }));
             //sphere.rotation.y = -Math.PI / 2;
             sphere.position.x = orb.y;
             sphere.position.y = orb.x;
@@ -161,7 +161,7 @@ var lesson1 = {
             } else {
                 //console.log('id='+orb.id+' not exist in orbList, will ');
                 //add new sphere
-                var sphere = new THREE.Mesh(new THREE.SphereGeometry(7, 12, 12), new THREE.MeshLambertMaterial({ color: orb.hue }));
+                var sphere = new THREE.Mesh(new THREE.SphereGeometry(7, 12, 12), new THREE.MeshLambertMaterial({ color: orb.id*88 }));
                 //sphere.rotation.y = -Math.PI / 2;
                 sphere.position.x = orb.y;
                 sphere.position.y = orb.x;
@@ -189,7 +189,7 @@ function update() {
 
     // 从服务器取数据，显示到屏幕
     //MyWebsocket.sceneMgr = lesson1;
-    MyWebsocket.doSend("mcasync2");
+    MyWebsocket.doSend('k='+mcKey);
     //// smoothly move the particleLight
     //var timer = Date.now() * 0.000025;
     //particleLight.position.x = Math.sin(timer * 5) * 300;

@@ -47,7 +47,10 @@ const MAX_PARTICLES = 100
 const FOR_TIMES = 10000
 const VELO = 0.005
 
-func initOrbs(num int) []Orb {
+func initOrbs(num int, eternalMass float64) []Orb {
+	if eternalMass != 0.0 {
+		num += 1
+	}
 	mapHap := make([]Orb, num)
 	for i := 0; i < num; i++ {
 		o := &mapHap[i]
@@ -58,10 +61,16 @@ func initOrbs(num int) []Orb {
 		//o.Ay = 0.0
 		//o.Dir = 0.0
 		//o.Size = float32(math.Sqrt(o.X * o.Y))
-		o.Mass = rand.Float64() * 2.0
+		o.Mass = rand.Float64() * 4.0
 		o.Id = rand.Int()
 		o.LifeStep = 1
 		//fmt.Println("the rand id=", o.Id)
+	}
+	if eternalMass != 0.0 {
+		eternalOrb := &mapHap[len(mapHap)-1]
+		//eternalOrb.X = 0,
+		eternalOrb.Mass = eternalMass
+		eternalOrb.Id = rand.Int()
 	}
 	return mapHap
 }
@@ -75,14 +84,14 @@ func updateOrbs(mapHap []Orb) int {
 		//go updateOrb(&mapHap[i], mapHap, c) // you can run this not with go
 	}
 	//cCount += 1
-	defer func() {
-		for {
-			if cCount >= thelen {
-				break
-			}
-			cCount += <-c
+	//defer func() {
+	for {
+		if cCount >= thelen {
+			break
 		}
-	}()
+		cCount += <-c
+	}
+	//}()
 	return cCount
 }
 func (o *Orb) update(mapHap []Orb, c chan int) {
@@ -118,6 +127,7 @@ func (o *Orb) CalcGravityAll(oList []Orb) Acc {
 				o.Vx = (target.Mass*target.Vx + o.Mass*o.Vx) / o.Mass
 				o.Vy = (target.Mass*target.Vy + o.Mass*o.Vy) / o.Mass
 				o.Vz = (target.Mass*target.Vz + o.Mass*o.Vz) / o.Mass
+				o.Size += 1
 				target.Mass = 0
 				target.LifeStep = 2
 			} else {
@@ -125,6 +135,7 @@ func (o *Orb) CalcGravityAll(oList []Orb) Acc {
 				target.Vx = (target.Mass*target.Vx + o.Mass*o.Vx) / target.Mass
 				target.Vy = (target.Mass*target.Vy + o.Mass*o.Vy) / target.Mass
 				target.Vz = (target.Mass*target.Vz + o.Mass*o.Vz) / target.Mass
+				target.Size += 1
 				o.Mass = 0
 				o.LifeStep = 2
 			}
@@ -170,6 +181,7 @@ func saveListToMc(mc *memcache.Client, mcKey *string, mapHap []Orb) {
 	if strList, err := json.Marshal(mapHap); err == nil {
 		theVal := strList //fmt.Sprintf(`{"code":0,"msg":"ok","data":{"list":%s}}`, strList)
 		mc.Set(&memcache.Item{Key: *mcKey, Value: []byte(theVal)})
+		fmt.Println("save success: len=", len(mapHap))
 	} else {
 		fmt.Println("set", mcKey, "error:", err)
 	}
@@ -179,10 +191,12 @@ func main() {
 	num_orbs := MAX_PARTICLES
 	num_times := FOR_TIMES
 	doInit := false
-
+	var eternal float64
 	var mcHost, mcKey string
+
 	flag.IntVar(&num_orbs, "num_orbs", 20, "how many orbs init")
 	flag.IntVar(&num_times, "num_times", 100, "how many times calc")
+	flag.Float64Var(&eternal, "eternal", 15000.0, "the mass of eternal, 0 means no eternal")
 	flag.StringVar(&mcHost, "mc_host", "mc.lo:11211", "memcache server")
 	flag.StringVar(&mcKey, "mc_key", "mcasync2", "key name save into memcache")
 	flag.BoolVar(&doInit, "doinit", false, "do init orb list and do other")
@@ -200,22 +214,26 @@ func main() {
 	rand.Seed(int64(time.Now().Nanosecond()))
 
 	if doInit {
-		mapHap = initOrbs(num_orbs)
+		mapHap = initOrbs(num_orbs, eternal)
 		//fmt.Println("after init mapHap=", mapHap)
 	} else {
 		mapHap = getListFromMc(mc, &mcKey)
 	}
 	num_orbs = len(mapHap)
 
-	realTimes := 0
+	realTimes, perTimes, tmpTimes := 0, 0, 0
 	//startTime := time.Now().Unix()
 	startTimeNano := time.Now().UnixNano()
 
 	for i := 0; i < num_times; i++ {
-		realTimes += updateOrbs(mapHap)
-		if ((num_orbs * num_orbs * i) % 100000) == 99999 {
-			saveListToMc(mc, &mcKey, mapHap)
+		perTimes = updateOrbs(mapHap)
+		realTimes += perTimes
+		tmpTimes += perTimes
+		if tmpTimes > 10000 {
+			go saveListToMc(mc, &mcKey, mapHap)
+			tmpTimes = 0
 		}
+		//if i/100%10
 	}
 	//endTime := time.Now().Unix()
 	endTimeNano := time.Now().UnixNano()
