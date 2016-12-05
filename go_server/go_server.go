@@ -35,11 +35,11 @@ type Orb struct {
 	//flag     int     `json:"flag"`
 }
 type Acc struct {
-	Ax  float64
-	Ay  float64
-	Az  float64
-	A   float64
-	Dir float64
+	Ax float64
+	Ay float64
+	Az float64
+	A  float64
+	//Dir float64
 }
 
 const G = 0.000021
@@ -75,12 +75,14 @@ func updateOrbs(mapHap []Orb) int {
 		//go updateOrb(&mapHap[i], mapHap, c) // you can run this not with go
 	}
 	//cCount += 1
-	for {
-		if cCount >= thelen {
-			break
+	defer func() {
+		for {
+			if cCount >= thelen {
+				break
+			}
+			cCount += <-c
 		}
-		cCount += <-c
-	}
+	}()
 	return cCount
 }
 func (o *Orb) update(mapHap []Orb, c chan int) {
@@ -107,10 +109,11 @@ func (o *Orb) CalcGravityAll(oList []Orb) Acc {
 			continue
 		}
 
-		//dist := calcDist(o.X, o.Y, target.X, target.Y)
 		dist := o.calcDist(target)
-		if dist < 1.0 {
+		if dist < 2.0 {
+			// 碰撞机制 非弹性碰撞 动量守恒 m1v1+m2v2=(m1+m2)v
 			if o.Mass > target.Mass {
+				// 碰撞后速度 v = (m1v1+m2v2)/(m1+m2)
 				o.Mass += target.Mass
 				o.Vx = (target.Mass*target.Vx + o.Mass*o.Vx) / o.Mass
 				o.Vy = (target.Mass*target.Vy + o.Mass*o.Vy) / o.Mass
@@ -124,7 +127,6 @@ func (o *Orb) CalcGravityAll(oList []Orb) Acc {
 				target.Vz = (target.Mass*target.Vz + o.Mass*o.Vz) / target.Mass
 				o.Mass = 0
 				o.LifeStep = 2
-
 			}
 		} else {
 			gTmp := o.CalcGravity(&oList[i], dist)
@@ -138,19 +140,13 @@ func (o *Orb) CalcGravityAll(oList []Orb) Acc {
 }
 func (o *Orb) CalcGravity(target *Orb, dist float64) Acc {
 	var a Acc
-	if dist < 1.0 {
-		return Acc{}
-	}
-
+	// 万有引力公式
 	a.A = target.Mass / (dist * dist) * G
 	//a.Dir = math.Atan2((o.Y - target.Y), (o.X - target.X))
-	a.Ax = a.A * (o.X - target.X) / dist //a.A * math.Cos(a.Dir)
-	a.Ay = a.A * (o.Y - target.Y) / dist //a.A * math.Sin(a.Dir)
-	a.Az = a.A * (o.Z - target.Z) / dist //a.A * math.Sin(a.Dir)
+	a.Ax = -a.A * (o.X - target.X) / dist //a.A * math.Cos(a.Dir)
+	a.Ay = -a.A * (o.Y - target.Y) / dist //a.A * math.Sin(a.Dir)
+	a.Az = -a.A * (o.Z - target.Z) / dist //a.A * math.Sin(a.Dir)
 	return a
-}
-func calcDist(x1, y1, x2, y2 float64) float64 {
-	return math.Sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2))
 }
 func (o *Orb) calcDist(target *Orb) float64 {
 	return math.Sqrt((o.X-target.X)*(o.X-target.X) + (o.Y-target.Y)*(o.Y-target.Y) + (o.Z-target.Z)*(o.Z-target.Z))
