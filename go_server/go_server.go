@@ -42,6 +42,13 @@ type Acc struct {
 	//Dir float64
 }
 
+type InitConfig struct {
+	Mass    float64
+	Wide    float64
+	Velo    float64
+	Eternal float64
+}
+
 const G = 0.000021
 const MAX_PARTICLES = 100
 const FOR_TIMES = 10000
@@ -49,31 +56,34 @@ const VELO = 0.005
 
 //var nStep int
 
-func initOrbs(num int, eternalMass float64) []Orb {
-	if eternalMass != 0.0 {
-		num += 1
-	}
+func initOrbs(num int, config *InitConfig) []Orb {
 	oList := make([]Orb, num)
+
+	if config.Eternal != 0.0 {
+		num -= 1
+	}
+
 	for i := 0; i < num; i++ {
 		o := &oList[i]
 
-		o.X, o.Y = rand.Float64()*1000, rand.Float64()*1000
-		o.Z = rand.Float64() * 1000
-		//o.Ax = 0.0
-		//o.Ay = 0.0
+		o.X, o.Y = (1.0-rand.Float64())*config.Wide, (1.0-rand.Float64())*config.Wide
+		o.Z = (1.0 - rand.Float64()) * config.Wide
+		o.Vx = (rand.Float64() - 1.0) * config.Velo * 2.0
+		o.Vy = (rand.Float64() - 1.0) * config.Velo * 2.0
+		o.Vz = (rand.Float64())*config.Velo*2.0 - config.Velo
 		//o.Dir = 0.0
 		o.Size = 1 //float32(math.Sqrt(o.X * o.Y))
-		o.Mass = rand.Float64() * 10.0
+		o.Mass = rand.Float64() * config.Mass
 		//o.Id = rand.Int()
 		o.Id = i
 		o.LifeStep = 1
 		//fmt.Println("the rand id=", o.Id)
 	}
-	if eternalMass != 0.0 {
+	if config.Eternal != 0.0 {
 		eternalOrb := &oList[len(oList)-1]
 		//eternalOrb.X = 0,
-		eternalOrb.Mass = eternalMass
-		eternalOrb.Id = num //rand.Int()
+		eternalOrb.Mass = config.Eternal
+		eternalOrb.Id = num - 1 //rand.Int()
 	}
 	return oList
 }
@@ -198,7 +208,6 @@ func saveListToMc(mc *memcache.Client, mcKey *string, oList []Orb) {
 // 清理orbList中的垃圾
 func clearOrbList(oList []Orb) []Orb {
 	for i := 0; i < len(oList); i++ {
-
 		if oList[i].LifeStep != 1 {
 			oList = append(oList[:i], oList[i+1:]...)
 			i--
@@ -220,6 +229,10 @@ func main() {
 	flag.StringVar(&mcHost, "mc_host", "mc.lo:11211", "memcache server")
 	flag.StringVar(&mcKey, "mc_key", "mcasync2", "key name save into memcache")
 	var doShowList = flag.Bool("show_list", false, "show orb list and exit")
+	var configMass = flag.Float64("config-mass", 10.0, "the mass of orbs")
+	var configWide = flag.Float64("config-wide", 1000.0, "the wide of orbs")
+	var configVelo = flag.Float64("config-velo", 0.005, "the velo of orbs")
+
 	// flags 读取参数，必须要调用 flag.Parse()
 	flag.Parse()
 
@@ -228,14 +241,14 @@ func main() {
 
 	var oList []Orb
 	var mcVal []byte
-	//gobDecoder := gob.NewDecoder()
 	mc := memcache.New(mcHost) //New("mc.lo:11211", "mc.lo:11211")
 
 	// 根据时间设置随机数种子
 	rand.Seed(int64(time.Now().Nanosecond()))
 
 	if num_orbs > 0 {
-		oList = initOrbs(num_orbs, eternal)
+		initConfig := InitConfig{*configMass, *configWide, *configVelo, eternal}
+		oList = initOrbs(num_orbs, &initConfig)
 		//fmt.Println("after init oList=", oList)
 	} else {
 		oList, mcVal = getListFromMc(mc, &mcKey)
@@ -258,7 +271,6 @@ func main() {
 
 		//nStep = i
 		if (i+1)%(num_times/10) == 1 {
-
 			oList = clearOrbList(oList)
 		}
 		go func() {
@@ -275,7 +287,7 @@ func main() {
 	//endTime := time.Now().Unix()
 	endTimeNano := time.Now().UnixNano()
 	timeUsed := float64(endTimeNano-startTimeNano) / 1000000000.0
-	fmt.Println("(core:", runtime.NumCPU(), ") orbs:", num_orbs, "times:", num_times, "real:", realTimes, "use time:", timeUsed, "sec", "cps:", float64(realTimes)/timeUsed)
+	fmt.Println("(core:", runtime.NumCPU(), ") orbs:", num_orbs, len(oList), "times:", num_times, "real:", realTimes, "use time:", timeUsed, "sec", "cps:", float64(realTimes)/timeUsed)
 
 	saveListToMc(mc, &mcKey, oList)
 
