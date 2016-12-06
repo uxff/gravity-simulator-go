@@ -49,7 +49,7 @@ var lesson1 = {
             SCREEN_HEIGHT = window.innerHeight;
 
         // prepare camera
-        var VIEW_ANGLE = 45, ASPECT = SCREEN_WIDTH / SCREEN_HEIGHT, NEAR = 1, FAR = 100000;
+        var VIEW_ANGLE = 45, ASPECT = SCREEN_WIDTH / SCREEN_HEIGHT, NEAR = 2, FAR = 1000000;
         this.camera = new THREE.PerspectiveCamera( VIEW_ANGLE, ASPECT, NEAR, FAR);
         this.scene.add(this.camera);
         this.camera.position.set(1500, 3000, 3000);
@@ -137,6 +137,7 @@ var lesson1 = {
             sphere.position.y = orb.x;
             sphere.position.z = orb.z;
             sphere.castShadow = sphere.receiveShadow = true;
+            sphere.geometry.radius = 5 * orb.size;
             
             this.scene.add(sphere);
             this.orbList[orb.id] = sphere;
@@ -157,16 +158,18 @@ var lesson1 = {
                     sphere.position.x = orb.y;
                     sphere.position.y = orb.x;
                     sphere.position.z = orb.z;
+                    sphere.geometry.radius = 5 * orb.size;
                 }
             } else {
                 //console.log('id='+orb.id+' not exist in orbList, will ');
                 //add new sphere
-                var sphere = new THREE.Mesh(new THREE.SphereGeometry(7, 12, 12), new THREE.MeshLambertMaterial({ color: orb.id*88 }));
+                var sphere = new THREE.Mesh(new THREE.SphereGeometry(8, 12, 12), new THREE.MeshLambertMaterial({ color: orb.id*88 }));
                 //sphere.rotation.y = -Math.PI / 2;
                 sphere.position.x = orb.y;
                 sphere.position.y = orb.x;
                 sphere.position.z = orb.z;
                 sphere.castShadow = sphere.receiveShadow = true;
+                sphere.geometry.radius = 5 * orb.size;
                 
                 this.scene.add(sphere);
                 this.orbList[orb.id] = sphere;

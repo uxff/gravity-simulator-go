@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	//"html/template"
-	"fmt"
+	//"fmt"
 	"log"
 	"net/http"
 	"net/url"
@@ -27,8 +27,8 @@ type Orb struct {
 	Mass     float64 `json:"mass"`
 	Size     float32 `json:"size"`
 	LifeStep int     `json:"lifeStep"`
-	Color    int     `json:"color"`
-	Id       int     `json:"id"`
+	//Color    int     `json:"color"`
+	Id int `json:"id"`
 	//CalcTimes int     `json:"calcTimes"`
 	//flag     int     `json:"flag"`
 }
@@ -82,28 +82,29 @@ func handleOrbs(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 
-		log.Printf("recv: %s", message)
-
-		//if false {
+		//log.Printf("recv: %s", message)
 
 		//v := url.Values{}
 		v, _ := url.ParseQuery(string(message))
 		mcKey := v.Get("k")
+		if len(mcKey) == 0 {
+			log.Println("mc key cannot be null, ignored message=", message)
+			break
+		}
 		//getListFromMc(mc, &string(message))
 		//strMessage := mcKey //string(message)
 		list := getListFromMc(mc, &mcKey)
 
 		ret := JsonRet{Code: 1, Msg: "ok", Data: make(map[string]interface{})}
 		ret.Data["list"] = list
-		//ret.Data
+
 		retStr, errJson := json.Marshal(ret)
 		if errJson != nil {
 			log.Println("json.Marshal error:", errJson)
 			break
 		} else {
-			log.Println("after json.Marshal retStr=", string(retStr))
+			//log.Println("after json.Marshal retStr=", string(retStr))
 		}
-		//}
 
 		err = c.WriteMessage(mt, retStr)
 		if err != nil {
@@ -121,11 +122,11 @@ func getListFromMc(mc *memcache.Client, mcKey *string) (v []Orb) {
 		//v = orbListStrVal.Value
 		err := json.Unmarshal(orbListStrVal.Value, &v)
 		if err != nil {
-			log.Println("json.Unmarshal error:", err)
+			log.Println("json.Unmarshal err=", err)
 		}
 		//fmt.Println("len(val)=", len(orbListStr), "after unmarshal, len=", len(mapHap), "err:", err)
 	} else {
-		log.Printf("mc get", *mcKey, "error:", err)
+		log.Println("mc get(", *mcKey, ") err=", err)
 	}
 	return v
 }
@@ -135,7 +136,7 @@ func getListFromMc(mc *memcache.Client, mcKey *string) (v []Orb) {
 //}
 
 func main() {
-	fmt.Println("start:")
+	//fmt.Println("start:")
 
 	//return
 	flag.Parse()
