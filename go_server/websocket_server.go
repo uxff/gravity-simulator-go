@@ -84,19 +84,20 @@ func handleOrbs(w http.ResponseWriter, r *http.Request) {
 
 		//log.Printf("recv: %s", message)
 
+		ret := JsonRet{Code: 1, Msg: "ok", Data: make(map[string]interface{})}
 		//v := url.Values{}
 		v, _ := url.ParseQuery(string(message))
 		mcKey := v.Get("k")
+
 		if len(mcKey) == 0 {
-			log.Println("mc key cannot be null, ignored message=", message)
-			break
+			log.Println("illegal message ignored. message=", string(message))
+			ret.Data["list"] = nil
+		} else {
+			list := getListFromMc(mc, &mcKey)
+			ret.Data["list"] = list
 		}
 		//getListFromMc(mc, &string(message))
 		//strMessage := mcKey //string(message)
-		list := getListFromMc(mc, &mcKey)
-
-		ret := JsonRet{Code: 1, Msg: "ok", Data: make(map[string]interface{})}
-		ret.Data["list"] = list
 
 		retStr, errJson := json.Marshal(ret)
 		if errJson != nil {
