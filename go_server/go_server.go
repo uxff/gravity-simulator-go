@@ -47,6 +47,8 @@ const MAX_PARTICLES = 100
 const FOR_TIMES = 10000
 const VELO = 0.005
 
+//var nStep int
+
 func initOrbs(num int, eternalMass float64) []Orb {
 	if eternalMass != 0.0 {
 		num += 1
@@ -62,7 +64,8 @@ func initOrbs(num int, eternalMass float64) []Orb {
 		//o.Dir = 0.0
 		//o.Size = float32(math.Sqrt(o.X * o.Y))
 		o.Mass = rand.Float64() * 4.0
-		o.Id = rand.Int()
+		//o.Id = rand.Int()
+		o.Id = i
 		o.LifeStep = 1
 		//fmt.Println("the rand id=", o.Id)
 	}
@@ -70,17 +73,19 @@ func initOrbs(num int, eternalMass float64) []Orb {
 		eternalOrb := &mapHap[len(mapHap)-1]
 		//eternalOrb.X = 0,
 		eternalOrb.Mass = eternalMass
-		eternalOrb.Id = rand.Int()
+		eternalOrb.Id = num //rand.Int()
 	}
 	return mapHap
 }
 
-func updateOrbs(mapHap []Orb) int {
+func updateOrbs(mapHap []Orb, nStep int) int {
 	thelen := len(mapHap)
 	c := make(chan int)
 	cCount := 0
+	//fmt.Println("will start times(", nStep, ") updateOrbs()")
 	for i := 0; i < thelen; i++ {
-		go mapHap[i].update(mapHap, c)
+		//fmt.Println("will start nStep(", nStep, ") orb[", i, "].update()")
+		go mapHap[i].update(mapHap, c, nStep)
 		//go updateOrb(&mapHap[i], mapHap, c) // you can run this not with go
 	}
 	//cCount += 1
@@ -91,11 +96,13 @@ func updateOrbs(mapHap []Orb) int {
 		}
 		cCount += <-c
 	}
-	//}()
-	return cCount
+	//fmt.Println("will end nStep(", nStep, ") updateOrbs()")
+	//	//}()
+	return cCount * cCount
 }
-func (o *Orb) update(mapHap []Orb, c chan int) {
+func (o *Orb) update(mapHap []Orb, c chan int, nStep int) {
 	//o.Mass += mapHap[0].Mass
+	//fmt.Println("in nStep(", nStep, ") orb[", o.Id, "].update() before calc")
 	aAll := o.CalcGravityAll(mapHap)
 	if o.LifeStep == 1 {
 		o.Vx += aAll.Ax
@@ -106,7 +113,9 @@ func (o *Orb) update(mapHap []Orb, c chan int) {
 		o.Z += o.Vz
 	}
 	//o.CalcTimes += 1
-	c <- 1
+	//fmt.Println("in nStep(", nStep, ") orb[", o.Id, "].update() before c<-")
+	c <- 1 //len(mapHap)
+	//fmt.Println("in nStep(", nStep, ") orb[", o.Id, "].update() after c<-")
 }
 func (o *Orb) CalcGravityAll(oList []Orb) Acc {
 	var gAll Acc
@@ -190,16 +199,16 @@ func saveListToMc(mc *memcache.Client, mcKey *string, mapHap []Orb) {
 func main() {
 	num_orbs := MAX_PARTICLES
 	num_times := FOR_TIMES
-	doInit := false
+	//doInit := false
 	var eternal float64
 	var mcHost, mcKey string
 
-	flag.IntVar(&num_orbs, "num_orbs", 20, "how many orbs init")
+	flag.IntVar(&num_orbs, "init_orbs", 0, "how many orbs init")
 	flag.IntVar(&num_times, "num_times", 100, "how many times calc")
 	flag.Float64Var(&eternal, "eternal", 15000.0, "the mass of eternal, 0 means no eternal")
 	flag.StringVar(&mcHost, "mc_host", "mc.lo:11211", "memcache server")
 	flag.StringVar(&mcKey, "mc_key", "mcasync2", "key name save into memcache")
-	flag.BoolVar(&doInit, "doinit", false, "do init orb list and do other")
+	//flag.BoolVar(&doInit, "doinit", false, "do init orb list and do other")
 	// flags 读取参数，必须要调用 flag.Parse()
 	flag.Parse()
 
@@ -213,7 +222,7 @@ func main() {
 	// 根据时间设置随机数种子
 	rand.Seed(int64(time.Now().Nanosecond()))
 
-	if doInit {
+	if num_orbs > 0 {
 		mapHap = initOrbs(num_orbs, eternal)
 		//fmt.Println("after init mapHap=", mapHap)
 	} else {
@@ -226,19 +235,21 @@ func main() {
 	startTimeNano := time.Now().UnixNano()
 
 	for i := 0; i < num_times; i++ {
-		perTimes = updateOrbs(mapHap)
+		perTimes = updateOrbs(mapHap, i)
 		realTimes += perTimes
-		tmpTimes += perTimes
-		if tmpTimes > 10000 {
-			go saveListToMc(mc, &mcKey, mapHap)
-			tmpTimes = 0
-		}
-		//if i/100%10
+		//nStep = i
+		go func() {
+			tmpTimes += perTimes
+			if tmpTimes > 100000 {
+				saveListToMc(mc, &mcKey, mapHap)
+				tmpTimes = 0
+			}
+		}()
 	}
 	//endTime := time.Now().Unix()
 	endTimeNano := time.Now().UnixNano()
 	timeUsed := float64(endTimeNano-startTimeNano) / 1000000000.0
-	fmt.Println("(USE GO, core:", runtime.NumCPU(), ") particles:", num_orbs, "for times:", num_times, "real:", realTimes, "use time:", timeUsed, "sec")
+	fmt.Println("(core:", runtime.NumCPU(), ") orbs:", num_orbs, "times:", num_times, "real:", realTimes, "use time:", timeUsed, "sec", "cps:", float64(realTimes)/timeUsed)
 
 	saveListToMc(mc, &mcKey, mapHap)
 
