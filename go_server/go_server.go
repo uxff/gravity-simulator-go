@@ -53,43 +53,42 @@ func initOrbs(num int, eternalMass float64) []Orb {
 	if eternalMass != 0.0 {
 		num += 1
 	}
-	mapHap := make([]Orb, num)
+	oList := make([]Orb, num)
 	for i := 0; i < num; i++ {
-		o := &mapHap[i]
+		o := &oList[i]
 
 		o.X, o.Y = rand.Float64()*1000, rand.Float64()*1000
 		o.Z = rand.Float64() * 1000
 		//o.Ax = 0.0
 		//o.Ay = 0.0
 		//o.Dir = 0.0
-		//o.Size = float32(math.Sqrt(o.X * o.Y))
-		o.Mass = rand.Float64() * 4.0
+		o.Size = 1 //float32(math.Sqrt(o.X * o.Y))
+		o.Mass = rand.Float64() * 10.0
 		//o.Id = rand.Int()
 		o.Id = i
 		o.LifeStep = 1
 		//fmt.Println("the rand id=", o.Id)
 	}
 	if eternalMass != 0.0 {
-		eternalOrb := &mapHap[len(mapHap)-1]
+		eternalOrb := &oList[len(oList)-1]
 		//eternalOrb.X = 0,
 		eternalOrb.Mass = eternalMass
 		eternalOrb.Id = num //rand.Int()
 	}
-	return mapHap
+	return oList
 }
 
-func updateOrbs(mapHap []Orb, nStep int) int {
-	thelen := len(mapHap)
+func updateOrbs(oList []Orb, nStep int) int {
+	thelen := len(oList)
 	c := make(chan int)
 	cCount := 0
 	//fmt.Println("will start times(", nStep, ") updateOrbs()")
 	for i := 0; i < thelen; i++ {
 		//fmt.Println("will start nStep(", nStep, ") orb[", i, "].update()")
-		go mapHap[i].update(mapHap, c, nStep)
-		//go updateOrb(&mapHap[i], mapHap, c) // you can run this not with go
+		go oList[i].update(oList, c, nStep)
+		//go updateOrb(&oList[i], oList, c) // you can run this not with go
 	}
 	//cCount += 1
-	//defer func() {
 	for {
 		if cCount >= thelen {
 			break
@@ -97,13 +96,12 @@ func updateOrbs(mapHap []Orb, nStep int) int {
 		cCount += <-c
 	}
 	//fmt.Println("will end nStep(", nStep, ") updateOrbs()")
-	//	//}()
 	return cCount * cCount
 }
-func (o *Orb) update(mapHap []Orb, c chan int, nStep int) {
-	//o.Mass += mapHap[0].Mass
+func (o *Orb) update(oList []Orb, c chan int, nStep int) {
+	//o.Mass += oList[0].Mass
 	//fmt.Println("in nStep(", nStep, ") orb[", o.Id, "].update() before calc")
-	aAll := o.CalcGravityAll(mapHap)
+	aAll := o.CalcGravityAll(oList)
 	if o.LifeStep == 1 {
 		o.Vx += aAll.Ax
 		o.Vy += aAll.Ay
@@ -114,7 +112,7 @@ func (o *Orb) update(mapHap []Orb, c chan int, nStep int) {
 	}
 	//o.CalcTimes += 1
 	//fmt.Println("in nStep(", nStep, ") orb[", o.Id, "].update() before c<-")
-	c <- 1 //len(mapHap)
+	c <- 1 //len(oList)
 	//fmt.Println("in nStep(", nStep, ") orb[", o.Id, "].update() after c<-")
 }
 func (o *Orb) CalcGravityAll(oList []Orb) Acc {
@@ -173,27 +171,40 @@ func (o *Orb) calcDist(target *Orb) float64 {
 }
 
 // 从数据库获取orbList
-func getListFromMc(mc *memcache.Client, mcKey *string) (mapHap []Orb) {
+func getListFromMc(mc *memcache.Client, mcKey *string) (oList []Orb, v []byte) {
 	var orbListStr string
 	if orbListStrVal, err := mc.Get(*mcKey); err == nil {
+		v = orbListStrVal.Value
 		orbListStr = string(orbListStrVal.Value)
-		err := json.Unmarshal(orbListStrVal.Value, &mapHap)
-		fmt.Println("len(val)=", len(orbListStr), "after unmarshal, len=", len(mapHap), "err:", err)
+		err := json.Unmarshal(orbListStrVal.Value, &oList)
+		fmt.Println("mc.get len(val)=", len(orbListStr), "after unmarshal, len=", len(oList), "json err=", err)
 	} else {
-		fmt.Println("mc get", *mcKey, "error:", err)
+		fmt.Println("mc.get", *mcKey, "error:", err)
 	}
-	return mapHap
+	return oList, v
 }
 
 // 将orbList存到数据库
-func saveListToMc(mc *memcache.Client, mcKey *string, mapHap []Orb) {
-	if strList, err := json.Marshal(mapHap); err == nil {
+func saveListToMc(mc *memcache.Client, mcKey *string, oList []Orb) {
+	if strList, err := json.Marshal(oList); err == nil {
 		theVal := strList //fmt.Sprintf(`{"code":0,"msg":"ok","data":{"list":%s}}`, strList)
 		mc.Set(&memcache.Item{Key: *mcKey, Value: []byte(theVal)})
-		fmt.Println("save success: len=", len(mapHap))
+		fmt.Println("save success: len=", len(oList))
 	} else {
 		fmt.Println("set", mcKey, "error:", err)
 	}
+}
+
+// 清理orbList中的垃圾
+func clearOrbList(oList []Orb) []Orb {
+	for i := 0; i < len(oList); i++ {
+
+		if oList[i].LifeStep != 1 {
+			oList = append(oList[:i], oList[i+1:]...)
+			i--
+		}
+	}
+	return oList
 }
 
 func main() {
@@ -203,19 +214,20 @@ func main() {
 	var eternal float64
 	var mcHost, mcKey string
 
-	flag.IntVar(&num_orbs, "init_orbs", 0, "how many orbs init")
+	flag.IntVar(&num_orbs, "init_orbs", 0, "how many orbs init, do init when its value >1")
 	flag.IntVar(&num_times, "num_times", 100, "how many times calc")
 	flag.Float64Var(&eternal, "eternal", 15000.0, "the mass of eternal, 0 means no eternal")
 	flag.StringVar(&mcHost, "mc_host", "mc.lo:11211", "memcache server")
 	flag.StringVar(&mcKey, "mc_key", "mcasync2", "key name save into memcache")
-	//flag.BoolVar(&doInit, "doinit", false, "do init orb list and do other")
+	var doShowList = flag.Bool("show_list", false, "show orb list and exit")
 	// flags 读取参数，必须要调用 flag.Parse()
 	flag.Parse()
 
 	//fmt.Println("useage: go_server.exe $num_orbs $num_times")
 	fmt.Println("    eg: go_server.exe -num_orbs", num_orbs, "-num_times", num_times)
 
-	var mapHap []Orb
+	var oList []Orb
+	var mcVal []byte
 	//gobDecoder := gob.NewDecoder()
 	mc := memcache.New(mcHost) //New("mc.lo:11211", "mc.lo:11211")
 
@@ -223,35 +235,49 @@ func main() {
 	rand.Seed(int64(time.Now().Nanosecond()))
 
 	if num_orbs > 0 {
-		mapHap = initOrbs(num_orbs, eternal)
-		//fmt.Println("after init mapHap=", mapHap)
+		oList = initOrbs(num_orbs, eternal)
+		//fmt.Println("after init oList=", oList)
 	} else {
-		mapHap = getListFromMc(mc, &mcKey)
+		oList, mcVal = getListFromMc(mc, &mcKey)
 	}
-	num_orbs = len(mapHap)
+	if *doShowList {
+		fmt.Println(string(mcVal))
+		fmt.Println(oList)
+		return
+	}
+	num_orbs = len(oList)
 
 	realTimes, perTimes, tmpTimes := 0, 0, 0
 	//startTime := time.Now().Unix()
 	startTimeNano := time.Now().UnixNano()
 
 	for i := 0; i < num_times; i++ {
-		perTimes = updateOrbs(mapHap, i)
+		perTimes = updateOrbs(oList, i)
 		realTimes += perTimes
+		//fmt.Printf("in main oList=%p\n", oList)//slice地址一直是一样的，除非append
+
 		//nStep = i
+		if (i+1)%(num_times/10) == 1 {
+
+			oList = clearOrbList(oList)
+		}
 		go func() {
 			tmpTimes += perTimes
 			if tmpTimes > 100000 {
-				saveListToMc(mc, &mcKey, mapHap)
+				saveListToMc(mc, &mcKey, oList)
 				tmpTimes = 0
 			}
 		}()
 	}
+
+	oList = clearOrbList(oList)
+
 	//endTime := time.Now().Unix()
 	endTimeNano := time.Now().UnixNano()
 	timeUsed := float64(endTimeNano-startTimeNano) / 1000000000.0
 	fmt.Println("(core:", runtime.NumCPU(), ") orbs:", num_orbs, "times:", num_times, "real:", realTimes, "use time:", timeUsed, "sec", "cps:", float64(realTimes)/timeUsed)
 
-	saveListToMc(mc, &mcKey, mapHap)
+	saveListToMc(mc, &mcKey, oList)
 
 	endTimeNano = time.Now().UnixNano()
 	timeUsed = float64(endTimeNano-startTimeNano) / 1000000000.0
