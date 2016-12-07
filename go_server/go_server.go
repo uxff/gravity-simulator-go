@@ -82,10 +82,10 @@ func initOrbs(num int, config *InitConfig) []Orb {
 		//fmt.Println("the rand id=", o.Id)
 	}
 	if config.Eternal != 0.0 {
-		eternalOrb := &oList[len(oList)-1]
+		eternalOrb := &oList[num]
 		//eternalOrb.X = 0,
 		eternalOrb.Mass = config.Eternal
-		eternalOrb.Id = num - 1 //rand.Int()
+		eternalOrb.Id = num //rand.Int()
 	}
 	return oList
 }
@@ -246,6 +246,7 @@ func main() {
 	//doInit := false
 	var eternal float64
 	var mcHost, mcKey string
+	var numCpu int
 
 	flag.IntVar(&num_orbs, "init_orbs", 0, "how many orbs init, do init when its value >1")
 	flag.IntVar(&num_times, "num_times", 100, "how many times calc")
@@ -256,10 +257,17 @@ func main() {
 	var configMass = flag.Float64("config-mass", 10.0, "the mass of orbs")
 	var configWide = flag.Float64("config-wide", 1000.0, "the wide of orbs")
 	var configVelo = flag.Float64("config-velo", 0.005, "the velo of orbs")
+	var configCpu = flag.Int("config-cpu", 0, "how many cpu u want use, 0=all")
 
 	// flags 读取参数，必须要调用 flag.Parse()
 	flag.Parse()
 
+	if *configCpu > 0 {
+		numCpu = *configCpu
+	} else {
+		numCpu = runtime.NumCPU() - 1
+	}
+	runtime.GOMAXPROCS(numCpu)
 	//fmt.Println("useage: go_server.exe $num_orbs $num_times")
 	fmt.Println("    eg: go_server.exe -num_orbs", num_orbs, "-num_times", num_times)
 
@@ -309,7 +317,7 @@ func main() {
 	//endTime := time.Now().Unix()
 	endTimeNano := time.Now().UnixNano()
 	timeUsed := float64(endTimeNano-startTimeNano) / 1000000000.0
-	fmt.Println("(core:", runtime.NumCPU(), ") orbs:", num_orbs, len(oList), "times:", num_times, "real:", realTimes, "use time:", timeUsed, "sec", "cps:", float64(realTimes)/timeUsed)
+	fmt.Println("(core:", numCpu, ") orbs:", num_orbs, len(oList), "times:", num_times, "real:", realTimes, "use time:", timeUsed, "sec", "CPS:", float64(realTimes)/timeUsed)
 	fmt.Println("maxVelo=", maxVeloX, maxVeloY, maxVeloZ, "maxAcc=", maxAccX, maxAccY, maxAccZ)
 
 	saveListToMc(mc, &mcKey, oList)
