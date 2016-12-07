@@ -298,8 +298,8 @@ func main() {
 		//}
 		tmpTimes += perTimes
 		if tmpTimes > 100000 {
-			oList = clearOrbList(oList)
 			saveListToMc(mc, &mcKey, oList)
+			oList = clearOrbList(oList)
 			tmpTimes = 0
 		}
 	}
