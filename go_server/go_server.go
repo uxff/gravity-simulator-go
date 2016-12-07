@@ -54,6 +54,8 @@ const MAX_PARTICLES = 100
 const FOR_TIMES = 10000
 const VELO = 0.005
 
+var maxVeloX, maxVeloY, maxVeloZ, maxAccX, maxAccY, maxAccZ float64 = 0, 0, 0, 0, 0, 0
+
 //var nStep int
 
 func initOrbs(num int, config *InitConfig) []Orb {
@@ -119,6 +121,24 @@ func (o *Orb) update(oList []Orb, c chan int, nStep int) {
 		o.X += o.Vx
 		o.Y += o.Vy
 		o.Z += o.Vz
+		if maxVeloX < o.Vx {
+			maxVeloX = o.Vx
+		}
+		if maxVeloY < o.Vy {
+			maxVeloY = o.Vy
+		}
+		if maxVeloZ < o.Vz {
+			maxVeloZ = o.Vz
+		}
+		if maxAccX < aAll.Ax {
+			maxAccX = aAll.Ax
+		}
+		if maxAccY < aAll.Ay {
+			maxAccY = aAll.Ay
+		}
+		if maxAccZ < aAll.Az {
+			maxAccZ = aAll.Az
+		}
 	}
 	//o.CalcTimes += 1
 	//fmt.Println("in nStep(", nStep, ") orb[", o.Id, "].update() before c<-")
@@ -198,8 +218,12 @@ func getListFromMc(mc *memcache.Client, mcKey *string) (oList []Orb, v []byte) {
 func saveListToMc(mc *memcache.Client, mcKey *string, oList []Orb) {
 	if strList, err := json.Marshal(oList); err == nil {
 		theVal := strList //fmt.Sprintf(`{"code":0,"msg":"ok","data":{"list":%s}}`, strList)
-		mc.Set(&memcache.Item{Key: *mcKey, Value: []byte(theVal)})
-		fmt.Println("save success: len=", len(oList))
+		errMc := mc.Set(&memcache.Item{Key: *mcKey, Value: []byte(theVal)})
+		if errMc != nil {
+			fmt.Println("save failed:", errMc)
+		} else {
+			fmt.Println("save success: len=", len(oList))
+		}
 	} else {
 		fmt.Println("set", mcKey, "error:", err)
 	}
@@ -270,16 +294,14 @@ func main() {
 		//fmt.Printf("in main oList=%p\n", oList)//slice地址一直是一样的，除非append
 
 		//nStep = i
-		if (i+1)%(num_times/10) == 1 {
+		//if (i*10+1)%(num_times+1) == 1 {
+		//}
+		tmpTimes += perTimes
+		if tmpTimes > 100000 {
 			oList = clearOrbList(oList)
+			saveListToMc(mc, &mcKey, oList)
+			tmpTimes = 0
 		}
-		go func() {
-			tmpTimes += perTimes
-			if tmpTimes > 100000 {
-				saveListToMc(mc, &mcKey, oList)
-				tmpTimes = 0
-			}
-		}()
 	}
 
 	oList = clearOrbList(oList)
@@ -288,6 +310,7 @@ func main() {
 	endTimeNano := time.Now().UnixNano()
 	timeUsed := float64(endTimeNano-startTimeNano) / 1000000000.0
 	fmt.Println("(core:", runtime.NumCPU(), ") orbs:", num_orbs, len(oList), "times:", num_times, "real:", realTimes, "use time:", timeUsed, "sec", "cps:", float64(realTimes)/timeUsed)
+	fmt.Println("maxVelo=", maxVeloX, maxVeloY, maxVeloZ, "maxAcc=", maxAccX, maxAccY, maxAccZ)
 
 	saveListToMc(mc, &mcKey, oList)
 

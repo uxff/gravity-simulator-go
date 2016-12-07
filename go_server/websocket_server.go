@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	//"time"
 
 	"github.com/bradfitz/gomemcache/memcache"
 	"github.com/gorilla/websocket"
@@ -89,6 +90,8 @@ func handleOrbs(w http.ResponseWriter, r *http.Request) {
 		v, _ := url.ParseQuery(string(message))
 		mcKey := v.Get("k")
 
+		//for {
+
 		if len(mcKey) == 0 {
 			log.Println("illegal message ignored. message=", string(message))
 			ret.Data["list"] = nil
@@ -112,7 +115,15 @@ func handleOrbs(w http.ResponseWriter, r *http.Request) {
 			log.Println("write:", err)
 			break
 		}
+
+		//time.Sleep(time.Millisecond * 100)
+		if len(mcKey) == 0 {
+			//break
+		}
+		//}
+		//break
 	}
+	log.Println("closed:", c.LocalAddr().String())
 }
 
 // 从数据库获取orbList
