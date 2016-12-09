@@ -89,6 +89,7 @@ func initOrbs(num int, config *InitConfig) []Orb {
 		//eternalOrb.X = 0,
 		eternalOrb.Mass = config.Eternal
 		eternalOrb.Id = num //rand.Int()
+		eternalOrb.LifeStep = 1
 	}
 	return oList
 }
@@ -154,7 +155,7 @@ func (o *Orb) CalcGravityAll(oList []Orb) Acc {
 		//c <- 1
 		var isCrash, isTooNearly, isVertDistBigger, isSpanOn bool = false, false, false, false
 		target := &oList[i]
-		if target.Id == o.Id || target.LifeStep != 1 || o.LifeStep != 1 {
+		if target.Id == o.Id || target.LifeStep != 1 || o.LifeStep != 1 || o.Mass == 0 || target.Mass == 0 {
 			//fmt.Println("orb cannot act on self, or life over")
 			continue
 		}
@@ -164,14 +165,20 @@ func (o *Orb) CalcGravityAll(oList []Orb) Acc {
 		isTooNearly = dist*dist < MIN_CRITICAL_DIST*MIN_CRITICAL_DIST
 		// 如果半径小，则相交的两个角必须是锐角，才能确定是碰撞
 		verticalX, verticalY, verticalZ := o.calcVertiDot(target)
-		isVertDistBigger = ((verticalX-target.X)*(verticalX-target.X) + (verticalY-target.Y)*(verticalY-target.Y) + (verticalZ-target.Z)*(verticalZ-target.Z)) < MIN_CRITICAL_DIST*MIN_CRITICAL_DIST
+		if o.Vx == 0 && o.Vy == 0 && o.Vz == 0 {
+			isVertDistBigger = true
+		} else {
+			isVertDistBigger = ((verticalX-target.X)*(verticalX-target.X) + (verticalY-target.Y)*(verticalY-target.Y) + (verticalZ-target.Z)*(verticalZ-target.Z)) > MIN_CRITICAL_DIST*MIN_CRITICAL_DIST
+		}
 
-		isSpanOn = ((o.X-o.Vx-target.X)*(o.X-o.Vx-target.X)+(o.Y-o.Vy-target.Y)*(o.Y-o.Vy-target.Y)+(o.Z-o.Vz-target.Z)*(o.Z-o.Vz-target.Z)+dist*dist) > (o.Vx*o.Vx+o.Vy*o.Vy+o.Vz*o.Vz) && ((o.X-target.X)*(o.X-target.X)+(o.Y-target.Y)*(o.Y-target.Y)+(o.Z-target.Z)*(o.Z-target.Z)+dist*dist) > (o.Vx*o.Vx+o.Vy*o.Vy+o.Vz*o.Vz)
 		// 如果垂心距离target比临街半径大 则不相交
 		// da^2 + do^2 > db^2 && db^2 + do^2 > da^2
-		isCrash = isTooNearly || isVertDistBigger && isSpanOn
+		isSpanOn = ((o.X-o.Vx-target.X)*(o.X-o.Vx-target.X)+(o.Y-o.Vy-target.Y)*(o.Y-o.Vy-target.Y)+(o.Z-o.Vz-target.Z)*(o.Z-o.Vz-target.Z)+dist*dist) > (o.Vx*o.Vx+o.Vy*o.Vy+o.Vz*o.Vz) && ((o.X-target.X)*(o.X-target.X)+(o.Y-target.Y)*(o.Y-target.Y)+(o.Z-target.Z)*(o.Z-target.Z)+dist*dist) > (o.Vx*o.Vx+o.Vy*o.Vy+o.Vz*o.Vz)
+
+		isCrash = isTooNearly || !isVertDistBigger && isSpanOn
 		if isCrash {
 
+			fmt.Println("o.id", o.Id, "crashed on", target.Id)
 			// 碰撞机制 非弹性碰撞 动量守恒 m1v1+m2v2=(m1+m2)v
 			if o.Mass > target.Mass {
 				// 碰撞后速度 v = (m1v1+m2v2)/(m1+m2)
@@ -267,6 +274,8 @@ func saveListToMc(mc *memcache.Client, mcKey *string, oList []Orb) {
 
 // 清理orbList中的垃圾
 func clearOrbList(oList []Orb) []Orb {
+	//fmt.Println("when clear oList=", oList)
+	return oList
 	for i := 0; i < len(oList); i++ {
 		if oList[i].LifeStep != 1 {
 			oList = append(oList[:i], oList[i+1:]...)
@@ -349,6 +358,7 @@ func main() {
 	}
 
 	oList = clearOrbList(oList)
+	//fmt.Println("when clear oList=", oList)
 
 	//endTime := time.Now().Unix()
 	endTimeNano := time.Now().UnixNano()
