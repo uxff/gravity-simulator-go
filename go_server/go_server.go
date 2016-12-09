@@ -54,6 +54,9 @@ const MAX_PARTICLES = 100
 const FOR_TIMES = 10000
 const VELO = 0.005
 
+// 最小距离值
+const MIN_CRITICAL_DIST = 3.0
+
 var maxVeloX, maxVeloY, maxVeloZ, maxAccX, maxAccY, maxAccZ float64 = 0, 0, 0, 0, 0, 0
 
 //var nStep int
@@ -149,6 +152,7 @@ func (o *Orb) CalcGravityAll(oList []Orb) Acc {
 	var gAll Acc
 	for i := 0; i < len(oList); i++ {
 		//c <- 1
+		var isCrash, isTooNearly, isVertDistBigger, isSpanOn bool = false, false, false, false
 		target := &oList[i]
 		if target.Id == o.Id || target.LifeStep != 1 || o.LifeStep != 1 {
 			//fmt.Println("orb cannot act on self, or life over")
@@ -156,7 +160,18 @@ func (o *Orb) CalcGravityAll(oList []Orb) Acc {
 		}
 
 		dist := o.calcDist(target)
-		if dist < 2.0 {
+
+		isTooNearly = dist*dist < MIN_CRITICAL_DIST*MIN_CRITICAL_DIST
+		// 如果半径小，则相交的两个角必须是锐角，才能确定是碰撞
+		verticalX, verticalY, verticalZ := o.calcVertiDot(target)
+		isVertDistBigger = ((verticalX-target.X)*(verticalX-target.X) + (verticalY-target.Y)*(verticalY-target.Y) + (verticalZ-target.Z)*(verticalZ-target.Z)) < MIN_CRITICAL_DIST*MIN_CRITICAL_DIST
+
+		isSpanOn = ((o.X-o.Vx-target.X)*(o.X-o.Vx-target.X)+(o.Y-o.Vy-target.Y)*(o.Y-o.Vy-target.Y)+(o.Z-o.Vz-target.Z)*(o.Z-o.Vz-target.Z)+dist*dist) > (o.Vx*o.Vx+o.Vy*o.Vy+o.Vz*o.Vz) && ((o.X-target.X)*(o.X-target.X)+(o.Y-target.Y)*(o.Y-target.Y)+(o.Z-target.Z)*(o.Z-target.Z)+dist*dist) > (o.Vx*o.Vx+o.Vy*o.Vy+o.Vz*o.Vz)
+		// 如果垂心距离target比临街半径大 则不相交
+		// da^2 + do^2 > db^2 && db^2 + do^2 > da^2
+		isCrash = isTooNearly || isVertDistBigger && isSpanOn
+		if isCrash {
+
 			// 碰撞机制 非弹性碰撞 动量守恒 m1v1+m2v2=(m1+m2)v
 			if o.Mass > target.Mass {
 				// 碰撞后速度 v = (m1v1+m2v2)/(m1+m2)
@@ -198,6 +213,27 @@ func (o *Orb) CalcGravity(target *Orb, dist float64) Acc {
 }
 func (o *Orb) calcDist(target *Orb) float64 {
 	return math.Sqrt((o.X-target.X)*(o.X-target.X) + (o.Y-target.Y)*(o.Y-target.Y) + (o.Z-target.Z)*(o.Z-target.Z))
+}
+func (o *Orb) calcVertiDot(target *Orb) (vx, vy, vz float64) {
+	//k := (o.Y - target.Y)/(o.X - target.X)
+	//k := o.Vx / o.Vy
+	//3d
+	// k = -((x1-x0)(x2-x1)+(y2-y1)(y1-y0)+(z2-z1)(z1-z0))/(x2-x1)^2+(y2-y1)^2+(z2-z1)^2
+	// xn=k(x2-x1)+x1 yn=k(y2-y1)+y1 zn=k(z2-z1)
+	var x0, x1, x2, y0, y1, y2, z0, z1, z2 float64 = target.X, o.X, o.X - o.Vx, target.Y, o.Y, o.Y - o.Vy, target.Z, o.Z, o.Z - o.Vz
+	k := -((x1-x0)*(x2-x1) + (y2-y1)*(y1-y0) + (z2-z1)*(z1-z0)) / ((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1) + (z2-z1)*(z2-z1))
+	vx = k*(x2-x1) + x1
+	vy = k*(y2-y1) + y1
+	vz = k*(z2-z1) + z1
+
+	// x=(t.y+t.x/k+kx2-y2)/(k+1/k)
+	// 直线(o.x-o.vx, o.y-o.vy),(o.x, o.y)的直线为
+	// y=kx+y2-kx2
+	// 点target到上面直线的垂线为
+	// y=-1/k x + t.y + t.x/k
+	//vx = (target.Y + target.X/k + k*o.X - o.Y) / (k + 1/k)
+	//vy = k*vx + o.Y - k*o.X
+	return vx, vy, vz
 }
 
 // 从数据库获取orbList
