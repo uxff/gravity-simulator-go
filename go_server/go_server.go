@@ -52,7 +52,6 @@ type InitConfig struct {
 const G = 0.000021
 const MAX_PARTICLES = 100
 const FOR_TIMES = 10000
-const VELO = 0.005
 
 // 最小距离值
 const MIN_CRITICAL_DIST = 3.0
@@ -71,11 +70,11 @@ func initOrbs(num int, config *InitConfig) []Orb {
 	for i := 0; i < num; i++ {
 		o := &oList[i]
 
-		o.X, o.Y = (1.0-rand.Float64())*config.Wide, (1.0-rand.Float64())*config.Wide
-		o.Z = (1.0 - rand.Float64()) * config.Wide
-		o.Vx = (rand.Float64() - 1.0) * config.Velo * 2.0
-		o.Vy = (rand.Float64() - 1.0) * config.Velo * 2.0
-		o.Vz = (rand.Float64())*config.Velo*2.0 - config.Velo
+		o.X, o.Y = (0.5-rand.Float64())*config.Wide, (0.5-rand.Float64())*config.Wide
+		o.Z = (0.5 - rand.Float64()) * config.Wide
+		o.Vx = (rand.Float64() - 0.5) * config.Velo * 2.0
+		o.Vy = (rand.Float64() - 0.5) * config.Velo * 2.0
+		o.Vz = (rand.Float64() - 0.5) * config.Velo * 2.0
 		//o.Dir = 0.0
 		o.Size = 1 //float32(math.Sqrt(o.X * o.Y))
 		o.Mass = rand.Float64() * config.Mass
@@ -125,24 +124,24 @@ func (o *Orb) update(oList []Orb, c chan int, nStep int) {
 		o.X += o.Vx
 		o.Y += o.Vy
 		o.Z += o.Vz
-		if maxVeloX < o.Vx {
-			maxVeloX = o.Vx
-		}
-		if maxVeloY < o.Vy {
-			maxVeloY = o.Vy
-		}
-		if maxVeloZ < o.Vz {
-			maxVeloZ = o.Vz
-		}
-		if maxAccX < aAll.Ax {
-			maxAccX = aAll.Ax
-		}
-		if maxAccY < aAll.Ay {
-			maxAccY = aAll.Ay
-		}
-		if maxAccZ < aAll.Az {
-			maxAccZ = aAll.Az
-		}
+		//		if maxVeloX < math.Abs(o.Vx) {
+		//			maxVeloX = math.Abs(o.Vx)
+		//		}
+		//		if maxVeloY < math.Abs(o.Vy) {
+		//			maxVeloY = math.Abs(o.Vy)
+		//		}
+		//		if maxVeloZ < math.Abs(o.Vz) {
+		//			maxVeloZ = math.Abs(o.Vz)
+		//		}
+		//		if maxAccX < math.Abs(aAll.Ax) {
+		//			maxAccX = math.Abs(aAll.Ax)
+		//		}
+		//		if maxAccY < math.Abs(aAll.Ay) {
+		//			maxAccY = math.Abs(aAll.Ay)
+		//		}
+		//		if maxAccZ < math.Abs(aAll.Az) {
+		//			maxAccZ = math.Abs(aAll.Az)
+		//		}
 	}
 	//o.CalcTimes += 1
 	//fmt.Println("in nStep(", nStep, ") orb[", o.Id, "].update() before c<-")
@@ -163,22 +162,28 @@ func (o *Orb) CalcGravityAll(oList []Orb) Acc {
 		dist := o.calcDist(target)
 
 		isTooNearly = dist*dist < MIN_CRITICAL_DIST*MIN_CRITICAL_DIST
-		// 如果半径小，则相交的两个角必须是锐角，才能确定是碰撞
-		verticalX, verticalY, verticalZ := o.calcVertiDot(target)
-		if o.Vx == 0 && o.Vy == 0 && o.Vz == 0 {
-			isVertDistBigger = true
+		// 如果太近或者动的太小，只判断距离
+		if isTooNearly || math.Abs(o.Vx) < MIN_CRITICAL_DIST && math.Abs(o.Vy) < MIN_CRITICAL_DIST && math.Abs(o.Vz) < MIN_CRITICAL_DIST {
+			isVertDistBigger = !isTooNearly
+			isSpanOn = false
 		} else {
+			// 计算垂心距离
+			verticalX, verticalY, verticalZ := o.calcVertiDot(target)
 			isVertDistBigger = ((verticalX-target.X)*(verticalX-target.X) + (verticalY-target.Y)*(verticalY-target.Y) + (verticalZ-target.Z)*(verticalZ-target.Z)) > MIN_CRITICAL_DIST*MIN_CRITICAL_DIST
-		}
 
-		// 如果垂心距离target比临街半径大 则不相交
-		// da^2 + do^2 > db^2 && db^2 + do^2 > da^2
-		isSpanOn = ((o.X-o.Vx-target.X)*(o.X-o.Vx-target.X)+(o.Y-o.Vy-target.Y)*(o.Y-o.Vy-target.Y)+(o.Z-o.Vz-target.Z)*(o.Z-o.Vz-target.Z)+dist*dist) > (o.Vx*o.Vx+o.Vy*o.Vy+o.Vz*o.Vz) && ((o.X-target.X)*(o.X-target.X)+(o.Y-target.Y)*(o.Y-target.Y)+(o.Z-target.Z)*(o.Z-target.Z)+dist*dist) > (o.Vx*o.Vx+o.Vy*o.Vy+o.Vz*o.Vz)
+			// 如果垂心距离target比临界半径大 则不相交
+			// 如果垂心距离小，且与target形成的角度都是锐角，则相交
+			// da^2 + do^2 > db^2 && db^2 + do^2 > da^2
+			if !isVertDistBigger {
+				oldVDistSquare := (o.X-o.Vx-target.X)*(o.X-o.Vx-target.X) + (o.Y-o.Vy-target.Y)*(o.Y-o.Vy-target.Y) + (o.Z-o.Vz-target.Z)*(o.Z-o.Vz-target.Z)
+				isSpanOn = (oldVDistSquare+o.Vx*o.Vx+o.Vy*o.Vy+o.Vz*o.Vz) > (dist*dist) && (o.Vx*o.Vx+o.Vy*o.Vy+o.Vz*o.Vz+dist*dist) > oldVDistSquare
+			}
+		}
 
 		isCrash = isTooNearly || !isVertDistBigger && isSpanOn
 		if isCrash {
 
-			fmt.Println("o.id", o.Id, "crashed on", target.Id)
+			fmt.Println("o.id", o.Id, "crashed on", target.Id, "because isTooNearly=", isTooNearly, "isVertDistBigger=", isVertDistBigger, "isSpanOn=", isSpanOn, "orb=", o)
 			// 碰撞机制 非弹性碰撞 动量守恒 m1v1+m2v2=(m1+m2)v
 			if o.Mass > target.Mass {
 				// 碰撞后速度 v = (m1v1+m2v2)/(m1+m2)
@@ -265,7 +270,7 @@ func saveListToMc(mc *memcache.Client, mcKey *string, oList []Orb) {
 		if errMc != nil {
 			fmt.Println("save failed:", errMc)
 		} else {
-			fmt.Println("save success: len=", len(oList))
+			fmt.Println("save success: len=", len(oList), "strlen=", len(strList))
 		}
 	} else {
 		fmt.Println("set", mcKey, "error:", err)
@@ -275,13 +280,15 @@ func saveListToMc(mc *memcache.Client, mcKey *string, oList []Orb) {
 // 清理orbList中的垃圾
 func clearOrbList(oList []Orb) []Orb {
 	//fmt.Println("when clear oList=", oList)
-	return oList
+	var alive int = len(oList)
 	for i := 0; i < len(oList); i++ {
 		if oList[i].LifeStep != 1 {
 			oList = append(oList[:i], oList[i+1:]...)
 			i--
+			alive--
 		}
 	}
+	fmt.Println("when clear alive=", alive)
 	return oList
 }
 
