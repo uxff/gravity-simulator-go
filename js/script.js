@@ -28,6 +28,7 @@ var colors = [
 ];
 var particleLight;
 var ticker = 0;
+var zoomBase = 1.0, zoomStep = Math.sqrt(2.0);// = document.getElementById('zoom').value;
 
 var lesson1 = {
     scene: null,
@@ -155,21 +156,21 @@ var lesson1 = {
                     // remove sphere
                     this.scene.remove(sphere);
                 } else {
-                    sphere.position.x = orb.y;
-                    sphere.position.y = orb.x;
-                    sphere.position.z = orb.z;
-                    sphere.geometry.radius = 50 * orb.size;
+                    sphere.position.x = orb.y * zoomBase;
+                    sphere.position.y = orb.x * zoomBase;
+                    sphere.position.z = orb.z * zoomBase;
+                    //sphere.geometry.radius = 50 * orb.size;
                 }
             } else {
                 //console.log('id='+orb.id+' not exist in orbList, will ');
                 //add new sphere
                 var sphere = new THREE.Mesh(new THREE.SphereGeometry(8, 12, 12), new THREE.MeshLambertMaterial({ color: orb.id*311331 }));
                 //sphere.rotation.y = -Math.PI / 2;
-                sphere.position.x = orb.y;
-                sphere.position.y = orb.x;
-                sphere.position.z = orb.z;
+                sphere.position.x = orb.y * zoomBase;
+                sphere.position.y = orb.x * zoomBase;
+                sphere.position.z = orb.z * zoomBase;
                 sphere.castShadow = sphere.receiveShadow = true;
-                sphere.geometry.radius = 50 * orb.size;
+                //sphere.geometry.radius = 50 * orb.size;
                 
                 this.scene.add(sphere);
                 this.orbList[orb.id] = sphere;
@@ -193,7 +194,7 @@ function update() {
     // 从服务器取数据，显示到屏幕
     //MyWebsocket.sceneMgr = lesson1;
     ++ticker;
-    if ((ticker+1)%10 == 1) {
+    if ((ticker+1)%5 == 1) {
         MyWebsocket.doSend('k='+mcKey);
     }
     //// smoothly move the particleLight
@@ -215,6 +216,14 @@ function initializeLesson() {
     MyWebsocket.sceneMgr = lesson1;
     MyWebsocket.initWebsocket();
     //MyWebsocket.doSend('k='+mcKey);
+        $('#zoom_up').on('click', function() {
+            zoomBase = zoomBase*zoomStep;
+            $('#zoom').val(zoomBase);
+        });
+        $('#zoom_down').on('click', function() {
+            zoomBase = zoomBase/zoomStep;
+            $('#zoom').val(zoomBase);
+        });
     
     animate();
 }
