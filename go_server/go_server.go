@@ -136,29 +136,33 @@ func (o *Orb) CalcGravityAll(oList []Orb) Acc {
 	var gAll Acc
 	for i := 0; i < len(oList); i++ {
 		//c <- 1
-		var isCrash, isTooNearly, isSpanOn, isVertDistBigger bool = false, false, false, false
 		target := &oList[i]
 		if target.Id == o.Id || target.LifeStep != 1 || o.LifeStep != 1 || o.Mass == 0 || target.Mass == 0 {
 			continue
 		}
 
+		var isMeCrash, isTaCrash, isTooNearly, isTaRiped bool = false, false, false, false
 		dist := o.CalcDist(target)
 
 		// 判断是否太近 和是否穿过
 		isTooNearly = dist*dist < MIN_CRITICAL_DIST*MIN_CRITICAL_DIST
+		// 速度太快，被撕裂
+		isTaRiped = dist*dist < (target.Vx*target.Vx + target.Vy*target.Vy + target.Vz*target.Vz)
+		//math.Abs(o.Vx) < MIN_CRITICAL_DIST && math.Abs(o.Vy) < MIN_CRITICAL_DIST && math.Abs(o.Vz) < MIN_CRITICAL_DIST
 		// 如果太近或者动的太小，只判断距离
-		if isTooNearly || math.Abs(o.Vx) < MIN_CRITICAL_DIST && math.Abs(o.Vy) < MIN_CRITICAL_DIST && math.Abs(o.Vz) < MIN_CRITICAL_DIST {
-			isSpanOn = false
-		} else {
-			isSpanOn, isVertDistBigger = o.IsThrough(target, dist)
-		}
+		//if isTooNearly || isRiped {
+		//isSpanOn = false
+		//} else {
+		//isSpanOn, isVertDistBigger := o.IsThrough(target, dist)
+		//}
 
-		isCrash = isTooNearly || !isVertDistBigger && isSpanOn
-		if isCrash {
+		isTaCrash = isTaRiped || isTooNearly && o.Mass > target.Mass
+		isMeCrash = isTooNearly && o.Mass < target.Mass
+		if isMeCrash || isTaCrash {
 
-			fmt.Println("o.id", o.Id, "crashed on", target.Id, "because isTooNearly=", isTooNearly, "isSpanOn=", isSpanOn, "isVertDistBigger=", isVertDistBigger, "orb=", o)
+			fmt.Println("o.id", o.Id, "crashed on", target.Id, "because isTooNearly=", isTooNearly, "isMeCrash", isMeCrash, "isTaCrash=", isTaCrash, "isTaRiped=", isTaRiped, "me=", o, "ta=", target)
 			// 碰撞机制 非弹性碰撞 动量守恒 m1v1+m2v2=(m1+m2)v
-			if o.Mass > target.Mass {
+			if isMeCrash {
 				// 碰撞后速度 v = (m1v1+m2v2)/(m1+m2)
 				o.Mass += target.Mass
 				o.Vx = (target.Mass*target.Vx + o.Mass*o.Vx) / o.Mass
@@ -247,7 +251,7 @@ func saveListToMc(mc *memcache.Client, mcKey *string, oList []Orb) {
 		if errMc != nil {
 			fmt.Println("save failed:", errMc)
 		} else {
-			fmt.Println("save success: len=", len(oList), "strlen=", len(strList))
+			//fmt.Println("save success: len=", len(oList), "strlen=", len(strList))
 		}
 	} else {
 		fmt.Println("set", mcKey, "error:", err)
@@ -264,7 +268,7 @@ func clearOrbList(oList []Orb) []Orb {
 			alive--
 		}
 	}
-	fmt.Println("when clear alive=", alive)
+	//fmt.Println("when clear alive=", alive)
 	return oList
 }
 
