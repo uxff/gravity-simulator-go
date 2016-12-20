@@ -214,7 +214,20 @@ function render() {
 function initializeLesson() {
     lesson1.init();
     MyWebsocket.sceneMgr = lesson1;
-    MyWebsocket.initWebsocket();
+
+    if (wsUri == undefined || wsUri.length==0) {
+        wsUri = $('#ws-addr').val();
+        if (window.document.domain != undefined) {
+            
+            wsUri = 'ws://'+window.document.domain+':8081'+'/orbs';
+            $('#ws-addr').val(wsUri);
+            MyWebsocket.wsUri = wsUri;
+        }
+    }
+    if (wsUri.length > 0) {
+        MyWebsocket.initWebsocket();
+    }
+
     //MyWebsocket.doSend('k='+mcKey);
         $('#zoom_up').on('click', function() {
             zoomBase = zoomBase*zoomStep;
@@ -223,6 +236,12 @@ function initializeLesson() {
         $('#zoom_down').on('click', function() {
             zoomBase = zoomBase/zoomStep;
             $('#zoom').val(zoomBase);
+        });
+        $('#reConnect').on('click', function() {
+            wsUri = 'ws://'+$('#ws-addr').val()+'/orbs';
+            MyWebsocket.wsUri = wsUri;
+            //alert(wsUri);
+            MyWebsocket.initWebsocket();
         });
     
     animate();
