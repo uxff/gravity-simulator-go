@@ -39,8 +39,8 @@ type JsonRet struct {
 	Data map[string]interface{} `json:"data"`
 }
 
-var addr = flag.String("addr", "127.0.0.1:8081", "websocket server address")
-var mcHost = flag.String("mchost", "mc.lo:11211", "memcache server for reading data")
+var addr = flag.String("addr", "0.0.0.0:8081", "websocket server address")
+var mcHost = flag.String("mchost", "127.0.0.1:11211", "memcache server for reading data")
 
 var upgrader = websocket.Upgrader{} // use default options
 

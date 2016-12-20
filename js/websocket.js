@@ -80,7 +80,7 @@ var MyWebsocket = {
         pre.style.wordWrap = "break-word";
         //pre.innerHTML = message;
         //output.appendChild(pre);
-        this.output.innerHTML = message;
+        this.output.innerHTML = message || '';
     },
 
     getOrbList: function () {
