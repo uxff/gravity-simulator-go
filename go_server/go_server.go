@@ -152,7 +152,7 @@ func (o *Orb) CalcGravityAll(oList []Orb) Acc {
 		// 距离太近，被撞
 		isTooNearly = dist*dist < MIN_CRITICAL_DIST*MIN_CRITICAL_DIST
 		// 速度太快，被撕裂
-		isTaRiped = dist*dist < (target.Vx*target.Vx + target.Vy*target.Vy + target.Vz*target.Vz)
+		isTaRiped = dist*dist < (target.Vx*target.Vx+target.Vy*target.Vy+target.Vz*target.Vz)*10
 
 		if isTooNearly || isTaRiped {
 
@@ -279,7 +279,7 @@ func main() {
 	flag.IntVar(&num_orbs, "init_orbs", 0, "how many orbs init, do init when its value >1")
 	flag.IntVar(&num_times, "num_times", 100, "how many times calc")
 	flag.Float64Var(&eternal, "eternal", 15000.0, "the mass of eternal, 0 means no eternal")
-	flag.StringVar(&mcHost, "mc_host", "mc.lo:11211", "memcache server")
+	flag.StringVar(&mcHost, "mc_host", "127.0.0.1:11211", "memcache server")
 	flag.StringVar(&mcKey, "mc_key", "mcasync2", "key name save into memcache")
 	var doShowList = flag.Bool("show_list", false, "show orb list and exit")
 	var configMass = flag.Float64("config-mass", 10.0, "the mass of orbs")
@@ -345,7 +345,7 @@ func main() {
 
 	endTimeNano := time.Now().UnixNano()
 	timeUsed := float64(endTimeNano-startTimeNano) / 1000000000.0
-	fmt.Println("(core:", numCpu, ") orbs:", num_orbs, len(oList), "times:", num_times, "real:", realTimes, "use time:", timeUsed, "sec", "CPS:", float64(realTimes)/timeUsed)
+	fmt.Println("core:", numCpu, " orbs:", num_orbs, len(oList), "times:", num_times, "real:", realTimes, "use time:", timeUsed, "sec", "CPS:", float64(realTimes)/timeUsed)
 	fmt.Println("maxVelo=", maxVeloX, maxVeloY, maxVeloZ, "maxAcc=", maxAccX, maxAccY, maxAccZ, "maxMass", maxMassId, maxMass)
 
 	saveListToMc(mc, &mcKey, oList)
@@ -353,5 +353,5 @@ func main() {
 
 	endTimeNano = time.Now().UnixNano()
 	timeUsed = float64(endTimeNano-startTimeNano) / 1000000000.0
-	fmt.Println("all used time with mc->get/set:", timeUsed, "sec, saveTimes=", saveTimes, "save per sec=", float64(saveTimes)/timeUsed)
+	fmt.Println("all used time with mc->save:", timeUsed, "sec, saveTimes=", saveTimes, "save per sec=", float64(saveTimes)/timeUsed)
 }
