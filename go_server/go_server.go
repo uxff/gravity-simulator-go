@@ -49,7 +49,7 @@ const MAX_PARTICLES = 100
 const FOR_TIMES = 10000
 
 // 最小距离值
-const MIN_CRITICAL_DIST = 3.0
+const MIN_CRITICAL_DIST = 2.0
 
 var maxVeloX, maxVeloY, maxVeloZ, maxAccX, maxAccY, maxAccZ float64 = 0, 0, 0, 0, 0, 0
 
@@ -141,28 +141,19 @@ func (o *Orb) CalcGravityAll(oList []Orb) Acc {
 			continue
 		}
 
-		var isMeCrash, isTaCrash, isTooNearly, isTaRiped bool = false, false, false, false
+		var isTooNearly, isTaRiped bool = false, false
 		dist := o.CalcDist(target)
 
-		// 判断是否太近 和是否穿过
+		// 距离太近，被撞
 		isTooNearly = dist*dist < MIN_CRITICAL_DIST*MIN_CRITICAL_DIST
 		// 速度太快，被撕裂
 		isTaRiped = dist*dist < (target.Vx*target.Vx + target.Vy*target.Vy + target.Vz*target.Vz)
-		//math.Abs(o.Vx) < MIN_CRITICAL_DIST && math.Abs(o.Vy) < MIN_CRITICAL_DIST && math.Abs(o.Vz) < MIN_CRITICAL_DIST
-		// 如果太近或者动的太小，只判断距离
-		//if isTooNearly || isRiped {
-		//isSpanOn = false
-		//} else {
-		//isSpanOn, isVertDistBigger := o.IsThrough(target, dist)
-		//}
 
-		isTaCrash = isTaRiped || isTooNearly && o.Mass > target.Mass
-		isMeCrash = isTooNearly && o.Mass < target.Mass
-		if isMeCrash || isTaCrash {
+		if isTooNearly {
 
-			fmt.Println("o.id", o.Id, "crashed on", target.Id, "because isTooNearly=", isTooNearly, "isMeCrash", isMeCrash, "isTaCrash=", isTaCrash, "isTaRiped=", isTaRiped, "me=", o, "ta=", target)
 			// 碰撞机制 非弹性碰撞 动量守恒 m1v1+m2v2=(m1+m2)v
-			if isMeCrash {
+			if o.Mass > target.Mass {
+				fmt.Println(o.Id, "crashed", target.Id, "me=", o, "ta=", target)
 				// 碰撞后速度 v = (m1v1+m2v2)/(m1+m2)
 				o.Mass += target.Mass
 				o.Vx = (target.Mass*target.Vx + o.Mass*o.Vx) / o.Mass
@@ -172,6 +163,7 @@ func (o *Orb) CalcGravityAll(oList []Orb) Acc {
 				target.Mass = 0
 				target.LifeStep = 2
 			} else {
+				fmt.Println(o.Id, "crashed by", target.Id, "me=", o, "ta=", target)
 				target.Mass += target.Mass
 				target.Vx = (target.Mass*target.Vx + o.Mass*o.Vx) / target.Mass
 				target.Vy = (target.Mass*target.Vy + o.Mass*o.Vy) / target.Mass
@@ -180,6 +172,15 @@ func (o *Orb) CalcGravityAll(oList []Orb) Acc {
 				o.Mass = 0
 				o.LifeStep = 2
 			}
+		} else if isTaRiped {
+			fmt.Println("o.id", o.Id, "ripped", target.Id, "me=", o, "ta=", target)
+			o.Mass += target.Mass
+			//o.Vx = (target.Mass*target.Vx + o.Mass*o.Vx) / o.Mass
+			//o.Vy = (target.Mass*target.Vy + o.Mass*o.Vy) / o.Mass
+			//o.Vz = (target.Mass*target.Vz + o.Mass*o.Vz) / o.Mass
+			o.Size += 1
+			target.Mass = 0
+			target.LifeStep = 3
 		} else {
 			gTmp := o.CalcGravity(&oList[i], dist)
 			gAll.Ax += gTmp.Ax
@@ -300,7 +301,7 @@ func main() {
 	}
 	runtime.GOMAXPROCS(numCpu)
 	//fmt.Println("useage: go_server.exe $num_orbs $num_times")
-	fmt.Println("    eg: go_server.exe -num_orbs", num_orbs, "-num_times", num_times)
+	//fmt.Println("    eg: go_server.exe -num_orbs", num_orbs, "-num_times", num_times)
 
 	var oList []Orb
 	var mcVal []byte
@@ -323,7 +324,7 @@ func main() {
 	}
 	num_orbs = len(oList)
 
-	realTimes, perTimes, tmpTimes := 0, 0, 0
+	realTimes, perTimes, tmpTimes, saveTimes := 0, 0, 0, 0
 	startTimeNano := time.Now().UnixNano()
 
 	for i := 0; i < num_times; i++ {
@@ -335,10 +336,11 @@ func main() {
 		//if (i*10+1)%(num_times+1) == 1 {
 		//}
 		tmpTimes += perTimes
-		if tmpTimes > 100000 {
+		if tmpTimes > 2000000 {
 			saveListToMc(mc, &mcKey, oList)
 			oList = clearOrbList(oList)
 			tmpTimes = 0
+			saveTimes++
 		}
 	}
 
@@ -351,8 +353,9 @@ func main() {
 	fmt.Println("maxVelo=", maxVeloX, maxVeloY, maxVeloZ, "maxAcc=", maxAccX, maxAccY, maxAccZ)
 
 	saveListToMc(mc, &mcKey, oList)
+	saveTimes++
 
 	endTimeNano = time.Now().UnixNano()
 	timeUsed = float64(endTimeNano-startTimeNano) / 1000000000.0
-	fmt.Println("all used time with mc->get/set:", timeUsed, "sec")
+	fmt.Println("all used time with mc->get/set:", timeUsed, "sec, saveTimes=", saveTimes, "save per sec=", float64(saveTimes)/timeUsed)
 }
