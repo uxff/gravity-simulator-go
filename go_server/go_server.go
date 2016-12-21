@@ -146,19 +146,20 @@ func (o *Orb) CalcGravityAll(oList []Orb) Acc {
 			continue
 		}
 
-		var isTooNearly, isTaRiped bool = false, false
+		var isTooNearly bool = false
+		//var isTaRiped bool = false
 		dist := o.CalcDist(target)
 
 		// 距离太近，被撞
 		isTooNearly = dist*dist < MIN_CRITICAL_DIST*MIN_CRITICAL_DIST
 		// 速度太快，被撕裂
-		isTaRiped = dist*dist < (target.Vx*target.Vx+target.Vy*target.Vy+target.Vz*target.Vz)*10
+		//isTaRiped = dist*dist < (target.Vx*target.Vx+target.Vy*target.Vy+target.Vz*target.Vz)*10
 
-		if isTooNearly || isTaRiped {
+		if isTooNearly || dist*dist < (target.Vx*target.Vx+target.Vy*target.Vy+target.Vz*target.Vz)*10 {
 
 			// 碰撞机制 非弹性碰撞 动量守恒 m1v1+m2v2=(m1+m2)v
 			if o.Mass > target.Mass {
-				fmt.Println(o.Id, "crashed", target.Id, "isTooNearly", isTooNearly, "isTaRiped", isTaRiped, "me=", o, "ta=", target)
+				//fmt.Println(o.Id, "crashed", target.Id, "isTooNearly", isTooNearly, "me=", o, "ta=", target)
 				// 碰撞后速度 v = (m1v1+m2v2)/(m1+m2)
 				o.Mass += target.Mass
 				o.Vx = (target.Mass*target.Vx + o.Mass*o.Vx) / o.Mass
@@ -168,7 +169,7 @@ func (o *Orb) CalcGravityAll(oList []Orb) Acc {
 				target.Mass = 0
 				target.LifeStep = 2
 			} else {
-				fmt.Println(o.Id, "crashed by", target.Id, "isTooNearly", isTooNearly, "isTaRiped", isTaRiped, "me=", o, "ta=", target)
+				//fmt.Println(o.Id, "crashed by", target.Id, "isTooNearly", isTooNearly, "me=", o, "ta=", target)
 				target.Mass += target.Mass
 				target.Vx = (target.Mass*target.Vx + o.Mass*o.Vx) / target.Mass
 				target.Vy = (target.Mass*target.Vy + o.Mass*o.Vy) / target.Mass
