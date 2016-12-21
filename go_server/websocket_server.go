@@ -76,6 +76,8 @@ func handleOrbs(w http.ResponseWriter, r *http.Request) {
 	}
 	defer c.Close()
 
+	log.Println("got a client:", r.RemoteAddr, r.URL)
+
 	for {
 		mt, message, err := c.ReadMessage()
 		if err != nil {

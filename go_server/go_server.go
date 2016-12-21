@@ -25,7 +25,7 @@ type Orb struct {
 	Vy       float64 `json:"vy"`
 	Vz       float64 `json:"vz"`
 	Mass     float64 `json:"mass"`
-	Size     float32 `json:"size"`
+	Size     int     `json:"size"`
 	LifeStep int     `json:"lifeStep"`
 	Id       int     `json:"id"`
 	//CalcTimes int     `json:"calcTimes"`
@@ -234,7 +234,7 @@ func getListFromMc(mc *memcache.Client, mcKey *string) (oList []Orb, v []byte) {
 		v = orbListStrVal.Value
 		orbListStr = string(orbListStrVal.Value)
 		err := json.Unmarshal(orbListStrVal.Value, &oList)
-		fmt.Println("mc.get len(val)=", len(orbListStr), "after unmarshal, len=", len(oList), "json err=", err)
+		fmt.Println("mc.get len(val)=", len(orbListStr), "after unmarshal, len=", len(oList), "json.Unmarshal err=", err)
 	} else {
 		fmt.Println("mc.get", *mcKey, "error:", err)
 	}
@@ -252,7 +252,7 @@ func saveListToMc(mc *memcache.Client, mcKey *string, oList []Orb) {
 			//fmt.Println("save success: len=", len(oList), "strlen=", len(strList))
 		}
 	} else {
-		fmt.Println("set", mcKey, "error:", err)
+		fmt.Println("set", mcKey, "json.Marshal error:", err)
 	}
 }
 
@@ -333,7 +333,7 @@ func main() {
 		//if (i*10+1)%(num_times+1) == 1 {
 		//}
 		tmpTimes += perTimes
-		if tmpTimes > 2000000 {
+		if tmpTimes > 5000000 {
 			saveListToMc(mc, &mcKey, oList)
 			oList = clearOrbList(oList)
 			tmpTimes = 0
