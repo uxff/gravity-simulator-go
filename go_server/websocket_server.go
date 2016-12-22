@@ -155,7 +155,7 @@ func main() {
 	//return
 	flag.Parse()
 	log.SetFlags(0)
-	//http.Handle("/", http.FileServer(http.Dir(".")))
+	http.Handle("/", http.FileServer(http.Dir(".")))
 	http.HandleFunc("/echo", echo)
 	http.HandleFunc("/orbs", handleOrbs)
 	log.Println("server will start at", *addr)
