@@ -15,24 +15,22 @@ import (
 )
 
 // 结构体中的变量必须大写才能被json输出 坑
+// 天体数据结构
 type Orb struct {
-	X float64 `json:"x"`
-	Y float64 `json:"y"`
-	Z float64 `json:"z"`
-	//Ax       float64 `json:"ax"`
-	//Ay       float64 `json:"ay"`
-	Vx float64 `json:"vx"`
-	Vy float64 `json:"vy"`
-	Vz float64 `json:"vz"`
-	//Dir      float64 `json:"dir"`
+	X        float64 `json:"x"`
+	Y        float64 `json:"y"`
+	Z        float64 `json:"z"`
+	Vx       float64 `json:"vx"`
+	Vy       float64 `json:"vy"`
+	Vz       float64 `json:"vz"`
 	Mass     float64 `json:"mass"`
 	Size     float32 `json:"size"`
 	LifeStep int     `json:"lifeStep"`
-	//Color    int     `json:"color"`
-	Id int `json:"id"`
+	Id       int     `json:"id"`
 	//CalcTimes int     `json:"calcTimes"`
-	//flag     int     `json:"flag"`
 }
+
+// json返回值结构
 type JsonRet struct {
 	Code int                    `json:"code"`
 	Msg  string                 `json:"msg"`
