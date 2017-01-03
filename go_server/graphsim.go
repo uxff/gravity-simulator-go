@@ -24,7 +24,7 @@ type WaterDot struct {
 	input []int // 流入坐标
 }
 type FlowList struct {
-	List    []WaterDot
+	List    []int
 	lastIdx int
 	lastDot *WaterDot
 	length  int32
@@ -41,8 +41,10 @@ type WaterMap struct {
 }
 
 func (this *FlowList) Init(x int, y int, w *WaterMap) {
-	this.List = make([]WaterDot, 500)
-	this.lastDot = &this.List[0]
+	this.List = make([]int, 500)
+	//this.lastDot = &this.List[0]
+	this.lastIdx = x + y*w.width
+	this.lastDot = &w.data[this.lastIdx]
 	this.lastDot.x = float32(x) + 0.5
 	this.lastDot.y = float32(y) + 0.5
 	this.lastDot.q = 1
@@ -51,8 +53,7 @@ func (this *FlowList) Init(x int, y int, w *WaterMap) {
 	this.lastDot.dir = theDir
 	fmt.Println("new dir:", theDir, this.lastDot)
 
-	this.lastIdx = x + y*w.width
-	w.data[x+y*w.width] = *this.lastDot
+	//w.data[x+y*w.width] = *this.lastDot
 }
 
 func (this *FlowList) Move2(m *Topomap, w *WaterMap) {
@@ -65,12 +66,14 @@ func (this *FlowList) Move2(m *Topomap, w *WaterMap) {
 	}
 
 	// lastDot indicate next
-	var nextDot = &this.List[this.length]
-	nextDot.x, nextDot.y = this.lastDot.x, this.lastDot.y
+	//var nextDot = &this.List[this.length]
+	var nextDot *WaterDot = nil
+	//
 
 	// 假设选择一个方向 查看是否能前进
 	var allvx, allvy float64 = 0.0, 0.0
 	var theDir, rollDir float64 = this.lastDot.dir, 0.0
+	var tx, ty int
 
 	var hasStep, needTurn bool = false, false
 	for i := 0; i < 20; i++ {
@@ -81,16 +84,16 @@ func (this *FlowList) Move2(m *Topomap, w *WaterMap) {
 		allvx, allvy = (math.Cos(theDir)), (math.Sin(theDir))
 
 		// 碰到边界
-		tx, ty := int(float64(this.lastDot.x)+allvx), int(float64(this.lastDot.y)+allvy)
+		tx, ty = int(float64(this.lastDot.x)+allvx), int(float64(this.lastDot.y)+allvy)
 		if tx < 0 || ty < 0 || int(tx) > m.width-1 || int(ty) > m.height-1 {
-			fmt.Println("seems over bound tx,ty:", tx, ty, "o=", this.lastDot, "i=", i)
+			//fmt.Println("seems over bound tx,ty:", tx, ty, "o=", this.lastDot, "i=", i)
 			continue
 		}
 
 		// 地形较高
 		assumeFall := m.data[ty*m.width+tx] - m.data[oid]
 		if assumeFall > 1 {
-			fmt.Println("seems flow up, fall=", assumeFall, allvx, allvy, "i=", i)
+			//fmt.Println("seems flow up, fall=", assumeFall, allvx, allvy, "i=", i)
 			continue
 		}
 
@@ -110,7 +113,7 @@ func (this *FlowList) Move2(m *Topomap, w *WaterMap) {
 			if w.data[tx+ty*w.width].q >= prepreFall+1 {
 				fmt.Println("seemes turn self, too quantity", w.data[tx+ty*w.width], "oid=", oid, "i=", i, "length=", this.length)
 				needTurn = true
-				continue
+				//continue
 			}
 
 		}
@@ -121,22 +124,22 @@ func (this *FlowList) Move2(m *Topomap, w *WaterMap) {
 	}
 
 	if hasStep {
-		nextDot.x += float32(allvx) // nextDot.vx
-		nextDot.y += float32(allvy) // nextDot.vy
+		this.lastDot.nextIdx = tx + ty*w.width //int(nextDot.x) + int(nextDot.y)*m.width //nextDot
+		nextDot = &w.data[tx+ty*w.width]
+		nextDot.x, nextDot.y = this.lastDot.x, this.lastDot.y
+		nextDot.x += float32(allvx)
+		nextDot.y += float32(allvy)
 		nextDot.dir = theDir
 		nextDot.q++
-		this.lastDot.nextIdx = int(nextDot.x) + int(nextDot.y)*m.width //nextDot
 		nextDot.input = append(nextDot.input, oid)
 
 		this.lastIdx = this.lastDot.nextIdx
-		w.data[this.lastDot.nextIdx].q++
-		w.data[this.lastDot.nextIdx].dir = theDir
-		w.data[this.lastDot.nextIdx].input = append(w.data[this.lastDot.nextIdx].input, this.lastDot.nextIdx)
+		this.List[this.length] = this.lastDot.nextIdx
 
 		// 切换指针
 		this.lastDot = nextDot
 		this.length++
-		fmt.Println("go next ok:", nextDot, "rollDir=", rollDir, "needTurn", needTurn, "length=", this.length)
+		fmt.Println("go next ok:", nextDot, "rollDir=", rollDir, "needTurn=", needTurn, "length=", this.length)
 	} else {
 		//this.lastDot.q--
 		fmt.Println("move failed, no step can go")
@@ -181,16 +184,16 @@ func main() {
 	img := image.NewRGBA(image.Rect(0, 0, width, height))
 
 	// 随机n个圆圈 累加抬高
-	n := 40
+	n := 150
 	rings := make([]Ring, n)
 	for ri, _ := range rings {
 		r := &rings[ri]
-		r.x, r.y, r.r = (rand.Int()%width/2)+width/4, (rand.Int()%height/2)+height/4, (rand.Int()%width)/4
+		r.x, r.y, r.r = (rand.Int() % width), (rand.Int() % height), (rand.Int()%width)/4
 	}
 	fmt.Println("rings=", rings)
 
 	// 生成地图 绘制地图
-	var tmpColor, maxColor uint8 = 1, 1
+	var tmpColor, maxColor float32 = 1, 1
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
 			// 方格子地图
@@ -219,21 +222,22 @@ func main() {
 				}
 			}
 
-			m.data[x+y*width] = int8(tmpColor) //int8(width - x)
-			img.Set(x, y, color.RGBA{uint8(tmpColor * 10), 0xFF, uint8(tmpColor * 10), 0xFF})
+			m.data[x+y*width] = int8(tmpColor) + int8(rand.Int()%2) //int8(width - x)
+			img.Set(x, y, color.RGBA{uint8(0xFF * tmpColor / maxColor), 0xFF, uint8(0xFF * tmpColor / maxColor), 0xFF})
 		}
 	}
 
 	// 绘制flow
-	fmt.Println("before move:", river, time.Now().UnixNano(), "maxColor=", maxColor)
+	fmt.Println("before move:", river.length, time.Now().UnixNano(), "maxColor=", maxColor)
 	for i := 1; i < *times; i++ {
 		river.Move2(&m, &w)
 	}
-	fmt.Println("after move:", river, time.Now().UnixNano())
+	fmt.Println("after move:", river.length, time.Now().UnixNano())
 
 	// 绘制river
 	for _, dot := range river.List {
-		img.Set(int(dot.x), int(dot.y), color.RGBA{0, 0, 0xFF, 0xFF})
+		x, y := dot%width, dot/width
+		img.Set(int(x), int(y), color.RGBA{0, 0, 0xFF, 0xFF})
 	}
 
 	jpeg.Encode(picFile, img, nil)
