@@ -6,7 +6,7 @@ import (
 	"image/color"
 	//"image/draw"
 	"flag"
-	"image/jpeg"
+	//"image/jpeg"
 	"image/png"
 	"math"
 	"math/rand"
@@ -30,7 +30,7 @@ type FlowList struct {
 	length  int32
 }
 type Topomap struct {
-	data   []int8
+	data   []uint8
 	width  int
 	height int
 }
@@ -147,7 +147,7 @@ func (this *FlowList) Move2(m *Topomap, w *WaterMap) {
 }
 
 func (this *Topomap) Init(width int, height int) {
-	this.data = make([]int8, width*height)
+	this.data = make([]uint8, width*height)
 	this.width = width
 	this.height = height
 }
@@ -167,25 +167,30 @@ func main() {
 	rand.Seed(int64(time.Now().UnixNano()))
 
 	var times = flag.Int("times", 5, "move times")
+	var width, height int = 500, 500
+	flag.IntVar(&width, "w", width, "width of map")
+	flag.IntVar(&height, "h", width, "height of map")
+	var outname = flag.String("out", "testmap", "filename of output")
+	var nRings = flag.Int("rings", 100, "rings number for making rand topo")
+	var bShowMap = flag.Bool("print", false, "print map for debug")
+
 	flag.Parse()
 
 	var m Topomap
 	var w WaterMap
-	var width, height int = 500, 500
+	var river FlowList
 	w.Init(width, height)
 	m.Init(width, height)
-	var river FlowList
 	river.Init(width/2, height/2, &w)
 
-	picFile, _ := os.Create("testmap.jpg")
-	picFile2, _ := os.Create("testmap.png")
+	picFile, _ := os.Create(*outname + ".jpg")
+	picFile2, _ := os.Create(*outname + ".png")
 	defer picFile.Close()
 
 	img := image.NewRGBA(image.Rect(0, 0, width, height))
 
 	// 随机n个圆圈 累加抬高
-	n := 150
-	rings := make([]Ring, n)
+	rings := make([]Ring, *nRings)
 	for ri, _ := range rings {
 		r := &rings[ri]
 		r.x, r.y, r.r = (rand.Int() % width), (rand.Int() % height), (rand.Int()%width)/4
@@ -222,8 +227,11 @@ func main() {
 				}
 			}
 
-			m.data[x+y*width] = int8(tmpColor) + int8(rand.Int()%2) //int8(width - x)
+			//m.data[x+y*width] = uint8(tmpColor) // + int8(rand.Int()%2) //int8(width - x)
+			m.data[x+y*width] = uint8(0xFF * tmpColor / maxColor)
+			fmt.Println("x,y=", x, y, "tmpColor=", tmpColor, "data=", 0xFF*tmpColor/maxColor)
 			img.Set(x, y, color.RGBA{uint8(0xFF * tmpColor / maxColor), 0xFF, uint8(0xFF * tmpColor / maxColor), 0xFF})
+			//img.Set(x, y, color.RGBA{uint8(tmpColor * 20), 0xFF, uint8(tmpColor * 20), 0xFF})
 		}
 	}
 
@@ -240,8 +248,20 @@ func main() {
 		img.Set(int(x), int(y), color.RGBA{0, 0, 0xFF, 0xFF})
 	}
 
-	jpeg.Encode(picFile, img, nil)
-	png.Encode(picFile2, img)
+	//jpeg.Encode(picFile, img, nil)
+	if err := png.Encode(picFile2, img); err != nil {
+		fmt.Println("png.Encode error:", err)
+	}
 
-	fmt.Println("done", math.Sin(1.0), "maxColor", maxColor)
+	fmt.Println("done w,h=", width, height, "maxColor=", maxColor, "nRings=", *nRings)
+	if *bShowMap {
+		//fmt.Println("map=", m)
+		for di, dd := range m.data {
+			fmt.Printf("%2d", dd)
+			if di%width == (width - 1) {
+				fmt.Printf("\n")
+			}
+		}
+		//fmt.Println("wmap=", w)
+	}
 }
