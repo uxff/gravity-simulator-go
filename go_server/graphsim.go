@@ -91,9 +91,9 @@ func (this *FlowList) Move2(m *Topomap, w *WaterMap) {
 		}
 
 		// 地形较高
-		assumeFall := m.data[ty*m.width+tx] - m.data[oid]
+		assumeFall := int(m.data[ty*m.width+tx]) - int(m.data[oid])
 		if assumeFall > 1 {
-			//fmt.Println("seems flow up, fall=", assumeFall, allvx, allvy, "i=", i)
+			fmt.Println("seems flow up, fall=", assumeFall, allvx, allvy, "i=", i)
 			continue
 		}
 
@@ -171,6 +171,7 @@ func main() {
 	flag.IntVar(&width, "w", width, "width of map")
 	flag.IntVar(&height, "h", width, "height of map")
 	var outname = flag.String("out", "testmap", "filename of output")
+	var outdir = flag.String("outdir", "output", "out put dir")
 	var nRings = flag.Int("rings", 100, "rings number for making rand topo")
 	var bShowMap = flag.Bool("print", false, "print map for debug")
 
@@ -183,9 +184,14 @@ func main() {
 	m.Init(width, height)
 	river.Init(width/2, height/2, &w)
 
-	picFile, _ := os.Create(*outname + ".jpg")
-	picFile2, _ := os.Create(*outname + ".png")
-	defer picFile.Close()
+	if cerr := os.Mkdir(*outdir, os.ModePerm); cerr != nil {
+		fmt.Println("os.mkdir:", *outdir, cerr)
+		//return
+	}
+	//picFile, _ := os.Create(*outname + ".jpg")
+	filename := fmt.Sprintf("%s-%s", *outname, time.Now().Format("20060102150405"))
+	picFile2, _ := os.Create(*outdir + "/" + filename + ".png")
+	defer picFile2.Close()
 
 	img := image.NewRGBA(image.Rect(0, 0, width, height))
 
@@ -195,7 +201,7 @@ func main() {
 		r := &rings[ri]
 		r.x, r.y, r.r = (rand.Int() % width), (rand.Int() % height), (rand.Int()%width)/4
 	}
-	fmt.Println("rings=", rings)
+	//fmt.Println("rings=", rings)
 
 	// 生成地图 绘制地图
 	var tmpColor, maxColor float32 = 1, 1
@@ -218,7 +224,7 @@ func main() {
 			}
 			tmpColor = 0
 			for _, r := range rings {
-				if (x-r.x)*(x-r.x)+(y-r.y)*(y-r.y) < r.r*r.r {
+				if (x-r.x)*(x-r.x)+(y-r.y)*(y-r.y) <= r.r*r.r {
 					tmpColor++
 					if maxColor < tmpColor {
 						maxColor = tmpColor
@@ -227,11 +233,13 @@ func main() {
 				}
 			}
 
-			//m.data[x+y*width] = uint8(tmpColor) // + int8(rand.Int()%2) //int8(width - x)
-			m.data[x+y*width] = uint8(0xFF * tmpColor / maxColor)
-			fmt.Println("x,y=", x, y, "tmpColor=", tmpColor, "data=", 0xFF*tmpColor/maxColor)
+			m.data[x+y*width] = uint8(tmpColor) // + int8(rand.Int()%2) //int8(width - x)
+		}
+	}
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			tmpColor = float32(m.data[x+y*width])
 			img.Set(x, y, color.RGBA{uint8(0xFF * tmpColor / maxColor), 0xFF, uint8(0xFF * tmpColor / maxColor), 0xFF})
-			//img.Set(x, y, color.RGBA{uint8(tmpColor * 20), 0xFF, uint8(tmpColor * 20), 0xFF})
 		}
 	}
 
@@ -253,7 +261,6 @@ func main() {
 		fmt.Println("png.Encode error:", err)
 	}
 
-	fmt.Println("done w,h=", width, height, "maxColor=", maxColor, "nRings=", *nRings)
 	if *bShowMap {
 		//fmt.Println("map=", m)
 		for di, dd := range m.data {
@@ -264,4 +271,5 @@ func main() {
 		}
 		//fmt.Println("wmap=", w)
 	}
+	fmt.Println("done w,h=", width, height, "maxColor=", maxColor, "nRings=", *nRings, "flowlen=", river.length)
 }
