@@ -267,9 +267,10 @@ func main() {
 				}
 			}
 
-			m.data[x+y*width] = uint8(tmpColor) // + int8(rand.Int()%2) //int8(width - x)
+			m.data[x+y*width] = uint8(tmpColor) + uint8(rand.Int()%2) //int8(width - x)
 		}
 	}
+	maxColor += 2
 
 	// 获取颜色模板
 	var colorTplFile string = "image/color-tpl.png"
@@ -281,7 +282,7 @@ func main() {
 		for x := 0; x < width; x++ {
 			tmpColor = float32(m.data[x+y*width])
 			//img.Set(x, y, color.RGBA{uint8(0xFF * tmpColor / maxColor), 0xFF, uint8(0xFF * tmpColor / maxColor), 0xFF})
-			img.Set(x, y, cs[cslen-int(float32(cslen)*tmpColor/maxColor)])
+			img.Set(x, y, cs[int(float32(cslen)*(1.0-tmpColor/maxColor))])
 		}
 	}
 
