@@ -167,6 +167,20 @@ type Ring struct {
 	r int
 }
 
+func colorTpl(colorTplFile string) []color.Color {
+	var colorTplFileIo, _ = os.Open(colorTplFile)
+	var colorTplPng, err = png.Decode(colorTplFileIo)
+	if err != nil {
+
+		return nil
+	}
+	cs := make([]color.Color, colorTplPng.Bounds().Dy())
+	for i := 0; i < colorTplPng.Bounds().Dy(); i++ {
+		cs[i] = colorTplPng.At(0, i)
+	}
+	return cs
+}
+
 func main() {
 	rand.Seed(int64(time.Now().UnixNano()))
 
@@ -254,11 +268,18 @@ func main() {
 			m.data[x+y*width] = uint8(tmpColor) // + int8(rand.Int()%2) //int8(width - x)
 		}
 	}
+
+	// 获取颜色模板
+	var colorTplFile string = "image/color-tpl.png"
+	cs := colorTpl(colorTplFile)
+	csmargin := 10
+	cslen := len(cs) - csmargin
 	// 地图背景地形绘制
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
 			tmpColor = float32(m.data[x+y*width])
-			img.Set(x, y, color.RGBA{uint8(0xFF * tmpColor / maxColor), 0xFF, uint8(0xFF * tmpColor / maxColor), 0xFF})
+			//img.Set(x, y, color.RGBA{uint8(0xFF * tmpColor / maxColor), 0xFF, uint8(0xFF * tmpColor / maxColor), 0xFF})
+			img.Set(x, y, cs[cslen-int(float32(cslen)*tmpColor/maxColor)])
 		}
 	}
 
@@ -275,6 +296,23 @@ func main() {
 		img.Set(int(x), int(y), color.RGBA{0, 0, 0xFF, 0xFF})
 	}
 
+	for i := 0; i < len(cs); i++ {
+
+		//c := colorTplPng.At(0, i)
+		c := cs[i]
+		//cr, cg, cb, ca := color.RGBA()
+		img.Set(width-8, i, c)
+		img.Set(width-7, i, c)
+		img.Set(width-6, i, c)
+		img.Set(width-5, i, c)
+		img.Set(width-4, i, c)
+		img.Set(width-3, i, c)
+		img.Set(width-2, i, c)
+		img.Set(width-1, i, c)
+		//fmt.Println("c:", color, i)//每个列都一样
+	}
+
+	// 输出图片文件
 	//jpeg.Encode(picFile, img, nil)
 	if err := png.Encode(picFile2, img); err != nil {
 		fmt.Println("png.Encode error:", err)
