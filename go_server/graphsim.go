@@ -169,9 +169,11 @@ type Ring struct {
 
 func colorTpl(colorTplFile string) []color.Color {
 	var colorTplFileIo, _ = os.Open(colorTplFile)
+	defer colorTplFileIo.Close()
 	var colorTplPng, err = png.Decode(colorTplFileIo)
-	if err != nil {
 
+	if err != nil {
+		fmt.Println("png.decode err:", err)
 		return nil
 	}
 	cs := make([]color.Color, colorTplPng.Bounds().Dy())
