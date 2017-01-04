@@ -28,6 +28,7 @@ type FlowList struct {
 	lastIdx int
 	lastDot *WaterDot
 	length  int32
+	step    float64
 }
 type Topomap struct {
 	data   []uint8
@@ -44,6 +45,7 @@ func (this *FlowList) Init(x int, y int, w *WaterMap) {
 	this.List = make([]int, 500)
 	//this.lastDot = &this.List[0]
 	this.lastIdx = x + y*w.width
+	this.List[0] = this.lastIdx
 	this.lastDot = &w.data[this.lastIdx]
 	this.lastDot.x = float32(x) + 0.5
 	this.lastDot.y = float32(y) + 0.5
@@ -51,6 +53,7 @@ func (this *FlowList) Init(x int, y int, w *WaterMap) {
 	this.length = 1
 	theDir := rand.Float64() * math.Pi * 2.0
 	this.lastDot.dir = theDir
+	this.step = 1
 	fmt.Println("new dir:", theDir, this.lastDot)
 
 	//w.data[x+y*w.width] = *this.lastDot
@@ -81,7 +84,7 @@ func (this *FlowList) Move2(m *Topomap, w *WaterMap) {
 		rollDir = pit1 * pit1 * pit1 * math.Pi / 2.0
 
 		theDir += rollDir
-		allvx, allvy = (math.Cos(theDir)), (math.Sin(theDir))
+		allvx, allvy = (math.Cos(theDir) * this.step), (math.Sin(theDir) * this.step)
 
 		// 碰到边界
 		tx, ty = int(float64(this.lastDot.x)+allvx), int(float64(this.lastDot.y)+allvy)
@@ -90,9 +93,9 @@ func (this *FlowList) Move2(m *Topomap, w *WaterMap) {
 			continue
 		}
 
-		// 地形较高
+		// 地形较高 不允许流向高处
 		assumeFall := int(m.data[ty*m.width+tx]) - int(m.data[oid])
-		if assumeFall > 1 {
+		if assumeFall >= 1 {
 			fmt.Println("seems flow up, fall=", assumeFall, allvx, allvy, "i=", i)
 			continue
 		}
@@ -131,6 +134,7 @@ func (this *FlowList) Move2(m *Topomap, w *WaterMap) {
 		nextDot.y += float32(allvy)
 		nextDot.dir = theDir
 		nextDot.q++
+		// 流入流量 应该排重
 		nextDot.input = append(nextDot.input, oid)
 
 		this.lastIdx = this.lastDot.nextIdx
@@ -166,27 +170,36 @@ type Ring struct {
 func main() {
 	rand.Seed(int64(time.Now().UnixNano()))
 
-	var times = flag.Int("times", 5, "move times")
+	var times = flag.Int("flow", 5, "flow move times")
 	var width, height int = 500, 500
 	flag.IntVar(&width, "w", width, "width of map")
 	flag.IntVar(&height, "h", width, "height of map")
 	var outname = flag.String("out", "testmap", "filename of output")
 	var outdir = flag.String("outdir", "output", "out put dir")
-	var nRings = flag.Int("rings", 100, "rings number for making rand topo")
+	var nHills = flag.Int("hill", 100, "hill number for making rand topo by hill")
+	var hillWide = flag.Int("hill-wide", 100, "hill wide for making rand topo by hill")
 	var bShowMap = flag.Bool("print", false, "print map for debug")
+	var nRidge = flag.Int("ridge", 100, "ridge times for making ridge")
+	var ridgeWide = flag.Int("ridge-wide", 50, "ridge wide for making ridge")
+	var ridgeStep = flag.Int("ridge-step", 8, "ridge step for making ridge")
 
 	flag.Parse()
 
 	var m Topomap
 	var w WaterMap
-	var river FlowList
+	var river, ridge FlowList
 	w.Init(width, height)
 	m.Init(width, height)
 	river.Init(width/2, height/2, &w)
+	ridge.Init(width/2, height/2, &w)
+	ridge.step = float64(*ridgeStep)
 
-	if cerr := os.Mkdir(*outdir, os.ModePerm); cerr != nil {
-		fmt.Println("os.mkdir:", *outdir, cerr)
-		//return
+	if _, derr := os.Open(*outdir); derr != nil {
+		fmt.Println("dir seems not exist:", *outdir, derr)
+		if cerr := os.Mkdir(*outdir, os.ModePerm); cerr != nil {
+			fmt.Println("os.mkdir:", *outdir, cerr)
+			//return
+		}
 	}
 	//picFile, _ := os.Create(*outname + ".jpg")
 	filename := fmt.Sprintf("%s-%s", *outname, time.Now().Format("20060102150405"))
@@ -196,33 +209,38 @@ func main() {
 	img := image.NewRGBA(image.Rect(0, 0, width, height))
 
 	// 随机n个圆圈 累加抬高
-	rings := make([]Ring, *nRings)
+	rings := make([]Ring, *nHills)
 	for ri, _ := range rings {
 		r := &rings[ri]
-		r.x, r.y, r.r = (rand.Int() % width), (rand.Int() % height), (rand.Int()%width)/4
+		r.x, r.y, r.r = (rand.Int() % width), (rand.Int() % height), (rand.Int() % (*hillWide))
 	}
-	//fmt.Println("rings=", rings)
 
-	// 生成地图 绘制地图
+	// make ridge
+	for i := 1; i < *nRidge; i++ {
+		ridge.Move2(&m, &w)
+	}
+	//
+	ridgeRings := make([]Ring, ridge.length)
+	for ri := 0; ri < int(ridge.length); ri++ {
+		r := &ridgeRings[ri]
+		r.x, r.y, r.r = ridge.List[ri]%width, ridge.List[ri]/width, (rand.Int() % (*ridgeWide))
+	}
+	fmt.Println("ridgeRings=", ridgeRings)
+
+	// 生成地图 制造地形
 	var tmpColor, maxColor float32 = 1, 1
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
-			// 方格子地图
-			if y%5 == 0 {
-				if x%5 == 0 {
-					// 随机
-					//tmpColor = int8(rand.Int() % 127)
-					// 随y越来越高
-					//tmpColor = int8(y * 255 / width)
-					// 由中心朝四周越来越低
-					//tmpColor = 127 - int8(math.Sqrt(float64((x-width/2)*(x-width/2)+(y-width/2)*(y-width/2)))/float64(width)*127)
-					// 由中心朝四周越来越低 并随机增减
-					//tmpColor = 127 - int8(math.Sqrt(float64((x-width/2)*(x-width/2)+(y-width/2)*(y-width/2)))/float64(width)*123) - int8(rand.Int()%3)
-				}
-			} else {
-				//tmpColor = m.data[x+y*width-width]
-			}
 			tmpColor = 0
+			for _, r := range ridgeRings {
+				if (x-r.x)*(x-r.x)+(y-r.y)*(y-r.y) <= r.r*r.r {
+					tmpColor++
+					if maxColor < tmpColor {
+						maxColor = tmpColor
+					}
+					//fmt.Println("color fill x,y,r,c=", x, y, r, tmpColor)
+				}
+			}
 			for _, r := range rings {
 				if (x-r.x)*(x-r.x)+(y-r.y)*(y-r.y) <= r.r*r.r {
 					tmpColor++
@@ -236,6 +254,7 @@ func main() {
 			m.data[x+y*width] = uint8(tmpColor) // + int8(rand.Int()%2) //int8(width - x)
 		}
 	}
+	// 地图背景地形绘制
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
 			tmpColor = float32(m.data[x+y*width])
@@ -271,5 +290,5 @@ func main() {
 		}
 		//fmt.Println("wmap=", w)
 	}
-	fmt.Println("done w,h=", width, height, "maxColor=", maxColor, "nRings=", *nRings, "flowlen=", river.length)
+	fmt.Println("done w,h=", width, height, "maxColor=", maxColor, "nHills=", *nHills, "flowlen=", river.length, "ridgelen=", ridge.length)
 }
