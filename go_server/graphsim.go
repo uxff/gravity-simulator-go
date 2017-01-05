@@ -41,8 +41,8 @@ type WaterMap struct {
 	height int
 }
 
-func (this *FlowList) Init(x int, y int, w *WaterMap) {
-	this.List = make([]int, 500)
+func (this *FlowList) Init(x int, y int, w *WaterMap, maxlen int) {
+	this.List = make([]int, maxlen)
 	//this.lastDot = &this.List[0]
 	this.lastIdx = x + y*w.width
 	this.List[0] = this.lastIdx
@@ -206,8 +206,8 @@ func main() {
 	var river, ridge FlowList
 	w.Init(width, height)
 	m.Init(width, height)
-	river.Init(width/2, height/2, &w)
-	ridge.Init(width/2, height/2, &w)
+	river.Init(width/2, height/2, &w, *times+1)
+	ridge.Init(width/2, height/2, &w, *nRidge+1)
 	ridge.step = float64(*ridgeStep)
 
 	if _, derr := os.Open(*outdir); derr != nil {
@@ -250,7 +250,8 @@ func main() {
 			tmpColor = 0
 			for _, r := range ridgeRings {
 				if (x-r.x)*(x-r.x)+(y-r.y)*(y-r.y) <= r.r*r.r {
-					tmpColor++
+					//tmpColor++
+					tmpColor += float32((x-r.x)*(x-r.x)+(y-r.y)*(y-r.y)) / float32(r.r*r.r) * rand.Float32()
 					if maxColor < tmpColor {
 						maxColor = tmpColor
 					}
@@ -259,7 +260,8 @@ func main() {
 			}
 			for _, r := range rings {
 				if (x-r.x)*(x-r.x)+(y-r.y)*(y-r.y) <= r.r*r.r {
-					tmpColor++
+					//tmpColor++
+					tmpColor += float32((x-r.x)*(x-r.x)+(y-r.y)*(y-r.y)) / float32(r.r*r.r) * rand.Float32()
 					if maxColor < tmpColor {
 						maxColor = tmpColor
 					}
@@ -267,7 +269,7 @@ func main() {
 				}
 			}
 
-			m.data[x+y*width] = uint8(tmpColor) + uint8(rand.Int()%2) //int8(width - x)
+			m.data[x+y*width] = uint8(tmpColor) //+ uint8(rand.Int()%2) //int8(width - x)
 		}
 	}
 	maxColor += 2
@@ -275,14 +277,17 @@ func main() {
 	// 获取颜色模板
 	var colorTplFile string = "image/color-tpl.png"
 	cs := colorTpl(colorTplFile)
-	csmargin := 10
+	csmargin := 1
 	cslen := len(cs) - csmargin
 	// 地图背景地形绘制
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
 			tmpColor = float32(m.data[x+y*width])
 			//img.Set(x, y, color.RGBA{uint8(0xFF * tmpColor / maxColor), 0xFF, uint8(0xFF * tmpColor / maxColor), 0xFF})
-			img.Set(x, y, cs[int(float32(cslen)*(1.0-tmpColor/maxColor))])
+			// 比例上色
+			//img.Set(x, y, cs[int(float32(cslen)*(1.0-tmpColor/maxColor))])
+			// 按值上色
+			img.Set(x, y, cs[cslen-int(tmpColor)])
 		}
 	}
 
