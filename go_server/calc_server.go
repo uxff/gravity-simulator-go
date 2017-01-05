@@ -110,6 +110,10 @@ func updateOrbs(oList []Orb, nStep int) int {
 		cCount += <-c
 		//cCount += 1
 	}
+	// 以下方法运行时报错
+	//	for cval := range c {
+	//		cCount += cval
+	//	}
 	return cCount * cCount
 }
 
