@@ -183,6 +183,16 @@ func colorTpl(colorTplFile string) []color.Color {
 	return cs
 }
 
+func lineTo(img *image.RGBA, startX, startY, destX, destY int, c color.Color) {
+	distM := math.Sqrt(float64((startX-destX)*(startX-destX) + (startY-destY)*(startY-destY)))
+	var i float64
+	for i = 0; i < distM; i++ {
+		img.Set(startX+int(i/distM*float64(destX-startX)), startY+int(i/distM*float64(destY-startY)), c)
+	}
+	img.Set(destX, destY, c)
+	fmt.Println("in lineTo dist=", distM, startX, startY, destX, destY)
+}
+
 func main() {
 	rand.Seed(int64(time.Now().UnixNano()))
 
@@ -190,7 +200,7 @@ func main() {
 	var width, height int = 500, 500
 	flag.IntVar(&width, "w", width, "width of map")
 	flag.IntVar(&height, "h", width, "height of map")
-	var outname = flag.String("out", "testmap", "filename of output")
+	var outname = flag.String("out", "testmap", "image filename of output")
 	var outdir = flag.String("outdir", "output", "out put dir")
 	var nHills = flag.Int("hill", 100, "hill number for making rand topo by hill")
 	var hillWide = flag.Int("hill-wide", 100, "hill wide for making rand topo by hill")
@@ -198,6 +208,7 @@ func main() {
 	var nRidge = flag.Int("ridge", 100, "ridge times for making ridge")
 	var ridgeWide = flag.Int("ridge-wide", 50, "ridge wide for making ridge")
 	var ridgeStep = flag.Int("ridge-step", 8, "ridge step for making ridge")
+	var zoom = flag.Int("zoom", 1, "zoom of out put")
 
 	flag.Parse()
 
@@ -222,7 +233,7 @@ func main() {
 	picFile2, _ := os.Create(*outdir + "/" + filename + ".png")
 	defer picFile2.Close()
 
-	img := image.NewRGBA(image.Rect(0, 0, width, height))
+	img := image.NewRGBA(image.Rect(0, 0, width**zoom, height**zoom))
 
 	// 随机n个圆圈 累加抬高
 	rings := make([]Ring, *nHills)
@@ -287,7 +298,12 @@ func main() {
 			// 比例上色
 			//img.Set(x, y, cs[int(float32(cslen)*(1.0-tmpColor/maxColor))])
 			// 按值上色
-			img.Set(x, y, cs[cslen-int(tmpColor)])
+			//img.Set(x, y, cs[cslen-int(tmpColor)])
+			for zix := 0; zix < *zoom; zix++ {
+				for ziy := 0; ziy < *zoom; ziy++ {
+					img.Set(x**zoom+zix, y**zoom+ziy, cs[int(float32(cslen)*(1.0-tmpColor/maxColor))])
+				}
+			}
 		}
 	}
 
@@ -299,24 +315,33 @@ func main() {
 	fmt.Println("after move:", river.length, time.Now().UnixNano())
 
 	// 绘制river
-	for _, dot := range river.List {
-		x, y := dot%width, dot/width
-		img.Set(int(x), int(y), color.RGBA{0, 0, 0xFF, 0xFF})
+	// 使用zoomstep lineTo
+	var stepStartX, stepStartY, stepDestX, stepDestY int
+	//var riverStep
+	for i, dot := range river.List {
+		stepStartX, stepStartY = stepDestX, stepDestY
+		stepDestX, stepDestY = dot%width, dot/width
+		if i == 0 || i == len(river.List)-1 {
+			continue
+		}
+		// lineTo
+		//img.Set(int(x)**zoom+*zoom/2, int(y)**zoom+*zoom/2, color.RGBA{0, 0, 0xFF, 0xFF})
+		lineTo(img, int(stepStartX)**zoom+*zoom/2, int(stepStartY)**zoom+*zoom/2, int(stepDestX)**zoom+*zoom/2, int(stepDestY)**zoom+*zoom/2, color.RGBA{0, 0, 0xFF, 0xFF})
 	}
+	//lineTo(img, 100, 200, 200, 200, color.RGBA{0, 0, 0xFF, 0xFF})
 
 	for i := 0; i < len(cs); i++ {
-
 		//c := colorTplPng.At(0, i)
 		c := cs[i]
 		//cr, cg, cb, ca := color.RGBA()
-		img.Set(width-8, i, c)
-		img.Set(width-7, i, c)
-		img.Set(width-6, i, c)
-		img.Set(width-5, i, c)
-		img.Set(width-4, i, c)
-		img.Set(width-3, i, c)
-		img.Set(width-2, i, c)
-		img.Set(width-1, i, c)
+		img.Set(0, i, c)
+		img.Set(7, i, c)
+		img.Set(6, i, c)
+		img.Set(5, i, c)
+		img.Set(4, i, c)
+		img.Set(3, i, c)
+		img.Set(2, i, c)
+		img.Set(1, i, c)
 		//fmt.Println("c:", color, i)//每个列都一样
 	}
 
