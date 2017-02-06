@@ -186,11 +186,11 @@ func colorTpl(colorTplFile string) []color.Color {
 func lineTo(img *image.RGBA, startX, startY, destX, destY int, c color.Color) {
 	distM := math.Sqrt(float64((startX-destX)*(startX-destX) + (startY-destY)*(startY-destY)))
 	var i float64
-	for i = 0; i < distM; i++ {
+	for i = 0; i < distM/2.0; i++ {
 		img.Set(startX+int(i/distM*float64(destX-startX)), startY+int(i/distM*float64(destY-startY)), c)
 	}
-	img.Set(destX, destY, c)
-	fmt.Println("in lineTo dist=", distM, startX, startY, destX, destY)
+	//img.Set(destX, destY, c)
+	img.Set(startX, startY, color.RGBA{0, 0xFF, 0xFF, 0xFF})
 }
 
 func main() {
@@ -322,18 +322,13 @@ func main() {
 	for i, dot := range river.List {
 		stepStartX, stepStartY = stepDestX, stepDestY
 		stepDestX, stepDestY = dot%width, dot/width
-		if i == 0 {
-			continue
-		}
-		if i == len(river.List)-1 {
-			fmt.Println("last dot=", dot)
+		if i == 0 || stepDestX == 0 && stepDestY == 0 {
 			continue
 		}
 		// lineTo
 		//img.Set(int(x)**zoom+*zoom/2, int(y)**zoom+*zoom/2, color.RGBA{0, 0, 0xFF, 0xFF})
 		lineTo(img, int(stepStartX)**zoom+*zoom/2, int(stepStartY)**zoom+*zoom/2, int(stepDestX)**zoom+*zoom/2, int(stepDestY)**zoom+*zoom/2, color.RGBA{0, 0, 0xFF, 0xFF})
 	}
-	fmt.Println("river.List=", river.List)
 	//lineTo(img, 100, 200, 200, 200, color.RGBA{0, 0, 0xFF, 0xFF})
 
 	for i := 0; i < len(cs); i++ {
