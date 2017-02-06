@@ -299,6 +299,7 @@ func main() {
 			//img.Set(x, y, cs[int(float32(cslen)*(1.0-tmpColor/maxColor))])
 			// 按值上色
 			//img.Set(x, y, cs[cslen-int(tmpColor)])
+			// 放大
 			for zix := 0; zix < *zoom; zix++ {
 				for ziy := 0; ziy < *zoom; ziy++ {
 					img.Set(x**zoom+zix, y**zoom+ziy, cs[int(float32(cslen)*(1.0-tmpColor/maxColor))])
@@ -321,13 +322,18 @@ func main() {
 	for i, dot := range river.List {
 		stepStartX, stepStartY = stepDestX, stepDestY
 		stepDestX, stepDestY = dot%width, dot/width
-		if i == 0 || i == len(river.List)-1 {
+		if i == 0 {
+			continue
+		}
+		if i == len(river.List)-1 {
+			fmt.Println("last dot=", dot)
 			continue
 		}
 		// lineTo
 		//img.Set(int(x)**zoom+*zoom/2, int(y)**zoom+*zoom/2, color.RGBA{0, 0, 0xFF, 0xFF})
 		lineTo(img, int(stepStartX)**zoom+*zoom/2, int(stepStartY)**zoom+*zoom/2, int(stepDestX)**zoom+*zoom/2, int(stepDestY)**zoom+*zoom/2, color.RGBA{0, 0, 0xFF, 0xFF})
 	}
+	fmt.Println("river.List=", river.List)
 	//lineTo(img, 100, 200, 200, 200, color.RGBA{0, 0, 0xFF, 0xFF})
 
 	for i := 0; i < len(cs); i++ {
