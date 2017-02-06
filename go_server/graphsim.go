@@ -62,6 +62,7 @@ func (this *FlowList) Init(x int, y int, w *WaterMap, maxlen int) {
 func (this *FlowList) Move2(m *Topomap, w *WaterMap) {
 	ox, oy := this.lastDot.x, this.lastDot.y
 
+	// 流入水源
 	oid := int(ox) + int(oy)*m.width
 	if oid < 0 || m.width*m.height < oid {
 		fmt.Println("illegal oid:", oid)
@@ -93,8 +94,8 @@ func (this *FlowList) Move2(m *Topomap, w *WaterMap) {
 			continue
 		}
 
-		// 地形较高 不允许流向高处
-		assumeFall := int(m.data[ty*m.width+tx]) - int(m.data[oid])
+		// 地形较高 不允许流向高处 对方海拔+对方水位-本地海拔+本地水位
+		assumeFall := int(m.data[ty*m.width+tx]) - int(m.data[oid]) // + len(w.data[ty*m.width+tx].input) - len(w.data[oid].input)
 		if assumeFall >= 1 {
 			fmt.Println("seems flow up, fall=", assumeFall, allvx, allvy, "i=", i)
 			continue
