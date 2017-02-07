@@ -163,9 +163,11 @@ func (this *WaterMap) Init(width int, height int) {
 }
 
 type Ring struct {
-	x int
-	y int
-	r int
+	x       int
+	y       int
+	r       int
+	tiltDir float64 // 倾斜方向
+	tiltLen int     // 倾斜长度
 }
 
 func colorTpl(colorTplFile string) []color.Color {
@@ -241,13 +243,14 @@ func main() {
 	for ri, _ := range rings {
 		r := &rings[ri]
 		r.x, r.y, r.r = (rand.Int() % width), (rand.Int() % height), (rand.Int() % (*hillWide))
+		r.tiltDir, r.tiltLen = rand.Float64()*math.Pi, (rand.Int()%10)+1
 	}
 
-	// make ridge
+	// make ridge 生成ridge的痕迹
 	for i := 1; i < *nRidge; i++ {
 		ridge.Move2(&m, &w)
 	}
-	//
+	// 转换痕迹为ridge 为每个环分配随机半径
 	ridgeRings := make([]Ring, ridge.length)
 	for ri := 0; ri < int(ridge.length); ri++ {
 		r := &ridgeRings[ri]
@@ -260,24 +263,30 @@ func main() {
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
 			tmpColor = 0
+			// 收集ridgeRings产生的attitude
 			for _, r := range ridgeRings {
-				if (x-r.x)*(x-r.x)+(y-r.y)*(y-r.y) <= r.r*r.r {
+				distM := (x-r.x)*(x-r.x) + (y-r.y)*(y-r.y)
+				if distM <= r.r*r.r {
 					//tmpColor++
-					tmpColor += float32((x-r.x)*(x-r.x)+(y-r.y)*(y-r.y)) / float32(r.r*r.r) * rand.Float32()
+					tmpColor += float32(distM) / float32(r.r*r.r) * rand.Float32()
 					if maxColor < tmpColor {
 						maxColor = tmpColor
 					}
 					//fmt.Println("color fill x,y,r,c=", x, y, r, tmpColor)
 				}
 			}
+			// 收集rings产生的attitude
 			for _, r := range rings {
-				if (x-r.x)*(x-r.x)+(y-r.y)*(y-r.y) <= r.r*r.r {
+				distM := (x-r.x)*(x-r.x) + (y-r.y)*(y-r.y)
+				//rn := float64(r.tiltLen)*math.Sin(r.tiltDir-math.Atan2(float64(y), float64(y))) + float64(r.r)
+				rn := (r.r)
+				if distM <= int(rn*rn) {
 					//tmpColor++
-					tmpColor += float32((x-r.x)*(x-r.x)+(y-r.y)*(y-r.y)) / float32(r.r*r.r) * rand.Float32()
+					tmpColor += float32(distM) / float32(rn*rn) * rand.Float32()
 					if maxColor < tmpColor {
 						maxColor = tmpColor
 					}
-					//fmt.Println("color fill x,y,r,c=", x, y, r, tmpColor)
+					//fmt.Println("color fill x,y,r,c=", x, y, r, tmpColor, "r=", r)
 				}
 			}
 
