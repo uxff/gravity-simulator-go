@@ -278,7 +278,7 @@ func main() {
 			// 收集rings产生的attitude
 			for _, r := range rings {
 				distM := (x-r.x)*(x-r.x) + (y-r.y)*(y-r.y)
-				//rn := float64(r.tiltLen)*math.Sin(r.tiltDir-math.Atan2(float64(y), float64(y))) + float64(r.r)
+				//rn := float64(r.tiltLen)*math.Sin(r.tiltDir-math.Atan2(float64(y), float64(y))) + float64(r.r)	// 尝试倾斜地图中的圆环 尝试失败
 				rn := (r.r)
 				if distM <= int(rn*rn) {
 					//tmpColor++
