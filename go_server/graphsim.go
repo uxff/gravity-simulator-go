@@ -318,12 +318,18 @@ func main() {
 		}
 	}
 
-	// 绘制flow
+	// 生成flow水流
 	fmt.Println("before move:", river.length, time.Now().UnixNano(), "maxColor=", maxColor)
 	for i := 1; i < *times; i++ {
 		river.Move2(&m, &w)
 	}
 	fmt.Println("after move:", river.length, time.Now().UnixNano())
+
+	// 随机洒水法：
+	/*
+		随机在地图中选择点，并滴入一滴水，记录水位+1，尝试计算流出方向(判断旁边的水流方向)
+		下次滴入时，如果没有流出方向，水位+1；如果有流出方向，按方向滴入下一位置
+	*/
 
 	// 绘制river
 	// 使用zoomstep lineTo
