@@ -81,6 +81,10 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 	// if have output, go output
 	if curDot.hasNext {
 		curDot.h--
+		if curDot.h < 0 {
+			fmt.Println("flow < 0")
+			curDot.h = 0
+		}
 		// 查看下一个dot的input中有没有me
 		var nextHasMe bool = false
 		for _, itsInputIdx := range w.data[curDot.nextIdx].input {
@@ -93,6 +97,7 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 		if nextHasMe == false {
 			w.data[curDot.nextIdx].input = append(w.data[curDot.nextIdx].input, pos)
 		}
+		w.data[curDot.nextIdx].h++
 		//return w.InjectWater(curDot.nextIdx, m)
 		return true
 	}
@@ -117,7 +122,7 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 			continue
 		}
 		// 计算地形落差 地形较高 不允许流向高处
-		assumeFall := int(m.data[ty*m.width+tx]) - (int(m.data[pos]) + curDot.h)
+		assumeFall := (int(m.data[ty*m.width+tx])*2 + w.data[ty*w.width+tx].h) - (int(m.data[pos])*2 + curDot.h)
 		if assumeFall >= 1 {
 			fmt.Println("seems flow up, fall=", assumeFall, allvx, allvy, "i=", i)
 			continue
@@ -125,12 +130,14 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 
 		// 对方的nextIdx不能是me
 		if w.data[ty*m.width+tx].hasNext && w.data[ty*m.width+tx].nextIdx == pos {
-			fmt.Println("cannot flow to target because its next is me: pos=", pos, "target=", w.data[ty*m.width+tx])
 			//continue
-			//撤销对方指向me的next，如果我方地形高
+			// 撤销对方指向me的next，如果我方地形高
 			if assumeFall < 0 {
 				fmt.Println("discard target next")
 				w.data[ty*m.width+tx].hasNext = false
+			} else {
+				fmt.Println("cannot flow to target because its next is me: pos=", pos, "target=", w.data[ty*m.width+tx])
+				continue
 			}
 		}
 
@@ -159,6 +166,10 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 	if curDot.hasNext {
 		curDot.nextIdx = tx + w.width*ty
 		curDot.h--
+		if curDot.h < 0 {
+			fmt.Println("flow < 0")
+			curDot.h = 0
+		}
 		// 查看下一个dot的input中有没有me
 		var nextHasMe bool = false
 		for _, itsInputIdx := range w.data[curDot.nextIdx].input {
@@ -172,6 +183,7 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 			w.data[curDot.nextIdx].input = append(w.data[curDot.nextIdx].input, pos)
 		}
 		//return w.InjectWater(curDot.nextIdx, m)
+		w.data[curDot.nextIdx].h++
 		return true
 	} else {
 		fmt.Println("cannot flow anywhere: curDot=", curDot)
