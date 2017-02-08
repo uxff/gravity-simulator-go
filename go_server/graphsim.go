@@ -74,9 +74,23 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 	var curX, curY int = pos % w.width, pos / w.height
 	var curDot *WaterDot = &w.data[pos]
 
+	if curDot.q > len(curDot.input)+1 {
+		if curDot.hasNext {
+			curDot.hasNext = false
+		} else {
+
+			fmt.Println("too many quantity")
+			return false
+		}
+	}
+
 	// 本地水位+1
 	curDot.h++
 	curDot.q++
+
+	if curDot.h < 2 {
+		//return false
+	}
 
 	// if have output, go output
 	if curDot.hasNext {
@@ -97,8 +111,8 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 		if nextHasMe == false {
 			w.data[curDot.nextIdx].input = append(w.data[curDot.nextIdx].input, pos)
 		}
-		w.data[curDot.nextIdx].h++
-		//return w.InjectWater(curDot.nextIdx, m)
+		//w.data[curDot.nextIdx].h++
+		return w.InjectWater(curDot.nextIdx, m)
 		return true
 	}
 
@@ -182,8 +196,8 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 		if nextHasMe == false {
 			w.data[curDot.nextIdx].input = append(w.data[curDot.nextIdx].input, pos)
 		}
-		//return w.InjectWater(curDot.nextIdx, m)
-		w.data[curDot.nextIdx].h++
+		//w.data[curDot.nextIdx].h++
+		return w.InjectWater(curDot.nextIdx, m)
 		return true
 	} else {
 		fmt.Println("cannot flow anywhere: curDot=", curDot)
@@ -204,7 +218,6 @@ func (this *FlowList) Move2(m *Topomap, w *WaterMap) {
 	// lastDot indicate next
 	//var nextDot = &this.List[this.length]
 	var nextDot *WaterDot = nil
-	//
 
 	// 假设选择一个方向 查看是否能前进
 	var allvx, allvy float64 = 0.0, 0.0
@@ -251,7 +264,6 @@ func (this *FlowList) Move2(m *Topomap, w *WaterMap) {
 				needTurn = true
 				//continue
 			}
-
 		}
 
 		hasStep = true
@@ -302,31 +314,34 @@ type Ring struct {
 	tiltLen int     // 倾斜长度
 }
 
+/*返回颜色数组，下标越大颜色海拔越高*/
 func colorTpl(colorTplFile string) []color.Color {
 	var colorTplFileIo, _ = os.Open(colorTplFile)
 	defer colorTplFileIo.Close()
 	var colorTplPng, err = png.Decode(colorTplFileIo)
 
 	if err != nil {
-		fmt.Println("png.decode err:", err)
+		fmt.Println("png.decode err when read colorTpl:", err)
 		return nil
 	}
-	cs := make([]color.Color, colorTplPng.Bounds().Dy())
-	for i := 0; i < colorTplPng.Bounds().Dy(); i++ {
-		cs[i] = colorTplPng.At(0, i)
+	theLen := colorTplPng.Bounds().Dy()
+	cs := make([]color.Color, theLen)
+	for i := 0; i < theLen; i++ {
+		cs[i] = colorTplPng.At(0, theLen-i-1)
 	}
 	return cs
 }
 
-func lineTo(img *image.RGBA, startX, startY, destX, destY int, c color.Color) {
+func lineTo(img *image.RGBA, startX, startY, destX, destY int, lineColor, startColor color.Color) {
 	distM := math.Sqrt(float64((startX-destX)*(startX-destX) + (startY-destY)*(startY-destY)))
 	var i float64
-	var scale float64 = 0.8
-	for i = 0; i < distM*scale; i++ {
-		img.Set(startX+int(i/distM*float64(destX-startX)), startY+int(i/distM*float64(destY-startY)), c)
+	var scale float64 = 0.75
+	for i = 0; i < distM*scale-1; i++ {
+		img.Set(startX+int(i/distM*float64(destX-startX)), startY+int(i/distM*float64(destY-startY)), lineColor)
 	}
-	//img.Set(destX, destY, c)
-	img.Set(startX, startY, color.RGBA{0, 0xFF, 0xFF, 0xFF})
+	img.Set(startX+int(i/distM*float64(destX-startX)), startY+int(i/distM*float64(destY-startY)), startColor)
+	//img.Set(destX, destY, startColor)
+	//img.Set(startX, startY, startColor)
 }
 
 func main() {
@@ -401,7 +416,7 @@ func main() {
 				distM := (x-r.x)*(x-r.x) + (y-r.y)*(y-r.y)
 				if distM <= r.r*r.r {
 					//tmpColor++
-					tmpColor += float32(distM) / float32(r.r*r.r) * rand.Float32()
+					tmpColor += float32(distM) / float32(r.r*r.r) //* rand.Float32()
 					if maxColor < tmpColor {
 						maxColor = tmpColor
 					}
@@ -415,7 +430,7 @@ func main() {
 				rn := (r.r)
 				if distM <= int(rn*rn) {
 					//tmpColor++
-					tmpColor += float32(distM) / float32(rn*rn) * rand.Float32()
+					tmpColor += float32(distM) / float32(rn*rn) //* rand.Float32()
 					if maxColor < tmpColor {
 						maxColor = tmpColor
 					}
@@ -426,13 +441,13 @@ func main() {
 			m.data[x+y*width] = uint8(tmpColor) //+ uint8(rand.Int()%2) //int8(width - x)
 		}
 	}
-	maxColor += 2
+	maxColor *= 3
 
 	// 获取颜色模板
 	var colorTplFile string = "image/color-tpl.png"
 	cs := colorTpl(colorTplFile)
-	csmargin := 1
-	cslen := len(cs) - csmargin
+	//csmargin := 1
+	cslen := len(cs) - 1 // - csmargin
 	// 地图背景地形绘制
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
@@ -445,7 +460,7 @@ func main() {
 			// 放大
 			for zix := 0; zix < *zoom; zix++ {
 				for ziy := 0; ziy < *zoom; ziy++ {
-					img.Set(x**zoom+zix, y**zoom+ziy, cs[int(float32(cslen)*(1.0-tmpColor/maxColor))])
+					img.Set(x**zoom+zix, y**zoom+ziy, cs[int(float32(cslen)*(tmpColor/maxColor))])
 				}
 			}
 		}
@@ -461,13 +476,12 @@ func main() {
 	// 随机洒水
 	for i := 1; i < *times; i++ {
 		idx := rand.Int() % len(w.data)
-		go w.InjectWater(idx, &m)
+		w.InjectWater(idx, &m)
 	}
 	// 顺序洒水
-	for i := 0; i < len(w.data); i++ {
-		//idx := rand.Int() % len(w.data)
-		w.InjectWater(i, &m)
-	}
+	//for i := 0; i < len(w.data); i++ {
+	//w.InjectWater(i, &m)
+	//}
 
 	// 绘制river
 	// 使用zoomstep lineTo
@@ -485,17 +499,18 @@ func main() {
 	//lineTo(img, 100, 200, 200, 200, color.RGBA{0, 0, 0xFF, 0xFF})
 
 	// 绘制WaterMap
-	for _, dot := range w.data {
+	for di, dot := range w.data {
 		if dot.hasNext {
-			lineTo(img, int(dot.x)**zoom+*zoom/2, int(dot.y)**zoom+*zoom/2, (dot.nextIdx%w.width)**zoom+*zoom/2, (dot.nextIdx/w.width)**zoom+*zoom/2, color.RGBA{0, 0, 0xFF, 0xFF})
+			tmpLevel := float32(m.data[di]) + float32(dot.h)
+			tmpColor := cs[int(float32(cslen)*(tmpLevel/maxColor))]
+			lineTo(img, int(dot.x)**zoom+*zoom/2, int(dot.y)**zoom+*zoom/2, (dot.nextIdx%w.width)**zoom+*zoom/2, (dot.nextIdx/w.width)**zoom+*zoom/2, color.RGBA{0, 0, 0xFF, 0xFF}, tmpColor)
 			//fmt.Println("hasNext:", dot, w.data[dot.nextIdx])
 		}
 	}
 
+	// 绘制颜色模板
 	for i := 0; i < len(cs); i++ {
-		//c := colorTplPng.At(0, i)
-		c := cs[i]
-		//cr, cg, cb, ca := color.RGBA()
+		c := cs[len(cs)-i-1]
 		img.Set(0, i, c)
 		img.Set(7, i, c)
 		img.Set(6, i, c)
