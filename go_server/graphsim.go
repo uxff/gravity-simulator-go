@@ -104,9 +104,11 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 	curDot.x, curDot.y = float32(curX)+0.5, float32(curY)+0.5
 
 	for i := 0; i < 20; i++ {
-		var pit1 float64 = rand.Float64() - rand.Float64()
-		rollDir = pit1 * pit1 * pit1 * math.Pi / 2.0
+		//var pit1 float64 = rand.Float64() - rand.Float64()
+		//rollDir = pit1 * pit1 * pit1 * math.Pi / 2.0
+		rollDir = rand.Float64() * math.Pi * 2.0
 		theDir += rollDir
+
 		allvx, allvy = (math.Cos(theDir)), (math.Sin(theDir))
 		// 碰到边界
 		tx, ty = int(float64(curDot.x)+allvx), int(float64(curDot.y)+allvy)
@@ -122,7 +124,7 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 		}
 
 		curDot.hasNext = true
-		//fmt.Println("got dir ok: theDir=", theDir, "rollDir=", rollDir, "target x,y,h:", tx, ty, assumeFall, "needTurn", needTurn)
+		//fmt.Println("got dir ok: theDir=", theDir, "rollDir=", rollDir, "target x,y,h:", tx, ty, assumeFall)
 		break
 	}
 
@@ -418,30 +420,29 @@ func main() {
 	// 随机洒水
 	for i := 1; i < *times; i++ {
 		idx := rand.Int() % len(w.data)
-		w.InjectWater(idx, &m)
+		go w.InjectWater(idx, &m)
 	}
 
 	// 绘制river
 	// 使用zoomstep lineTo
-	var stepStartX, stepStartY, stepDestX, stepDestY int
-	//var riverStep
-	for i, dot := range river.List {
-		stepStartX, stepStartY = stepDestX, stepDestY
-		stepDestX, stepDestY = dot%width, dot/width
-		if i == 0 || stepDestX == 0 && stepDestY == 0 {
-			continue
-		}
-		// lineTo
-		//img.Set(int(x)**zoom+*zoom/2, int(y)**zoom+*zoom/2, color.RGBA{0, 0, 0xFF, 0xFF})
-		lineTo(img, int(stepStartX)**zoom+*zoom/2, int(stepStartY)**zoom+*zoom/2, int(stepDestX)**zoom+*zoom/2, int(stepDestY)**zoom+*zoom/2, color.RGBA{0, 0, 0xFF, 0xFF})
-	}
+	//var stepStartX, stepStartY, stepDestX, stepDestY int
+	//for i, dot := range river.List {
+	//	stepStartX, stepStartY = stepDestX, stepDestY
+	//	stepDestX, stepDestY = dot%width, dot/width
+	//	if i == 0 || stepDestX == 0 && stepDestY == 0 {
+	//		continue
+	//	}
+	//	// lineTo
+	//	//img.Set(int(x)**zoom+*zoom/2, int(y)**zoom+*zoom/2, color.RGBA{0, 0, 0xFF, 0xFF})
+	//	lineTo(img, int(stepStartX)**zoom+*zoom/2, int(stepStartY)**zoom+*zoom/2, int(stepDestX)**zoom+*zoom/2, int(stepDestY)**zoom+*zoom/2, color.RGBA{0, 0, 0xFF, 0xFF})
+	//}
 	//lineTo(img, 100, 200, 200, 200, color.RGBA{0, 0, 0xFF, 0xFF})
 
 	// 绘制WaterMap
 	for _, dot := range w.data {
 		if dot.hasNext {
-			lineTo(img, int(dot.x), int(dot.y), dot.nextIdx%w.width, dot.nextIdx/w.width, color.RGBA{0, 0, 0xFF, 0xFF})
-			fmt.Println("hasNext:", dot)
+			lineTo(img, int(dot.x)**zoom+*zoom/2, int(dot.y)**zoom+*zoom/2, (dot.nextIdx%w.width)**zoom+*zoom/2, (dot.nextIdx/w.width)**zoom+*zoom/2, color.RGBA{0, 0, 0xFF, 0xFF})
+			//fmt.Println("hasNext:", dot, w.data[dot.nextIdx])
 		}
 	}
 
