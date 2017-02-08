@@ -418,8 +418,8 @@ func main() {
 			for _, r := range ridgeRings {
 				distM := (x-r.x)*(x-r.x) + (y-r.y)*(y-r.y)
 				if distM <= r.r*r.r {
-					//tmpColor++
-					tmpColor += float32(distM) / float32(r.r*r.r) //* rand.Float32()
+					tmpColor++
+					//tmpColor += float32(distM) / float32(r.r*r.r) * rand.Float32()
 					if maxColor < tmpColor {
 						maxColor = tmpColor
 					}
@@ -432,8 +432,8 @@ func main() {
 				//rn := float64(r.tiltLen)*math.Sin(r.tiltDir-math.Atan2(float64(y), float64(y))) + float64(r.r)	// 尝试倾斜地图中的圆环 尝试失败
 				rn := (r.r)
 				if distM <= int(rn*rn) {
-					//tmpColor++
-					tmpColor += float32(distM) / float32(rn*rn) //* rand.Float32()
+					tmpColor++
+					//tmpColor += float32(distM) / float32(rn*rn) * rand.Float32()
 					if maxColor < tmpColor {
 						maxColor = tmpColor
 					}
