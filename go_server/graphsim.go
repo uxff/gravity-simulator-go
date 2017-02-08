@@ -18,10 +18,11 @@ type WaterDot struct {
 	x       float32
 	y       float32
 	dir     float64
+	h       int   // 高度水位
+	q       int   // 流量 0=无 历史流量
+	input   []int // 流入坐标
 	nextIdx int
-	//h       int8 // 高度
-	q     int   // 流量 0=无
-	input []int // 流入坐标
+	hasNext bool // 有下一个方向
 }
 type FlowList struct {
 	List    []int
@@ -31,7 +32,7 @@ type FlowList struct {
 	step    float64
 }
 type Topomap struct {
-	data   []uint8
+	data   []uint8 // 对应坐标只保存高度
 	width  int
 	height int
 }
@@ -57,6 +58,95 @@ func (this *FlowList) Init(x int, y int, w *WaterMap, maxlen int) {
 	fmt.Println("new dir:", theDir, this.lastDot)
 
 	//w.data[x+y*w.width] = *this.lastDot
+}
+
+// 随机洒水法：
+/*
+	随机在地图中选择点，并滴入一滴水，记录水位+1，尝试计算流出方向(判断旁边的水流方向)
+	如果没有流出方向，水位+1；如果有流出方向，按方向滴入下一位置,本地水位-1
+	向WaterMap中的某个坐标注水
+	水尝试找一个流动方向
+*/
+func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
+	if pos >= len(w.data) {
+		return false
+	}
+	var curX, curY int = pos % w.width, pos / w.height
+	var curDot *WaterDot = &w.data[pos]
+
+	// 本地水位+1
+	curDot.h++
+	curDot.q++
+
+	// if have output, go output
+	if curDot.hasNext {
+		curDot.h--
+		// 查看下一个dot的input中有没有me
+		var nextHasMe bool = false
+		for _, itsInputIdx := range w.data[curDot.nextIdx].input {
+			if itsInputIdx == pos {
+				nextHasMe = true
+				break
+			}
+		}
+		// 如果没有，则将me加入到它的input
+		if nextHasMe == false {
+			w.data[curDot.nextIdx].input = append(w.data[curDot.nextIdx].input, pos)
+		}
+		//return w.InjectWater(curDot.nextIdx, m)
+		return true
+	}
+
+	// try to find dir for flowing out
+	var theDir, rollDir float64 = curDot.dir, 0.0
+	var tx, ty int
+	var allvx, allvy float64 = 0.0, 0.0
+	curDot.x, curDot.y = float32(curX)+0.5, float32(curY)+0.5
+
+	for i := 0; i < 20; i++ {
+		var pit1 float64 = rand.Float64() - rand.Float64()
+		rollDir = pit1 * pit1 * pit1 * math.Pi / 2.0
+		theDir += rollDir
+		allvx, allvy = (math.Cos(theDir)), (math.Sin(theDir))
+		// 碰到边界
+		tx, ty = int(float64(curDot.x)+allvx), int(float64(curDot.y)+allvy)
+		if tx < 0 || ty < 0 || int(tx) > w.width-1 || int(ty) > w.height-1 {
+			//fmt.Println("seems over bound tx,ty:", tx, ty, "o=", this.lastDot, "i=", i)
+			continue
+		}
+		// 计算地形落差 地形较高 不允许流向高处
+		assumeFall := int(m.data[ty*m.width+tx]) - (int(m.data[pos]) + curDot.h)
+		if assumeFall >= 1 {
+			fmt.Println("seems flow up, fall=", assumeFall, allvx, allvy, "i=", i)
+			continue
+		}
+
+		curDot.hasNext = true
+		//fmt.Println("got dir ok: theDir=", theDir, "rollDir=", rollDir, "target x,y,h:", tx, ty, assumeFall, "needTurn", needTurn)
+		break
+	}
+
+	if curDot.hasNext {
+		curDot.nextIdx = tx + w.width*ty
+		curDot.h--
+		// 查看下一个dot的input中有没有me
+		var nextHasMe bool = false
+		for _, itsInputIdx := range w.data[curDot.nextIdx].input {
+			if itsInputIdx == pos {
+				nextHasMe = true
+				break
+			}
+		}
+		// 如果没有，则将me加入到它的input
+		if nextHasMe == false {
+			w.data[curDot.nextIdx].input = append(w.data[curDot.nextIdx].input, pos)
+		}
+		//return w.InjectWater(curDot.nextIdx, m)
+		return true
+	} else {
+		fmt.Println("cannot flow anywhere: curDot=", curDot)
+	}
+	return false
 }
 
 func (this *FlowList) Move2(m *Topomap, w *WaterMap) {
@@ -247,9 +337,9 @@ func main() {
 	}
 
 	// make ridge 生成ridge的痕迹
-	for i := 1; i < *nRidge; i++ {
-		ridge.Move2(&m, &w)
-	}
+	//for i := 1; i < *nRidge; i++ {
+	//	ridge.Move2(&m, &w)
+	//}
 	// 转换痕迹为ridge 为每个环分配随机半径
 	ridgeRings := make([]Ring, ridge.length)
 	for ri := 0; ri < int(ridge.length); ri++ {
@@ -319,17 +409,17 @@ func main() {
 	}
 
 	// 生成flow水流
-	fmt.Println("before move:", river.length, time.Now().UnixNano(), "maxColor=", maxColor)
-	for i := 1; i < *times; i++ {
-		river.Move2(&m, &w)
-	}
-	fmt.Println("after move:", river.length, time.Now().UnixNano())
+	//fmt.Println("before move:", river.length, time.Now().UnixNano(), "maxColor=", maxColor)
+	//for i := 1; i < *times; i++ {
+	//	river.Move2(&m, &w)
+	//}
+	//fmt.Println("after move:", river.length, time.Now().UnixNano())
 
-	// 随机洒水法：
-	/*
-		随机在地图中选择点，并滴入一滴水，记录水位+1，尝试计算流出方向(判断旁边的水流方向)
-		下次滴入时，如果没有流出方向，水位+1；如果有流出方向，按方向滴入下一位置
-	*/
+	// 随机洒水
+	for i := 1; i < *times; i++ {
+		idx := rand.Int() % len(w.data)
+		w.InjectWater(idx, &m)
+	}
 
 	// 绘制river
 	// 使用zoomstep lineTo
@@ -346,6 +436,14 @@ func main() {
 		lineTo(img, int(stepStartX)**zoom+*zoom/2, int(stepStartY)**zoom+*zoom/2, int(stepDestX)**zoom+*zoom/2, int(stepDestY)**zoom+*zoom/2, color.RGBA{0, 0, 0xFF, 0xFF})
 	}
 	//lineTo(img, 100, 200, 200, 200, color.RGBA{0, 0, 0xFF, 0xFF})
+
+	// 绘制WaterMap
+	for _, dot := range w.data {
+		if dot.hasNext {
+			lineTo(img, int(dot.x), int(dot.y), dot.nextIdx%w.width, dot.nextIdx/w.width, color.RGBA{0, 0, 0xFF, 0xFF})
+			fmt.Println("hasNext:", dot)
+		}
+	}
 
 	for i := 0; i < len(cs); i++ {
 		//c := colorTplPng.At(0, i)
