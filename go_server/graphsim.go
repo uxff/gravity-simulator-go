@@ -123,6 +123,34 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 			continue
 		}
 
+		// 对方的nextIdx不能是me
+		if w.data[ty*m.width+tx].hasNext && w.data[ty*m.width+tx].nextIdx == pos {
+			fmt.Println("cannot flow to target because its next is me: pos=", pos, "target=", w.data[ty*m.width+tx])
+			//continue
+			//撤销对方指向me的next，如果我方地形高
+			if assumeFall < 0 {
+				fmt.Println("discard target next")
+				w.data[ty*m.width+tx].hasNext = false
+			}
+		}
+
+		// 不能交叉 如果target是斜对面，相邻的不能是next关系
+		crossM := (tx - curX) * (ty - curY)
+		if crossM == 1 || crossM == -1 {
+			fmt.Println("seems become cross:x,y,tx,ty=", curX, curY, tx, ty)
+			near1x, near1y := tx, curY
+			near2x, near2y := curX, ty
+			if w.data[near1x+near1y*w.width].hasNext && w.data[near1x+near1y*w.width].nextIdx == (near2x+near2y*w.width) {
+				// 下游是2
+				fmt.Println("seems flow to 2")
+				tx, ty = near2x, near2y
+			} else if w.data[near2x+near2y*w.width].hasNext && w.data[near2x+near2y*w.width].nextIdx == (near1x+near1y*w.width) {
+				// 下游是1
+				fmt.Println("seems flow to 1")
+				tx, ty = near1x, near1y
+			}
+		}
+
 		curDot.hasNext = true
 		//fmt.Println("got dir ok: theDir=", theDir, "rollDir=", rollDir, "target x,y,h:", tx, ty, assumeFall)
 		break
@@ -281,7 +309,8 @@ func colorTpl(colorTplFile string) []color.Color {
 func lineTo(img *image.RGBA, startX, startY, destX, destY int, c color.Color) {
 	distM := math.Sqrt(float64((startX-destX)*(startX-destX) + (startY-destY)*(startY-destY)))
 	var i float64
-	for i = 0; i < distM/2.0; i++ {
+	var scale float64 = 0.8
+	for i = 0; i < distM*scale; i++ {
 		img.Set(startX+int(i/distM*float64(destX-startX)), startY+int(i/distM*float64(destY-startY)), c)
 	}
 	//img.Set(destX, destY, c)
@@ -421,6 +450,11 @@ func main() {
 	for i := 1; i < *times; i++ {
 		idx := rand.Int() % len(w.data)
 		go w.InjectWater(idx, &m)
+	}
+	// 顺序洒水
+	for i := 0; i < len(w.data); i++ {
+		//idx := rand.Int() % len(w.data)
+		w.InjectWater(i, &m)
 	}
 
 	// 绘制river
