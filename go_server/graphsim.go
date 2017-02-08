@@ -332,14 +332,16 @@ func colorTpl(colorTplFile string) []color.Color {
 	return cs
 }
 
-func lineTo(img *image.RGBA, startX, startY, destX, destY int, lineColor, startColor color.Color) {
+func lineTo(img *image.RGBA, startX, startY, destX, destY int, lineColor, startColor color.Color, scale float64) {
 	distM := math.Sqrt(float64((startX-destX)*(startX-destX) + (startY-destY)*(startY-destY)))
 	var i float64
-	var scale float64 = 0.75
-	for i = 0; i < distM*scale-1; i++ {
+	//var scale float64 = 0.75
+	for i = 0; i < distM*scale; i++ {
 		img.Set(startX+int(i/distM*float64(destX-startX)), startY+int(i/distM*float64(destY-startY)), lineColor)
 	}
-	img.Set(startX+int(i/distM*float64(destX-startX)), startY+int(i/distM*float64(destY-startY)), startColor)
+	if startX != destX && startY != destY {
+		img.Set(startX+int(i/distM*float64(destX-startX)), startY+int(i/distM*float64(destY-startY)), startColor)
+	}
 	//img.Set(destX, destY, startColor)
 	//img.Set(startX, startY, startColor)
 }
@@ -360,6 +362,7 @@ func main() {
 	var ridgeWide = flag.Int("ridge-wide", 50, "ridge wide for making ridge")
 	var ridgeStep = flag.Int("ridge-step", 8, "ridge step for making ridge")
 	var zoom = flag.Int("zoom", 1, "zoom of out put")
+	var riverArrowScale = flag.Float64("river-arrow-scale", 0.75, "river arrow scale")
 
 	flag.Parse()
 
@@ -503,7 +506,7 @@ func main() {
 		if dot.hasNext {
 			tmpLevel := float32(m.data[di]) + float32(dot.h)
 			tmpColor := cs[int(float32(cslen)*(tmpLevel/maxColor))]
-			lineTo(img, int(dot.x)**zoom+*zoom/2, int(dot.y)**zoom+*zoom/2, (dot.nextIdx%w.width)**zoom+*zoom/2, (dot.nextIdx/w.width)**zoom+*zoom/2, color.RGBA{0, 0, 0xFF, 0xFF}, tmpColor)
+			lineTo(img, int(dot.x)**zoom+*zoom/2, int(dot.y)**zoom+*zoom/2, (dot.nextIdx%w.width)**zoom+*zoom/2, (dot.nextIdx/w.width)**zoom+*zoom/2, color.RGBA{0, 0, 0xFF, 0xFF}, tmpColor, *riverArrowScale)
 			//fmt.Println("hasNext:", dot, w.data[dot.nextIdx])
 		}
 	}
