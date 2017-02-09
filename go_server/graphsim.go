@@ -122,11 +122,18 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 	var allvx, allvy float64 = 0.0, 0.0
 	curDot.x, curDot.y = float32(curX)+0.5, float32(curY)+0.5
 
+	//curDot.dir = avg(curDot.input.dir)
+	var hasDir bool
+	curDot.dir, hasDir = curDot.calcInputAvgDir(w)
+	if !hasDir {
+		curDot.dir = rand.Float64() * math.Pi * 2.0
+	}
+
 	for i := 0; i < 20; i++ {
-		//var pit1 float64 = rand.Float64() - rand.Float64()
-		//rollDir = pit1 * pit1 * pit1 * math.Pi / 2.0
-		rollDir = rand.Float64() * math.Pi * 2.0
-		theDir += rollDir
+		var pit1 float64 = rand.Float64() - rand.Float64()
+		rollDir = pit1 * math.Pi / 1.5
+		//rollDir = rand.Float64() * math.Pi * 2.0
+		theDir = rollDir + curDot.dir
 
 		allvx, allvy = (math.Cos(theDir)), (math.Sin(theDir))
 		// 碰到边界
@@ -344,6 +351,24 @@ func lineTo(img *image.RGBA, startX, startY, destX, destY int, lineColor, startC
 	}
 	//img.Set(destX, destY, startColor)
 	//img.Set(startX, startY, startColor)
+}
+
+func (d *WaterDot) calcInputAvgDir(w *WaterMap) (dir float64, hasDir bool) {
+	for i, inputIdx := range d.input {
+		inputDot := &w.data[inputIdx]
+		if i == 0 {
+			dir = inputDot.dir
+			hasDir = true
+		} else {
+			// 合并方向 夹角大于180 取-平均值
+			if dir-inputDot.dir < -math.Pi || dir-inputDot.dir > math.Pi {
+				dir = -(dir + inputDot.dir) / 2.0
+			} else {
+				dir = (dir + inputDot.dir) / 2.0
+			}
+		}
+	}
+	return dir, hasDir
 }
 
 func main() {
