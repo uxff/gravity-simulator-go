@@ -74,14 +74,20 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 	var curX, curY int = pos % w.width, pos / w.height
 	var curDot *WaterDot = &w.data[pos]
 
-	if curDot.q > len(curDot.input)+1 {
+	if curDot.h > len(curDot.input)+2 {
 		if curDot.hasNext {
-			curDot.hasNext = false
+			// 放开会产生莫名其妙的支流
+			fmt.Println("will discard my dir ", curDot)
+			//curDot.hasNext = false
+			return false
 		} else {
-
-			fmt.Println("too many quantity")
+			fmt.Println("what error means too many quantity")
 			return false
 		}
+	}
+	if curDot.q > 100 {
+		fmt.Println("too many quantity me=", curDot)
+		return false
 	}
 
 	// 本地水位+1
@@ -139,7 +145,7 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 		// 碰到边界
 		tx, ty = int(float64(curDot.x)+allvx), int(float64(curDot.y)+allvy)
 		if tx < 0 || ty < 0 || int(tx) > w.width-1 || int(ty) > w.height-1 {
-			fmt.Println("seems over bound tx,ty:", tx, ty, "o=", curDot, "i=", i)
+			fmt.Println("over bound tx,ty:", tx, ty, "o=", curDot, "i=", i)
 			//continue
 			// 任其流出地图外，不再让其流回来
 			curDot.h--
@@ -148,7 +154,7 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 		// 计算地形落差 地形较高 不允许流向高处
 		assumeFall := (int(m.data[ty*m.width+tx])*2 + w.data[ty*w.width+tx].h) - (int(m.data[pos])*2 + curDot.h)
 		if assumeFall >= 1 {
-			fmt.Println("seems flow up, fall,dot,tx,ty=", assumeFall, curDot, tx, ty, "i=", i)
+			fmt.Println("flow up, fall,dot,tx,ty=", assumeFall, curDot, tx, ty, "i=", i)
 			continue
 		}
 
@@ -157,7 +163,7 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 			//continue
 			// 撤销对方指向me的next，如果我方地形高
 			if assumeFall < 0 {
-				fmt.Println("discard target next dot,target=", curDot, w.data[ty*m.width+tx])
+				fmt.Println("discard target next direct me,target=", curDot, w.data[ty*m.width+tx])
 				w.data[ty*m.width+tx].hasNext = false
 			} else {
 				fmt.Println("cannot flow to target because its next is me: me=", curDot, "target=", w.data[ty*m.width+tx])
@@ -173,11 +179,11 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 			near2x, near2y := curX, ty
 			if w.data[near1x+near1y*w.width].hasNext && w.data[near1x+near1y*w.width].nextIdx == (near2x+near2y*w.width) {
 				// 下游是2
-				fmt.Println("seems become cross:x,y,tx,ty=", curX, curY, tx, ty, "redir to x,y=", near2x, near2y)
+				fmt.Println("become cross:x,y,tx,ty=", curX, curY, tx, ty, "redir to x,y=", near2x, near2y)
 				tx, ty = near2x, near2y
 			} else if w.data[near2x+near2y*w.width].hasNext && w.data[near2x+near2y*w.width].nextIdx == (near1x+near1y*w.width) {
 				// 下游是1
-				fmt.Println("seems become cross:x,y,tx,ty=", curX, curY, tx, ty, "redir to x,y=", near1x, near1y)
+				fmt.Println("become cross:x,y,tx,ty=", curX, curY, tx, ty, "redir to x,y=", near1x, near1y)
 				tx, ty = near1x, near1y
 			}
 		}
@@ -188,11 +194,13 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 	}
 
 	if curDot.hasNext {
-		if curDot.dir-theDir < -math.Pi || curDot.dir-theDir > math.Pi {
-			curDot.dir = -(curDot.dir + theDir) / 2.0
-		} else {
-			curDot.dir = (curDot.dir + theDir) / 2.0
-		}
+		// 不能过于激进地修改方向，否则曲线太弯曲容易eatself
+		//		if curDot.dir-theDir < -math.Pi || curDot.dir-theDir > math.Pi {
+		//			curDot.dir = -(curDot.dir + theDir) / 2.0
+		//		} else {
+		//			curDot.dir = (curDot.dir + theDir) / 2.0
+		//		}
+		curDot.dir = theDir
 
 		curDot.nextIdx = tx + w.width*ty
 		curDot.h--
