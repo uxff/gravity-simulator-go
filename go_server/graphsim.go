@@ -55,7 +55,7 @@ func (this *FlowList) Init(x int, y int, w *WaterMap, maxlen int) {
 	theDir := rand.Float64() * math.Pi * 2.0
 	this.lastDot.dir = theDir
 	this.step = 1
-	fmt.Println("new dir:", theDir, this.lastDot)
+	//fmt.Println("new dir:", theDir, this.lastDot)
 
 	//w.data[x+y*w.width] = *this.lastDot
 }
@@ -131,7 +131,7 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 
 	for i := 0; i < 20; i++ {
 		var pit1 float64 = rand.Float64() - rand.Float64()
-		rollDir = pit1 * math.Pi / 1.5
+		rollDir = pit1 * pit1 * pit1 * (math.Pi/1.5 + float64(i)/10.0)
 		//rollDir = rand.Float64() * math.Pi * 2.0
 		theDir = rollDir + curDot.dir
 
@@ -139,13 +139,16 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 		// 碰到边界
 		tx, ty = int(float64(curDot.x)+allvx), int(float64(curDot.y)+allvy)
 		if tx < 0 || ty < 0 || int(tx) > w.width-1 || int(ty) > w.height-1 {
-			//fmt.Println("seems over bound tx,ty:", tx, ty, "o=", this.lastDot, "i=", i)
-			continue
+			fmt.Println("seems over bound tx,ty:", tx, ty, "o=", curDot, "i=", i)
+			//continue
+			// 任其流出地图外，不再让其流回来
+			curDot.h--
+			return false
 		}
 		// 计算地形落差 地形较高 不允许流向高处
 		assumeFall := (int(m.data[ty*m.width+tx])*2 + w.data[ty*w.width+tx].h) - (int(m.data[pos])*2 + curDot.h)
 		if assumeFall >= 1 {
-			fmt.Println("seems flow up, fall=", assumeFall, allvx, allvy, "i=", i)
+			fmt.Println("seems flow up, fall,dot,tx,ty=", assumeFall, curDot, tx, ty, "i=", i)
 			continue
 		}
 
@@ -154,10 +157,10 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 			//continue
 			// 撤销对方指向me的next，如果我方地形高
 			if assumeFall < 0 {
-				fmt.Println("discard target next")
+				fmt.Println("discard target next dot,target=", curDot, w.data[ty*m.width+tx])
 				w.data[ty*m.width+tx].hasNext = false
 			} else {
-				fmt.Println("cannot flow to target because its next is me: pos=", pos, "target=", w.data[ty*m.width+tx])
+				fmt.Println("cannot flow to target because its next is me: me=", curDot, "target=", w.data[ty*m.width+tx])
 				continue
 			}
 		}
@@ -165,21 +168,22 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 		// 不能交叉 如果target是斜对面，相邻的不能是next关系
 		crossM := (tx - curX) * (ty - curY)
 		if crossM == 1 || crossM == -1 {
-			fmt.Println("seems become cross:x,y,tx,ty=", curX, curY, tx, ty)
+			// 流向斜对面
 			near1x, near1y := tx, curY
 			near2x, near2y := curX, ty
 			if w.data[near1x+near1y*w.width].hasNext && w.data[near1x+near1y*w.width].nextIdx == (near2x+near2y*w.width) {
 				// 下游是2
-				fmt.Println("seems flow to 2")
+				fmt.Println("seems become cross:x,y,tx,ty=", curX, curY, tx, ty, "redir to x,y=", near2x, near2y)
 				tx, ty = near2x, near2y
 			} else if w.data[near2x+near2y*w.width].hasNext && w.data[near2x+near2y*w.width].nextIdx == (near1x+near1y*w.width) {
 				// 下游是1
-				fmt.Println("seems flow to 1")
+				fmt.Println("seems become cross:x,y,tx,ty=", curX, curY, tx, ty, "redir to x,y=", near1x, near1y)
 				tx, ty = near1x, near1y
 			}
 		}
 
 		curDot.hasNext = true
+		curDot.dir = theDir
 		//fmt.Println("got dir ok: theDir=", theDir, "rollDir=", rollDir, "target x,y,h:", tx, ty, assumeFall)
 		break
 	}
@@ -249,7 +253,7 @@ func (this *FlowList) Move2(m *Topomap, w *WaterMap) {
 		// 地形较高 不允许流向高处 对方海拔+对方水位-本地海拔+本地水位
 		assumeFall := int(m.data[ty*m.width+tx]) - int(m.data[oid]) // + len(w.data[ty*m.width+tx].input) - len(w.data[oid].input)
 		if assumeFall >= 1 {
-			fmt.Println("seems flow up, fall=", assumeFall, allvx, allvy, "i=", i)
+			fmt.Println("seems flow up, fall,dot,tx,ty=", assumeFall, this.lastDot, tx, ty, "i=", i)
 			continue
 		}
 
@@ -342,10 +346,11 @@ func colorTpl(colorTplFile string) []color.Color {
 func lineTo(img *image.RGBA, startX, startY, destX, destY int, lineColor, startColor color.Color, scale float64) {
 	distM := math.Sqrt(float64((startX-destX)*(startX-destX) + (startY-destY)*(startY-destY)))
 	var i float64
-	//var scale float64 = 0.75
+	//scale = 1.0
 	for i = 0; i < distM*scale; i++ {
 		img.Set(startX+int(i/distM*float64(destX-startX)), startY+int(i/distM*float64(destY-startY)), lineColor)
 	}
+	// 线段最后一点 绘制成始发地地形的颜色 startColor
 	if startX != destX && startY != destY {
 		img.Set(startX+int(i/distM*float64(destX-startX)), startY+int(i/distM*float64(destY-startY)), startColor)
 	}
@@ -353,6 +358,7 @@ func lineTo(img *image.RGBA, startX, startY, destX, destY int, lineColor, startC
 	//img.Set(startX, startY, startColor)
 }
 
+// 计算来源的平均夹角
 func (d *WaterDot) calcInputAvgDir(w *WaterMap) (dir float64, hasDir bool) {
 	for i, inputIdx := range d.input {
 		inputDot := &w.data[inputIdx]
@@ -387,7 +393,7 @@ func main() {
 	var ridgeWide = flag.Int("ridge-wide", 50, "ridge wide for making ridge")
 	var ridgeStep = flag.Int("ridge-step", 8, "ridge step for making ridge")
 	var zoom = flag.Int("zoom", 1, "zoom of out put")
-	var riverArrowScale = flag.Float64("river-arrow-scale", 0.75, "river arrow scale")
+	var riverArrowScale = flag.Float64("river-arrow-scale", 0.8, "river arrow scale")
 
 	flag.Parse()
 
@@ -502,7 +508,7 @@ func main() {
 	//fmt.Println("after move:", river.length, time.Now().UnixNano())
 
 	// 随机洒水
-	for i := 1; i < *times; i++ {
+	for i := 0; i < *times; i++ {
 		idx := rand.Int() % len(w.data)
 		w.InjectWater(idx, &m)
 	}
