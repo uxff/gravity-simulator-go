@@ -183,12 +183,17 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 		}
 
 		curDot.hasNext = true
-		curDot.dir = theDir
 		//fmt.Println("got dir ok: theDir=", theDir, "rollDir=", rollDir, "target x,y,h:", tx, ty, assumeFall)
 		break
 	}
 
 	if curDot.hasNext {
+		if curDot.dir-theDir < -math.Pi || curDot.dir-theDir > math.Pi {
+			curDot.dir = -(curDot.dir + theDir) / 2.0
+		} else {
+			curDot.dir = (curDot.dir + theDir) / 2.0
+		}
+
 		curDot.nextIdx = tx + w.width*ty
 		curDot.h--
 		if curDot.h < 0 {
