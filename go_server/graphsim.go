@@ -66,6 +66,7 @@ func (this *FlowList) Init(x int, y int, w *WaterMap, maxlen int) {
 	如果没有流出方向，水位+1；如果有流出方向，按方向滴入下一位置,本地水位-1
 	向WaterMap中的某个坐标注水
 	水尝试找一个流动方向
+	注水，选择方向，流动耦合
 */
 func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 	if pos >= len(w.data) {
@@ -81,22 +82,19 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 			//curDot.hasNext = false
 			return false
 		} else {
-			fmt.Println("what error means too many quantity")
+			fmt.Println("cannot flow so much quantity")
 			return false
 		}
 	}
-	if curDot.q > 100 {
-		fmt.Println("too many quantity me=", curDot)
+	// 过量退出，否则栈溢出
+	if curDot.q > 255 {
+		fmt.Println("too much quantity me=", curDot)
 		return false
 	}
 
 	// 本地水位+1
 	curDot.h++
 	curDot.q++
-
-	if curDot.h < 2 {
-		//return false
-	}
 
 	// if have output, go output
 	if curDot.hasNext {
@@ -135,7 +133,22 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 		curDot.dir = rand.Float64() * math.Pi * 2.0
 	}
 
+	// 选择可继续流出的方向
 	for i := 0; i < 20; i++ {
+		// 查找较低的坑 优先流向低处
+		lowest, lowestVal := curDot.getLowestNeighbor(w, m)
+		if lowest < int(m.data[pos]) {
+			// 小了按照此方向走
+			tx, ty = lowestVal.x, lowestVal.y
+			curDot.hasNext = true
+			fmt.Println("lower first", curDot)
+			break
+		} else if lowest > int(m.data[pos]) {
+			curDot.hasNext = false
+			fmt.Println("desire to go out", curDot)
+			break
+		}
+
 		var pit1 float64 = rand.Float64() - rand.Float64()
 		rollDir = pit1 * pit1 * pit1 * (math.Pi/1.2 + float64(i)/10.0)
 		//rollDir = rand.Float64() * math.Pi * 2.0
@@ -199,6 +212,7 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 		break
 	}
 
+	// 选择成功则流入
 	if curDot.hasNext {
 		// 不能过于激进地修改方向，否则曲线太弯曲容易eatself
 		//		if curDot.dir-theDir < -math.Pi {
@@ -235,99 +249,13 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 		return true
 	} else {
 		fmt.Println("cannot flow anywhere: curDot=", curDot)
+		if curDot.h > 1 {
+			curDot.h -= 2
+			m.data[pos] += 1
+			fmt.Println("convert water to topo:", curDot)
+		}
 	}
 	return false
-}
-
-/*思路不好，作废*/
-func (this *FlowList) Move2(m *Topomap, w *WaterMap) {
-	ox, oy := this.lastDot.x, this.lastDot.y
-
-	// 流入水源
-	oid := int(ox) + int(oy)*m.width
-	if oid < 0 || m.width*m.height < oid {
-		fmt.Println("illegal oid:", oid)
-		return
-	}
-
-	// lastDot indicate next
-	//var nextDot = &this.List[this.length]
-	var nextDot *WaterDot = nil
-
-	// 假设选择一个方向 查看是否能前进
-	var allvx, allvy float64 = 0.0, 0.0
-	var theDir, rollDir float64 = this.lastDot.dir, 0.0
-	var tx, ty int
-
-	var hasStep, needTurn bool = false, false
-	for i := 0; i < 20; i++ {
-		var pit1 float64 = rand.Float64() - rand.Float64()
-		rollDir = pit1 * pit1 * pit1 * math.Pi / 2.0
-
-		theDir += rollDir
-		allvx, allvy = (math.Cos(theDir) * this.step), (math.Sin(theDir) * this.step)
-
-		// 碰到边界
-		tx, ty = int(float64(this.lastDot.x)+allvx), int(float64(this.lastDot.y)+allvy)
-		if tx < 0 || ty < 0 || int(tx) > m.width-1 || int(ty) > m.height-1 {
-			//fmt.Println("seems over bound tx,ty:", tx, ty, "o=", this.lastDot, "i=", i)
-			continue
-		}
-
-		// 地形较高 不允许流向高处 对方海拔+对方水位-本地海拔+本地水位
-		assumeFall := int(m.data[ty*m.width+tx]) - int(m.data[oid]) // + len(w.data[ty*m.width+tx].input) - len(w.data[oid].input)
-		if assumeFall >= 1 {
-			fmt.Println("seems flow up, fall,dot,tx,ty=", assumeFall, this.lastDot, tx, ty, "i=", i)
-			continue
-		}
-
-		// 碰到自己 碰到水域
-		if w.data[tx+ty*w.width].q >= this.lastDot.q {
-			//qFall := w.data[tx+ty*w.width].q - this.lastDot.q
-			//fmt.Println("seems turn self, qFall:", qFall, "i=", i)
-			// 如果流入的流量小于流出的流量 则死循环
-			var prepreFall int = 0
-			for _, dotidx := range w.data[tx+ty*w.width].input {
-				if dotidx == oid {
-					//fmt.Println("do not count self:", dotidx)
-					continue
-				}
-				prepreFall += w.data[dotidx].q
-			}
-			if w.data[tx+ty*w.width].q >= prepreFall+1 {
-				fmt.Println("seemes turn self, too quantity", w.data[tx+ty*w.width], "oid=", oid, "i=", i, "length=", this.length)
-				needTurn = true
-				//continue
-			}
-		}
-
-		hasStep = true
-		//fmt.Println("got dir ok: theDir=", theDir, "rollDir=", rollDir, "target x,y,h:", tx, ty, assumeFall, "needTurn", needTurn)
-		break
-	}
-
-	if hasStep {
-		this.lastDot.nextIdx = tx + ty*w.width //int(nextDot.x) + int(nextDot.y)*m.width //nextDot
-		nextDot = &w.data[tx+ty*w.width]
-		nextDot.x, nextDot.y = this.lastDot.x, this.lastDot.y
-		nextDot.x += float32(allvx)
-		nextDot.y += float32(allvy)
-		nextDot.dir = theDir
-		nextDot.q++
-		// 流入流量 应该排重
-		nextDot.input = append(nextDot.input, oid)
-
-		this.lastIdx = this.lastDot.nextIdx
-		this.List[this.length] = this.lastDot.nextIdx
-
-		// 切换指针
-		this.lastDot = nextDot
-		this.length++
-		fmt.Println("go next ok:", nextDot, "rollDir=", rollDir, "needTurn=", needTurn, "length=", this.length)
-	} else {
-		//this.lastDot.q--
-		fmt.Println("move failed, no step can go")
-	}
 }
 
 func (this *Topomap) Init(width int, height int) {
@@ -339,6 +267,7 @@ func (this *WaterMap) Init(width int, height int) {
 	this.data = make([]WaterDot, width*height)
 	this.width = width
 	this.height = height
+	// 把点的实际基点摆在中间
 	for x := 0; x < this.width; x++ {
 		for y := 0; y < this.height; y++ {
 			this.data[x+y*this.width].x = float32(x) + 0.5
@@ -384,8 +313,6 @@ func lineTo(img *image.RGBA, startX, startY, destX, destY int, lineColor, startC
 	if startX != destX && startY != destY {
 		img.Set(startX+int(i/distM*float64(destX-startX)), startY+int(i/distM*float64(destY-startY)), startColor)
 	}
-	//img.Set(destX, destY, startColor)
-	//img.Set(startX, startY, startColor)
 }
 
 // 计算来源的平均夹角
@@ -410,6 +337,48 @@ func (d *WaterDot) calcInputAvgDir(w *WaterMap) (dir float64, hasDir bool) {
 func (d *WaterDot) giveInputXY(inputX, inputY float32) {
 	d.x, d.y = (d.x+inputX)/2, (d.y+inputY)/2
 }
+
+func (d *WaterDot) getNeighbors(w *WaterMap) []struct{ x, y int } {
+	pos := make([]struct{ x, y int }, 8)
+	pos[0].x, pos[0].y = int(d.x+1), int(d.y)
+	pos[1].x, pos[1].y = int(d.x+1), int(d.y-1)
+	pos[2].x, pos[2].y = int(d.x), int(d.y-1)
+	pos[3].x, pos[3].y = int(d.x-1), int(d.y-1)
+	pos[4].x, pos[4].y = int(d.x-1), int(d.y)
+	pos[5].x, pos[5].y = int(d.x-1), int(d.y+1)
+	pos[6].x, pos[6].y = int(d.x), int(d.y+1)
+	pos[7].x, pos[7].y = int(d.x+1), int(d.y+1)
+	return pos
+}
+
+/*获取周围最低的点 返回安全的坐标，不在地图外*/
+func (d *WaterDot) getLowestNeighbor(w *WaterMap, m *Topomap) (lowest int, lowestVal struct{ x, y int }) {
+	pos := d.getNeighbors(w)
+	highMap := make(map[int][]struct{ x, y int }, 8)
+	for _, nei := range pos {
+		if nei.x < 0 || nei.x > w.width-1 || nei.y < 0 || nei.y > w.height-1 {
+			continue
+		}
+		if len(highMap[int(m.data[nei.x+nei.y*w.width])]) == 0 {
+			highMap[int(m.data[nei.x+nei.y*w.width])] = []struct{ x, y int }{{nei.x, nei.y}} //make([]struct{ x, y int }, 1)
+			//highMap[int(m.data[nei.x+nei.y*w.width])][0].x, highMap[int(m.data[nei.x+nei.y*w.width])][0].y = nei.x, nei.y
+		} else {
+			highMap[int(m.data[nei.x+nei.y*w.width])] = append(highMap[int(m.data[nei.x+nei.y*w.width])], struct{ x, y int }{nei.x, nei.y})
+		}
+	}
+	lowest = 8
+	for k, _ := range highMap {
+		if k < lowest {
+			lowest = k
+		}
+	}
+	//fmt.Println("lowest,highMap=", lowest, highMap)
+	if len(highMap[lowest]) == 0 {
+		return lowest, lowestVal
+	}
+	return lowest, highMap[lowest][rand.Int()%len(highMap[lowest])]
+}
+
 func main() {
 	rand.Seed(int64(time.Now().UnixNano()))
 
@@ -533,13 +502,6 @@ func main() {
 		}
 	}
 
-	// 生成flow水流
-	//fmt.Println("before move:", river.length, time.Now().UnixNano(), "maxColor=", maxColor)
-	//for i := 1; i < *times; i++ {
-	//	river.Move2(&m, &w)
-	//}
-	//fmt.Println("after move:", river.length, time.Now().UnixNano())
-
 	// 随机洒水
 	for i := 0; i < *times; i++ {
 		idx := rand.Int() % len(w.data)
@@ -583,7 +545,6 @@ func main() {
 		for wi := 0; wi < 5; wi++ {
 			img.Set(wi, i, c)
 		}
-		//fmt.Println("c:", color, i)//每个列都一样
 	}
 
 	// 输出图片文件
