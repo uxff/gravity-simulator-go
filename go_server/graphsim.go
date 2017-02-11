@@ -126,7 +126,7 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 	var theDir, rollDir float64 = curDot.dir, 0.0
 	var tx, ty int
 	var allvx, allvy float64 = 0.0, 0.0
-	curDot.x, curDot.y = float32(curX)+0.5, float32(curY)+0.5
+	//curDot.x, curDot.y = float32(curX)+0.5, float32(curY)+0.5
 
 	//curDot.dir = avg(curDot.input.dir)
 	var hasDir bool
@@ -137,7 +137,7 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 
 	for i := 0; i < 20; i++ {
 		var pit1 float64 = rand.Float64() - rand.Float64()
-		rollDir = pit1 * pit1 * pit1 * (math.Pi/1.5 + float64(i)/10.0)
+		rollDir = pit1 * pit1 * pit1 * (math.Pi/1.2 + float64(i)/10.0)
 		//rollDir = rand.Float64() * math.Pi * 2.0
 		theDir = rollDir + curDot.dir
 
@@ -150,6 +150,12 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 			// 任其流出地图外，不再让其流回来
 			curDot.h--
 			return false
+		}
+		if tx == curX && ty == curY {
+			// 内部移动后还在内部，将下次的基点延长
+			curDot.x, curDot.y = curDot.x+float32(allvx)/2, curDot.y+float32(allvy)/2
+			fmt.Println("inner step")
+			continue
 		}
 		// 计算地形落差 地形较高 不允许流向高处
 		assumeFall := (int(m.data[ty*m.width+tx])*2 + w.data[ty*w.width+tx].h) - (int(m.data[pos])*2 + curDot.h)
@@ -195,12 +201,15 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 
 	if curDot.hasNext {
 		// 不能过于激进地修改方向，否则曲线太弯曲容易eatself
-		//		if curDot.dir-theDir < -math.Pi || curDot.dir-theDir > math.Pi {
-		//			curDot.dir = -(curDot.dir + theDir) / 2.0
+		//		if curDot.dir-theDir < -math.Pi {
+		//			curDot.dir = (curDot.dir+theDir)/2.0 - math.Pi
+		//		} else if curDot.dir-theDir > math.Pi {
+		//			curDot.dir = -(curDot.dir+theDir)/2.0 - math.Pi
 		//		} else {
-		//			curDot.dir = (curDot.dir + theDir) / 2.0
+		//			curDot.dir = curDot.dir + (curDot.dir-theDir)/2.0 //(curDot.dir + theDir) / 2.0
 		//		}
-		curDot.dir = theDir
+		//curDot.dir = theDir
+		curDot.dir = curDot.dir + rollDir/2.0
 
 		curDot.nextIdx = tx + w.width*ty
 		curDot.h--
@@ -219,6 +228,7 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 		// 如果没有，则将me加入到它的input
 		if nextHasMe == false {
 			w.data[curDot.nextIdx].input = append(w.data[curDot.nextIdx].input, pos)
+			w.data[curDot.nextIdx].giveInputXY(curDot.x+float32(allvx), curDot.y+float32(allvy))
 		}
 		//w.data[curDot.nextIdx].h++
 		return w.InjectWater(curDot.nextIdx, m)
@@ -229,6 +239,7 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 	return false
 }
 
+/*思路不好，作废*/
 func (this *FlowList) Move2(m *Topomap, w *WaterMap) {
 	ox, oy := this.lastDot.x, this.lastDot.y
 
@@ -328,6 +339,12 @@ func (this *WaterMap) Init(width int, height int) {
 	this.data = make([]WaterDot, width*height)
 	this.width = width
 	this.height = height
+	for x := 0; x < this.width; x++ {
+		for y := 0; y < this.height; y++ {
+			this.data[x+y*this.width].x = float32(x) + 0.5
+			this.data[x+y*this.width].y = float32(y) + 0.5
+		}
+	}
 }
 
 type Ring struct {
@@ -390,6 +407,9 @@ func (d *WaterDot) calcInputAvgDir(w *WaterMap) (dir float64, hasDir bool) {
 	return dir, hasDir
 }
 
+func (d *WaterDot) giveInputXY(inputX, inputY float32) {
+	d.x, d.y = (d.x+inputX)/2, (d.y+inputY)/2
+}
 func main() {
 	rand.Seed(int64(time.Now().UnixNano()))
 
@@ -523,6 +543,8 @@ func main() {
 	// 随机洒水
 	for i := 0; i < *times; i++ {
 		idx := rand.Int() % len(w.data)
+		//x, y := idx%w.width, idx/w.width
+		//w.data[idx].x, w.data[idx].y = float32(x)+0.5, float32(y)+0.5
 		w.InjectWater(idx, &m)
 	}
 	// 顺序洒水
@@ -558,14 +580,9 @@ func main() {
 	// 绘制颜色模板
 	for i := 0; i < len(cs); i++ {
 		c := cs[len(cs)-i-1]
-		img.Set(0, i, c)
-		img.Set(7, i, c)
-		img.Set(6, i, c)
-		img.Set(5, i, c)
-		img.Set(4, i, c)
-		img.Set(3, i, c)
-		img.Set(2, i, c)
-		img.Set(1, i, c)
+		for wi := 0; wi < 5; wi++ {
+			img.Set(wi, i, c)
+		}
 		//fmt.Println("c:", color, i)//每个列都一样
 	}
 
