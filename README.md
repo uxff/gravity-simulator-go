@@ -26,5 +26,5 @@ go build go_server/websocket_server.go
 #继续执行s2步，回到浏览器查看效果。
 
 ```
-使用 calc_server -h 和 websocket -h 查看对应的服务端参数和用法。
+使用 calc_server -h 和 websocket_server -h 查看对应的服务端参数和用法。
 
