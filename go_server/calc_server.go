@@ -68,29 +68,25 @@ var maxMassId int = 0
 func initOrbs(num int, config *InitConfig) []Orb {
 	oList := make([]Orb, num)
 
-	if config.Eternal != 0.0 {
-		num -= 1
-	}
-
 	for i := 0; i < num; i++ {
 		o := &oList[i]
 
-		o.X, o.Y = (0.5-rand.Float64())*config.Wide, (0.5-rand.Float64())*config.Wide
-		o.Z = (0.5 - rand.Float64()) * config.Wide
+		o.X, o.Y, o.Z = (0.5-rand.Float64())*config.Wide, (0.5-rand.Float64())*config.Wide, (0.5-rand.Float64())*config.Wide
 		o.Vx = (rand.Float64() - 0.5) * config.Velo * 2.0
 		o.Vy = (rand.Float64() - 0.5) * config.Velo * 2.0
 		o.Vz = (rand.Float64() - 0.5) * config.Velo * 2.0
 		o.Size = 1
 		o.Mass = rand.Float64() * config.Mass
-		//o.Id = rand.Int()
-		o.Id = i
+		o.Id = i // rand.Int()
 		o.LifeStep = 1
 	}
+	// 如果配置了恒星，将最后一个设置为恒星
 	if config.Eternal != 0.0 {
-		eternalOrb := &oList[num]
+		eternalId := num - 1
+		eternalOrb := &oList[eternalId]
 		eternalOrb.Mass = config.Eternal
-		eternalOrb.Id = num //rand.Int()
-		eternalOrb.LifeStep = 1
+		eternalOrb.Id = eternalId //rand.Int()
+		eternalOrb.X, eternalOrb.Y, eternalOrb.Z = 0, 0, 0
 	}
 	return oList
 }
@@ -275,12 +271,12 @@ func main() {
 	var mcHost, mcKey string
 	var numCpu int
 
-	flag.IntVar(&num_orbs, "init_orbs", 0, "how many orbs init, do init when its value >1")
-	flag.IntVar(&num_times, "num_times", 100, "how many times calc")
+	flag.IntVar(&num_orbs, "init-orbs", 0, "how many orbs init, do init when its value >1")
+	flag.IntVar(&num_times, "calc-times", 100, "how many times calc")
 	flag.Float64Var(&eternal, "eternal", 15000.0, "the mass of eternal, 0 means no eternal")
-	flag.StringVar(&mcHost, "mc_host", "127.0.0.1:11211", "memcache server")
-	flag.StringVar(&mcKey, "mc_key", "mcasync2", "key name save into memcache")
-	var doShowList = flag.Bool("show_list", false, "show orb list and exit")
+	flag.StringVar(&mcHost, "mchost", "127.0.0.1:11211", "memcache server")
+	flag.StringVar(&mcKey, "mckey", "thelist1", "key name save into memcache")
+	var doShowList = flag.Bool("showlist", false, "show orb list and exit")
 	var configMass = flag.Float64("config-mass", 10.0, "the mass of orbs")
 	var configWide = flag.Float64("config-wide", 1000.0, "the wide of orbs")
 	var configVelo = flag.Float64("config-velo", 0.005, "the velo of orbs")

@@ -1,5 +1,5 @@
-var wsUri = "ws://mc.lo:8081/orbs";
-var mcKey = 'mcasync2';
+var wsUri = "ws://mc.lo:8081/orbs";//host mc.lo redirect to 127.0.0.1
+var mcKey = 'thelist1';
 var MyWebsocket = {
     wsUri: wsUri,
     websocket: null,
@@ -84,7 +84,5 @@ var MyWebsocket = {
     },
 
     getOrbList: function () {
-        var key='mcasync2';
-        //this.
     }
 };
