@@ -12,7 +12,6 @@ import (
 	//"strconv"
 	"time"
 	//"strings"
-	//"github.com/bitly/go-simplejson"
 	"github.com/bradfitz/gomemcache/memcache"
 )
 
@@ -291,8 +290,6 @@ func main() {
 		numCpu = runtime.NumCPU() - 1
 	}
 	runtime.GOMAXPROCS(numCpu)
-	//fmt.Println("useage: go_server.exe $num_orbs $num_times")
-	//fmt.Println("    eg: go_server.exe -num_orbs", num_orbs, "-num_times", num_times)
 
 	var oList []Orb
 	var mcVal []byte
@@ -304,7 +301,6 @@ func main() {
 	if num_orbs > 0 {
 		initConfig := InitConfig{*configMass, *configWide, *configVelo, eternal}
 		oList = initOrbs(num_orbs, &initConfig)
-		//fmt.Println("after init oList=", oList)
 	} else {
 		oList, mcVal = getListFromMc(mc, &mcKey)
 	}
@@ -321,7 +317,6 @@ func main() {
 	for i := 0; i < num_times; i++ {
 		perTimes = updateOrbs(oList, i)
 		realTimes += perTimes
-		//fmt.Printf("in main oList=%p\n", oList)//slice地址一直是一样的，除非append
 
 		tmpTimes += perTimes
 		if tmpTimes > 5000000 {
