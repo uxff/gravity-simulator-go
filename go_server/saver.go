@@ -88,7 +88,7 @@ func (this *FileSaver) Save(key *string, val []byte) bool {
 	for {
 
 		fileFullpath := this.savedir + "/" + *key
-		cacheFile, errOpen := os.OpenFile(fileFullpath, os.O_CREATE|os.O_TRUNC, os.ModePerm)
+		cacheFile, errOpen := os.OpenFile(fileFullpath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, os.ModePerm)
 
 		if errOpen != nil {
 			fmt.Println("open", fileFullpath, "error:", errOpen)
