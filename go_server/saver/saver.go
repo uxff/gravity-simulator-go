@@ -1,14 +1,14 @@
 /*
-	saver for calcserver
-	build with calc_server.go
+	saver for calc_server
 */
-package main
+package saver
 
 import (
 	"encoding/json"
 	"fmt"
 	"os"
 
+	orbs "../orbs"
 	"github.com/bradfitz/gomemcache/memcache"
 )
 
@@ -27,8 +27,8 @@ type Saver struct {
 type SaverFace interface {
 	SetConfig(config map[string]string) bool
 	Save(key *string, val []byte) bool
-	SaveList(key *string, oList []Orb) bool
-	LoadList(key *string) []Orb
+	SaveList(key *string, oList []orbs.Orb) bool
+	LoadList(key *string) []orbs.Orb
 }
 type FileSaver struct {
 	savedir string
@@ -45,7 +45,7 @@ func (this *McSaver) SetConfig(config map[string]string) bool {
 	}
 	return false
 }
-func (this *McSaver) SaveList(key *string, oList []Orb) bool {
+func (this *McSaver) SaveList(key *string, oList []orbs.Orb) bool {
 	if strList, err := json.Marshal(oList); err == nil {
 		return this.Save(key, strList)
 	} else {
@@ -73,7 +73,7 @@ func (this *FileSaver) SetConfig(config map[string]string) bool {
 	return false
 }
 
-func (this *FileSaver) SaveList(key *string, oList []Orb) bool {
+func (this *FileSaver) SaveList(key *string, oList []orbs.Orb) bool {
 	if strList, err := json.Marshal(oList); err == nil {
 		return this.Save(key, strList)
 	} else {
@@ -108,7 +108,7 @@ func (this *FileSaver) Save(key *string, val []byte) bool {
 	return ret
 }
 
-func (this *McSaver) LoadList(cacheKey *string) (oList []Orb) {
+func (this *McSaver) LoadList(cacheKey *string) (oList []orbs.Orb) {
 	var orbListStr string
 
 	//var mc *memcache.Client = (*memcache.Client)(this.saveHandler)
@@ -123,7 +123,7 @@ func (this *McSaver) LoadList(cacheKey *string) (oList []Orb) {
 	return oList
 }
 
-func (this *FileSaver) LoadList(cacheKey *string) (oList []Orb) {
+func (this *FileSaver) LoadList(cacheKey *string) (oList []orbs.Orb) {
 	var ret bool = false
 
 	for {
@@ -181,11 +181,11 @@ func (this *Saver) GetHandler() (handler SaverFace) {
 }
 
 // 从数据库获取orbList
-func (this *Saver) GetList(key *string) (oList []Orb) {
+func (this *Saver) GetList(key *string) (oList []orbs.Orb) {
 	return this.saveHandler.LoadList(key)
 }
 
 // 将orbList存到数据库
-func (this *Saver) SaveList(key *string, oList []Orb) bool {
+func (this *Saver) SaveList(key *string, oList []orbs.Orb) bool {
 	return this.saveHandler.SaveList(key, oList)
 }

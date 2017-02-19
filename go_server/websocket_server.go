@@ -9,26 +9,12 @@ import (
 	"net/http"
 	"net/url"
 	//"time"
+	orbs "./orbs"
+	saverpkg "./saver"
 
 	"github.com/bradfitz/gomemcache/memcache"
 	"github.com/gorilla/websocket"
 )
-
-// 结构体中的变量必须大写才能被json输出 坑
-// 天体数据结构
-type Orb struct {
-	X    float64 `json:"x"`
-	Y    float64 `json:"y"`
-	Z    float64 `json:"z"`
-	Vx   float64 `json:"vx"`
-	Vy   float64 `json:"vy"`
-	Vz   float64 `json:"vz"`
-	Mass float64 `json:"m"`
-	Size float32 `json:"sz"`
-	Stat int     `json:"st"`
-	Id   int     `json:"id"`
-	//CalcTimes int     `json:"calcTimes"`
-}
 
 // json返回值结构
 type JsonRet struct {
@@ -43,7 +29,7 @@ var mcHost = flag.String("mchost", "127.0.0.1:11211", "memcache server for readi
 var upgrader = websocket.Upgrader{} // use default options
 
 //var mc = memcache.New(*mcHost)
-var saver = Saver{}
+var saver = saverpkg.Saver{}
 
 func echo(w http.ResponseWriter, r *http.Request) {
 	c, err := upgrader.Upgrade(w, r, nil)
@@ -128,11 +114,8 @@ func handleOrbs(w http.ResponseWriter, r *http.Request) {
 }
 
 // 从数据库获取orbList
-func getListFromMc(mc *memcache.Client, mcKey *string) (v []Orb) {
-	//mapHap := make(map[string]map[string]string)
+func getListFromMc(mc *memcache.Client, mcKey *string) (v []orbs.Orb) {
 	if orbListStrVal, err := mc.Get(*mcKey); err == nil {
-		//orbListStr = string(orbListStrVal.Value)
-		//v = orbListStrVal.Value
 		err := json.Unmarshal(orbListStrVal.Value, &v)
 		if err != nil {
 			log.Println("json.Unmarshal err=", err)
