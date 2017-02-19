@@ -11,10 +11,8 @@ import (
 	"runtime"
 	//"strconv"
 	"time"
-	//"strings"
 )
 
-// 结构体中的变量必须大写才能被json输出 坑
 // 天体结构体声明
 type Orb struct {
 	X    float64 `json:"x"`  // 坐标x
@@ -265,7 +263,7 @@ func main() {
 
 	var htype int = 1
 	saverConf := map[string]string{"dir": "./go_server/filecache"}
-	//saverConf := map[string]string{"host": "mc.lo:11211"}
+	//saverConf := map[string]string{"host": mcHost}
 	saver.SetHandler(htype, saverConf)
 
 	// 根据时间设置随机数种子
