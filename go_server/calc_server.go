@@ -2,7 +2,7 @@ package main
 
 import (
 	//"bytes"
-	"encoding/json"
+	//"encoding/json"
 	"flag"
 	"fmt"
 	"math"
@@ -12,7 +12,6 @@ import (
 	//"strconv"
 	"time"
 	//"strings"
-	"github.com/bradfitz/gomemcache/memcache"
 )
 
 // 结构体中的变量必须大写才能被json输出 坑
@@ -62,6 +61,8 @@ const MIN_CRITICAL_DIST = 1.0
 // 监控速度和加速度
 var maxVeloX, maxVeloY, maxVeloZ, maxAccX, maxAccY, maxAccZ, maxMass float64 = 0, 0, 0, 0, 0, 0, 0
 var maxMassId int = 0
+
+var saver = Saver{}
 
 // 初始化天体位置，质量，加速度 在一片区域随机分布
 func initOrbs(num int, config *InitConfig) []Orb {
@@ -160,16 +161,14 @@ func (o *Orb) CalcGravityAll(oList []Orb) Acc {
 			continue
 		}
 
-		var isTooNearly bool = false
-		//var isTaRiped bool = false
 		dist := o.CalcDist(target)
 
 		// 距离太近，被撞
-		isTooNearly = dist*dist < MIN_CRITICAL_DIST*MIN_CRITICAL_DIST
+		isTooNearly := dist*dist < MIN_CRITICAL_DIST*MIN_CRITICAL_DIST
 		// 速度太快，被撕裂
-		//isTaRiped = dist*dist < (target.Vx*target.Vx+target.Vy*target.Vy+target.Vz*target.Vz)*10
+		isTaRipped := dist*dist < (target.Vx*target.Vx+target.Vy*target.Vy+target.Vz*target.Vz)*10
 
-		if isTooNearly || dist*dist < (target.Vx*target.Vx+target.Vy*target.Vy+target.Vz*target.Vz)*10 {
+		if isTooNearly || isTaRipped {
 
 			// 碰撞机制 非弹性碰撞 动量守恒 m1v1+m2v2=(m1+m2)v
 			if o.Mass > target.Mass {
@@ -221,32 +220,13 @@ func (o *Orb) CalcDist(target *Orb) float64 {
 }
 
 // 从数据库获取orbList
-func getListFromMc(mc *memcache.Client, mcKey *string) (oList []Orb, v []byte) {
-	var orbListStr string
-	if orbListStrVal, err := mc.Get(*mcKey); err == nil {
-		v = orbListStrVal.Value
-		orbListStr = string(orbListStrVal.Value)
-		err := json.Unmarshal(orbListStrVal.Value, &oList)
-		fmt.Println("mc.get len(val)=", len(orbListStr), "after unmarshal, len=", len(oList), "json.Unmarshal err=", err)
-	} else {
-		fmt.Println("mc.get", *mcKey, "error:", err)
-	}
-	return oList, v
+func getList(key *string) (oList []Orb) {
+	return saver.GetHandler().LoadList(key)
 }
 
 // 将orbList存到数据库
-func saveListToMc(mc *memcache.Client, mcKey *string, oList []Orb) {
-	if strList, err := json.Marshal(oList); err == nil {
-		theVal := strList //fmt.Sprintf(`{"code":0,"msg":"ok","data":{"list":%s}}`, strList)
-		errMc := mc.Set(&memcache.Item{Key: *mcKey, Value: []byte(theVal)})
-		if errMc != nil {
-			fmt.Println("save failed:", errMc)
-		} else {
-			//fmt.Println("save success: len=", len(oList), "strlen=", len(strList))
-		}
-	} else {
-		fmt.Println("set", mcKey, "json.Marshal error:", err)
-	}
+func saveList(key *string, oList []Orb) {
+	saver.GetHandler().SaveList(key, oList)
 }
 
 // 清理orbList中的垃圾
@@ -274,7 +254,7 @@ func main() {
 	flag.IntVar(&num_times, "calc-times", 100, "how many times calc")
 	flag.Float64Var(&eternal, "eternal", 15000.0, "the mass of eternal, 0 means no eternal")
 	flag.StringVar(&mcHost, "mchost", "127.0.0.1:11211", "memcache server")
-	flag.StringVar(&mcKey, "mckey", "thelist1", "key name save into memcache")
+	flag.StringVar(&mcKey, "savekey", "thelist1", "key name save into memcache")
 	var doShowList = flag.Bool("showlist", false, "show orb list and exit")
 	var configMass = flag.Float64("config-mass", 10.0, "the mass of orbs")
 	var configWide = flag.Float64("config-wide", 1000.0, "the wide of orbs")
@@ -292,8 +272,11 @@ func main() {
 	runtime.GOMAXPROCS(numCpu)
 
 	var oList []Orb
-	var mcVal []byte
-	mc := memcache.New(mcHost) //New("mc.lo:11211", "mc.lo:11211")
+
+	var htype int = 2
+	//saverConf := map[string]string{"dir": "./go_server/filecache/"}
+	saverConf := map[string]string{"host": "mc.lo:11211"}
+	saver.SetHandler(htype, saverConf)
 
 	// 根据时间设置随机数种子
 	rand.Seed(int64(time.Now().Nanosecond()))
@@ -302,12 +285,11 @@ func main() {
 		initConfig := InitConfig{*configMass, *configWide, *configVelo, eternal}
 		oList = initOrbs(num_orbs, &initConfig)
 	} else {
-		oList, mcVal = getListFromMc(mc, &mcKey)
+		oList = getList(&mcKey)
 	}
 	if *doShowList {
 		fmt.Println(oList)
 		return
-		fmt.Println(string(mcVal))
 	}
 	num_orbs = len(oList)
 
@@ -320,7 +302,7 @@ func main() {
 
 		tmpTimes += perTimes
 		if tmpTimes > 5000000 {
-			saveListToMc(mc, &mcKey, oList)
+			saveList(&mcKey, oList)
 			oList = clearOrbList(oList)
 			tmpTimes = 0
 			saveTimes++
@@ -335,10 +317,10 @@ func main() {
 	fmt.Println("core:", numCpu, " orbs:", num_orbs, len(oList), "times:", num_times, "real:", realTimes, "use time:", timeUsed, "sec", "CPS:", float64(realTimes)/timeUsed)
 	fmt.Println("maxVelo=", maxVeloX, maxVeloY, maxVeloZ, "maxAcc=", maxAccX, maxAccY, maxAccZ, "maxMass", maxMassId, maxMass)
 
-	saveListToMc(mc, &mcKey, oList)
+	saveList(&mcKey, oList)
 	saveTimes++
 
 	endTimeNano = time.Now().UnixNano()
 	timeUsed = float64(endTimeNano-startTimeNano) / 1000000000.0
-	fmt.Println("all used time with mc->save:", timeUsed, "sec, saveTimes=", saveTimes, "save per sec=", float64(saveTimes)/timeUsed)
+	fmt.Println("all used time with save:", timeUsed, "sec, saveTimes=", saveTimes, "save per sec=", float64(saveTimes)/timeUsed)
 }
