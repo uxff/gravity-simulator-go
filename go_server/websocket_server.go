@@ -152,7 +152,7 @@ func main() {
 	flag.Parse()
 
 	var htype int = 1
-	saverConf := map[string]string{"dir": "./go_server/filecache/"}
+	saverConf := map[string]string{"dir": "./go_server/filecache"}
 	//saverConf := map[string]string{"host": "mc.lo:11211"}
 	saver.SetHandler(htype, saverConf)
 
