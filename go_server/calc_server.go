@@ -23,7 +23,7 @@ type Orb struct {
 	Vx   float64 `json:"vx"` // 速度x
 	Vy   float64 `json:"vy"` // 速度y
 	Vz   float64 `json:"vz"` // 速度z
-	Mass float64 `json:"ma"` // 质量
+	Mass float64 `json:"m"`  // 质量
 	Size int     `json:"sz"` // 大小，用于计算吞并的天体数量
 	Stat int     `json:"st"` // 用于标记是否已爆炸 1=正常 2=已爆炸
 	Id   int     `json:"id"`

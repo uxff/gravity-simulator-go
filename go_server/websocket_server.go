@@ -23,7 +23,7 @@ type Orb struct {
 	Vx   float64 `json:"vx"`
 	Vy   float64 `json:"vy"`
 	Vz   float64 `json:"vz"`
-	Mass float64 `json:"ma"`
+	Mass float64 `json:"m"`
 	Size float32 `json:"sz"`
 	Stat int     `json:"st"`
 	Id   int     `json:"id"`
