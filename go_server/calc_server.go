@@ -17,16 +17,16 @@ import (
 // 结构体中的变量必须大写才能被json输出 坑
 // 天体结构体声明
 type Orb struct {
-	X        float64 `json:"x"`        // 坐标x
-	Y        float64 `json:"y"`        // 坐标y
-	Z        float64 `json:"z"`        // 坐标z
-	Vx       float64 `json:"vx"`       // 速度x
-	Vy       float64 `json:"vy"`       // 速度y
-	Vz       float64 `json:"vz"`       // 速度z
-	Mass     float64 `json:"mass"`     // 质量
-	Size     int     `json:"size"`     // 大小，用于计算吞并的天体数量
-	LifeStep int     `json:"lifeStep"` // 用于标记是否已爆炸 1=正常 2=已爆炸
-	Id       int     `json:"id"`
+	X    float64 `json:"x"`  // 坐标x
+	Y    float64 `json:"y"`  // 坐标y
+	Z    float64 `json:"z"`  // 坐标z
+	Vx   float64 `json:"vx"` // 速度x
+	Vy   float64 `json:"vy"` // 速度y
+	Vz   float64 `json:"vz"` // 速度z
+	Mass float64 `json:"ma"` // 质量
+	Size int     `json:"sz"` // 大小，用于计算吞并的天体数量
+	Stat int     `json:"st"` // 用于标记是否已爆炸 1=正常 2=已爆炸
+	Id   int     `json:"id"`
 	//CalcTimes int     `json:"calcTimes"`
 }
 
@@ -78,7 +78,7 @@ func initOrbs(num int, config *InitConfig) []Orb {
 		o.Size = 1
 		o.Mass = rand.Float64() * config.Mass
 		o.Id = i // rand.Int()
-		o.LifeStep = 1
+		o.Stat = 1
 	}
 	// 如果配置了恒星，将最后一个设置为恒星
 	if config.Eternal != 0.0 {
@@ -116,7 +116,7 @@ func updateOrbs(oList []Orb, nStep int) int {
 // 天体运动一次
 func (o *Orb) update(oList []Orb, c chan int, nStep int) {
 	aAll := o.CalcGravityAll(oList)
-	if o.LifeStep == 1 {
+	if o.Stat == 1 {
 		o.Vx += aAll.Ax
 		o.Vy += aAll.Ay
 		o.Vz += aAll.Az
@@ -157,7 +157,7 @@ func (o *Orb) CalcGravityAll(oList []Orb) Acc {
 	for i := 0; i < len(oList); i++ {
 		//c <- 1
 		target := &oList[i]
-		if target.Id == o.Id || target.LifeStep != 1 || o.LifeStep != 1 || o.Mass == 0 || target.Mass == 0 {
+		if target.Id == o.Id || target.Stat != 1 || o.Stat != 1 || o.Mass == 0 || target.Mass == 0 {
 			continue
 		}
 
@@ -180,7 +180,7 @@ func (o *Orb) CalcGravityAll(oList []Orb) Acc {
 				o.Vz = (target.Mass*target.Vz + o.Mass*o.Vz) / o.Mass
 				o.Size += 1
 				target.Mass = 0
-				target.LifeStep = 2
+				target.Stat = 2
 			} else {
 				//fmt.Println(o.Id, "crashed by", target.Id, "isTooNearly", isTooNearly, "me=", o, "ta=", target)
 				target.Mass += target.Mass
@@ -189,7 +189,7 @@ func (o *Orb) CalcGravityAll(oList []Orb) Acc {
 				target.Vz = (target.Mass*target.Vz + o.Mass*o.Vz) / target.Mass
 				target.Size += 1
 				o.Mass = 0
-				o.LifeStep = 2
+				o.Stat = 2
 			}
 		} else {
 			// 作用正常，累计计算受到的所有的万有引力
@@ -219,21 +219,11 @@ func (o *Orb) CalcDist(target *Orb) float64 {
 	return math.Sqrt((o.X-target.X)*(o.X-target.X) + (o.Y-target.Y)*(o.Y-target.Y) + (o.Z-target.Z)*(o.Z-target.Z))
 }
 
-// 从数据库获取orbList
-func getList(key *string) (oList []Orb) {
-	return saver.GetHandler().LoadList(key)
-}
-
-// 将orbList存到数据库
-func saveList(key *string, oList []Orb) {
-	saver.GetHandler().SaveList(key, oList)
-}
-
 // 清理orbList中的垃圾
 func clearOrbList(oList []Orb) []Orb {
 	var alive int = len(oList)
 	for i := 0; i < len(oList); i++ {
-		if oList[i].LifeStep != 1 {
+		if oList[i].Stat != 1 {
 			oList = append(oList[:i], oList[i+1:]...)
 			i--
 			alive--
@@ -273,9 +263,9 @@ func main() {
 
 	var oList []Orb
 
-	var htype int = 2
-	//saverConf := map[string]string{"dir": "./go_server/filecache/"}
-	saverConf := map[string]string{"host": "mc.lo:11211"}
+	var htype int = 1
+	saverConf := map[string]string{"dir": "./go_server/filecache/"}
+	//saverConf := map[string]string{"host": "mc.lo:11211"}
 	saver.SetHandler(htype, saverConf)
 
 	// 根据时间设置随机数种子
@@ -285,7 +275,7 @@ func main() {
 		initConfig := InitConfig{*configMass, *configWide, *configVelo, eternal}
 		oList = initOrbs(num_orbs, &initConfig)
 	} else {
-		oList = getList(&mcKey)
+		oList = saver.GetList(&mcKey)
 	}
 	if *doShowList {
 		fmt.Println(oList)
@@ -302,7 +292,7 @@ func main() {
 
 		tmpTimes += perTimes
 		if tmpTimes > 5000000 {
-			saveList(&mcKey, oList)
+			saver.SaveList(&mcKey, oList)
 			oList = clearOrbList(oList)
 			tmpTimes = 0
 			saveTimes++
@@ -317,7 +307,7 @@ func main() {
 	fmt.Println("core:", numCpu, " orbs:", num_orbs, len(oList), "times:", num_times, "real:", realTimes, "use time:", timeUsed, "sec", "CPS:", float64(realTimes)/timeUsed)
 	fmt.Println("maxVelo=", maxVeloX, maxVeloY, maxVeloZ, "maxAcc=", maxAccX, maxAccY, maxAccZ, "maxMass", maxMassId, maxMass)
 
-	saveList(&mcKey, oList)
+	saver.SaveList(&mcKey, oList)
 	saveTimes++
 
 	endTimeNano = time.Now().UnixNano()

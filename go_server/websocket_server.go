@@ -17,16 +17,16 @@ import (
 // 结构体中的变量必须大写才能被json输出 坑
 // 天体数据结构
 type Orb struct {
-	X        float64 `json:"x"`
-	Y        float64 `json:"y"`
-	Z        float64 `json:"z"`
-	Vx       float64 `json:"vx"`
-	Vy       float64 `json:"vy"`
-	Vz       float64 `json:"vz"`
-	Mass     float64 `json:"mass"`
-	Size     float32 `json:"size"`
-	LifeStep int     `json:"lifeStep"`
-	Id       int     `json:"id"`
+	X    float64 `json:"x"`
+	Y    float64 `json:"y"`
+	Z    float64 `json:"z"`
+	Vx   float64 `json:"vx"`
+	Vy   float64 `json:"vy"`
+	Vz   float64 `json:"vz"`
+	Mass float64 `json:"ma"`
+	Size float32 `json:"sz"`
+	Stat int     `json:"st"`
+	Id   int     `json:"id"`
 	//CalcTimes int     `json:"calcTimes"`
 }
 
@@ -42,7 +42,8 @@ var mcHost = flag.String("mchost", "127.0.0.1:11211", "memcache server for readi
 
 var upgrader = websocket.Upgrader{} // use default options
 
-var mc = memcache.New(*mcHost)
+//var mc = memcache.New(*mcHost)
+var saver = Saver{}
 
 func echo(w http.ResponseWriter, r *http.Request) {
 	c, err := upgrader.Upgrade(w, r, nil)
@@ -96,7 +97,7 @@ func handleOrbs(w http.ResponseWriter, r *http.Request) {
 			log.Println("illegal message ignored. message=", string(message))
 			ret.Data["list"] = nil
 		} else {
-			list := getListFromMc(mc, &mcKey)
+			list := saver.GetList(&mcKey) //getListFromMc(mc, &mcKey)
 			ret.Data["list"] = list
 		}
 		//getListFromMc(mc, &string(message))
@@ -148,11 +149,15 @@ func getListFromMc(mc *memcache.Client, mcKey *string) (v []Orb) {
 //}
 
 func main() {
-	//fmt.Println("start:")
-
-	//return
 	flag.Parse()
+
+	var htype int = 1
+	saverConf := map[string]string{"dir": "./go_server/filecache/"}
+	//saverConf := map[string]string{"host": "mc.lo:11211"}
+	saver.SetHandler(htype, saverConf)
+
 	log.SetFlags(0)
+
 	http.Handle("/", http.FileServer(http.Dir(".")))
 	http.HandleFunc("/echo", echo)
 	http.HandleFunc("/orbs", handleOrbs)

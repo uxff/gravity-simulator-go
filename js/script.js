@@ -138,7 +138,7 @@ var lesson1 = {
             sphere.position.y = orb.x;
             sphere.position.z = orb.z;
             sphere.castShadow = sphere.receiveShadow = true;
-            sphere.geometry.radius = 50 * orb.size;
+            sphere.geometry.radius = 50 * orb.sz;
             
             this.scene.add(sphere);
             this.orbList[orb.id] = sphere;
@@ -152,14 +152,14 @@ var lesson1 = {
                 
                 var sphere = this.orbList[orb.id];
                 //console.log(sphere);
-                if (orb.lifeStep!=1) {
+                if (orb.st!=1) {
                     // remove sphere
                     this.scene.remove(sphere);
                 } else {
                     sphere.position.x = orb.y * zoomBase;
                     sphere.position.y = orb.x * zoomBase;
                     sphere.position.z = orb.z * zoomBase;
-                    //sphere.geometry.radius = 50 * orb.size;
+                    //sphere.geometry.radius = 50 * orb.sz;
                 }
             } else {
                 //console.log('id='+orb.id+' not exist in orbList, will ');
@@ -170,7 +170,7 @@ var lesson1 = {
                 sphere.position.y = orb.x * zoomBase;
                 sphere.position.z = orb.z * zoomBase;
                 sphere.castShadow = sphere.receiveShadow = true;
-                //sphere.geometry.radius = 50 * orb.size;
+                //sphere.geometry.radius = 50 * orb.sz;
                 
                 this.scene.add(sphere);
                 this.orbList[orb.id] = sphere;

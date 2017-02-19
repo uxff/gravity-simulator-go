@@ -179,3 +179,13 @@ func (this *Saver) SetHandler(htype int, config map[string]string) (handler Save
 func (this *Saver) GetHandler() (handler SaverFace) {
 	return this.saveHandler
 }
+
+// 从数据库获取orbList
+func (this *Saver) GetList(key *string) (oList []Orb) {
+	return saver.GetHandler().LoadList(key)
+}
+
+// 将orbList存到数据库
+func (this *Saver) SaveList(key *string, oList []Orb) bool {
+	return saver.GetHandler().SaveList(key, oList)
+}
