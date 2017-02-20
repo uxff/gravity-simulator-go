@@ -73,12 +73,12 @@ func main() {
 		tmpTimes += perTimes
 		if tmpTimes > 5000000 {
 			saver.SaveList(&mcKey, oList)
-			oList = orbs.ClearOrbList(oList)
+			//oList = orbs.ClearOrbList(oList)
 			tmpTimes = 0
 		}
 	}
 
-	oList = orbs.ClearOrbList(oList)
+	//oList = orbs.ClearOrbList(oList)
 	//fmt.Println("when clear oList=", oList)
 
 	endTimeNano := time.Now().UnixNano()
