@@ -8,7 +8,7 @@ var MyWebsocket = {
     lastRecvData: null,
     lastError: null,
     output: null,
-    sceneMgr: null,
+    receiveCallback: null,
     initWebsocket: function () {
         this.output = document.getElementById("ws-msg");
         this.testWebSocket();
@@ -46,10 +46,8 @@ var MyWebsocket = {
             var data = eval('('+evt.data+')');
             this.lastRecvData = evt.data;
             //console.log(data);
-            if (this.sceneMgr.isInited==false) {
-                this.sceneMgr.initOrbs(data.data.list);
-            } else {
-                this.sceneMgr.updateOrbs(data.data.list);
+            if (this.receiveCallback != undefined) {
+                this.receiveCallback(data.data.list);
             }
         } catch (e) {
             console.log(e);

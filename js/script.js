@@ -179,6 +179,10 @@ var lesson1 = {
     }
 };
 
+var UpdateOrbs = function(list) {
+    lesson1.updateOrbs(list);
+}
+
 // Animate the scene
 function animate() {
     requestAnimationFrame(animate);
@@ -213,7 +217,7 @@ function render() {
 // Initialize lesson on page load
 function initializeLesson() {
     lesson1.init();
-    MyWebsocket.sceneMgr = lesson1;
+    MyWebsocket.receiveCallback = UpdateOrbs;//不能是lesson1.updateOrbs,函数复制有没有对象。
 
     if (wsUri == undefined || wsUri.length==0) {
         wsUri = $('#ws-addr').val();
