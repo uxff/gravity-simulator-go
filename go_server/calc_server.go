@@ -1,15 +1,10 @@
 package main
 
 import (
-	//"bytes"
-	//"encoding/json"
 	"flag"
 	"fmt"
-	//"math"
 	"math/rand"
-	//"os"
 	"runtime"
-	//"strconv"
 	"time"
 
 	orbs "./orbs"
@@ -68,7 +63,7 @@ func main() {
 	}
 	num_orbs = len(oList)
 
-	realTimes, perTimes, tmpTimes, saveTimes := 0, 0, 0, 0
+	realTimes, perTimes, tmpTimes := 0, 0, 0
 	startTimeNano := time.Now().UnixNano()
 
 	for i := 0; i < num_times; i++ {
@@ -80,7 +75,6 @@ func main() {
 			saver.SaveList(&mcKey, oList)
 			oList = orbs.ClearOrbList(oList)
 			tmpTimes = 0
-			saveTimes++
 		}
 	}
 
@@ -93,9 +87,8 @@ func main() {
 	orbs.ShowMonitorInfo()
 
 	saver.SaveList(&mcKey, oList)
-	saveTimes++
 
 	endTimeNano = time.Now().UnixNano()
 	timeUsed = float64(endTimeNano-startTimeNano) / 1000000000.0
-	fmt.Println("all used time with save:", timeUsed, "sec, saveTimes=", saveTimes, "save per sec=", float64(saveTimes)/timeUsed)
+	fmt.Println("all used time with save:", timeUsed, "sec, saveTimes=", saver.GetSavetimes(), "save per sec=", float64(saver.GetSavetimes())/timeUsed)
 }

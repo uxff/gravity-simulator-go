@@ -21,6 +21,7 @@ const (
 type Saver struct {
 	htype       int
 	saveHandler SaverFace
+	saveTimes   int
 }
 
 /*保存的接口声明*/
@@ -187,5 +188,9 @@ func (this *Saver) GetList(key *string) (oList []orbs.Orb) {
 
 // 将orbList存到数据库
 func (this *Saver) SaveList(key *string, oList []orbs.Orb) bool {
+	this.saveTimes++
 	return this.saveHandler.SaveList(key, oList)
+}
+func (this *Saver) GetSavetimes() int {
+	return this.saveTimes
 }
