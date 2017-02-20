@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>Gravity simulate in 3D and websocket use webgl</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				color: #cccccc;
+				font-family:Monospace;
+				font-size:13px;
+				text-align:center;
+
+				background-color: #050505;
+				margin: 0px;
+				overflow: hidden;
+			}
+
+			#info {
+				position: absolute;
+				top: 0px; width: 100%;
+				padding: 5px;
+			}
+
+			a {
+				color: #0080ff;
+			}
+		</style>
+        <script src="../js/websocket.js"></script>
+	</head>
+	<body>
+
+		<div id="container"></div>
+		<div id="info"><a href="http://threejs.org" target="_blank">three.js</a> webgl - buffergeometry - particles</div>
+        <div style="position: absolute; top: 10px; left: 20px;">
+        websocket server:<input name="ws-addr" id="ws-addr" value="127.0.0.1:8081"/><button id="reConnect">yes</button>
+        <form action="" method="GET">
+        </form>
+<br/>
+Zoom: <button id="zoom_down">&nbsp;-&nbsp;</button><input id="zoom" value="1.0" readonly/><button id="zoom_up">&nbsp;+&nbsp;</button><br/>
+            <div id="ws-msg">
+            websocket not already.
+            </div>  
+        </div>
+
+		<script src="./build/three.js"></script>
+
+		<script src="js/Detector.js"></script>
+		<script src="js/libs/stats.min.js"></script>
+        <script src="js/controls/OrbitControls.js"></script>
+
+        <script src="http://libs.baidu.com/jquery/1.9.1/jquery.min.js"></script>
+        <script src="./webgl_buffergeometry_points.js"></script>
+
+		<script>
+		</script>
+
+	</body>
+</html>
