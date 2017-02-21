@@ -73,7 +73,17 @@
 
                 geometry.computeBoundingSphere();
 
-                var material = new THREE.PointsMaterial( { size: 20, vertexColors: THREE.VertexColors } );
+                //var material = new THREE.PointsMaterial( { size: 20, vertexColors: THREE.VertexColors } );
+                //var programStroke = function ( context ) {
+                //    context.lineWidth = 0.025;
+                //    context.beginPath();
+                //    context.arc( 0, 0, 0.5, 0, Math.PI * 2, true );
+                //    context.stroke();
+                //};
+				var sprite = new THREE.TextureLoader().load( "./textures/spark1.png" );
+                var material = new THREE.PointsMaterial( { size: 20, map: sprite, blending: THREE.AdditiveBlending, depthTest: false, transparent : true } );
+                //var material = new THREE.SpriteCanvasMaterial( { color: Math.random() * 0x808080 + 0x808080, program: programStroke } );
+
 
                 points = new THREE.Points( geometry, material );
                 scene.add( points );
@@ -120,12 +130,7 @@
 
 				//
 
-
 				geometry = new THREE.BufferGeometry();
-
-
-				//
-                //initOrbs();
 
 				//
 
@@ -201,8 +206,8 @@
                     //updateDots();
                     MyWebsocket.doSend('k='+mcKey);
                 }
+                renderer.render( scene, camera );
 
-				renderer.render( scene, camera );
 
 			}
 
