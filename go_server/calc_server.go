@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"runtime"
+	"strings"
 	"time"
 
 	orbs "./orbs"
@@ -17,19 +18,20 @@ func main() {
 	num_orbs := orbs.MAX_PARTICLES
 	num_times := orbs.FOR_TIMES
 	var eternal float64
-	var mcHost, mcKey string
+	//var mcHost, mcKey string
 	var numCpu int
 
 	flag.IntVar(&num_orbs, "init-orbs", 0, "how many orbs init, do init when its value >1")
 	flag.IntVar(&num_times, "calc-times", 100, "how many times calc")
 	flag.Float64Var(&eternal, "eternal", 15000.0, "the mass of eternal, 0 means no eternal")
-	flag.StringVar(&mcHost, "mchost", "127.0.0.1:11211", "memcache server")
-	flag.StringVar(&mcKey, "savekey", "thelist1", "key name save into memcache")
+	//flag.StringVar(&mcHost, "mchost", "127.0.0.1:11211", "memcache server")
+	var saveKey = flag.String("savekey", "thelist1", "key name for save, like key of memcache, or filename in save dir")
 	var doShowList = flag.Bool("showlist", false, "show orb list and exit")
 	var configMass = flag.Float64("config-mass", 10.0, "the mass of orbs")
 	var configWide = flag.Float64("config-wide", 1000.0, "the wide of orbs")
 	var configVelo = flag.Float64("config-velo", 0.005, "the velo of orbs")
 	var configCpu = flag.Int("config-cpu", 0, "how many cpu u want use, 0=all")
+	var savePath = flag.String("savepath", "mc://127.0.0.1:11211", "where to save, support mc/file/redis\n\tlike: file://./filecache/")
 
 	// flags 读取参数，必须要调用 flag.Parse()
 	flag.Parse()
@@ -41,12 +43,9 @@ func main() {
 	}
 	runtime.GOMAXPROCS(numCpu)
 
-	var oList []orbs.Orb
+	SetSaverConfig(savePath)
 
-	var htype int = 1
-	saverConf := map[string]string{"dir": "./go_server/filecache"}
-	//saverConf := map[string]string{"host": mcHost}
-	saver.SetHandler(htype, saverConf)
+	var oList []orbs.Orb
 
 	// 根据时间设置随机数种子
 	rand.Seed(int64(time.Now().Nanosecond()))
@@ -55,7 +54,7 @@ func main() {
 		initConfig := orbs.InitConfig{*configMass, *configWide, *configVelo, eternal}
 		oList = orbs.InitOrbs(num_orbs, &initConfig)
 	} else {
-		oList = saver.GetList(&mcKey)
+		oList = saver.GetList(saveKey)
 	}
 	if *doShowList {
 		fmt.Println(oList)
@@ -72,7 +71,7 @@ func main() {
 
 		tmpTimes += perTimes
 		if tmpTimes > 5000000 {
-			saver.SaveList(&mcKey, oList)
+			saver.SaveList(saveKey, oList)
 			//oList = orbs.ClearOrbList(oList)
 			tmpTimes = 0
 		}
@@ -86,9 +85,34 @@ func main() {
 	fmt.Println("core:", numCpu, " orbs:", num_orbs, len(oList), "times:", num_times, "real:", realTimes, "use time:", timeUsed, "sec", "CPS:", float64(realTimes)/timeUsed)
 	orbs.ShowMonitorInfo()
 
-	saver.SaveList(&mcKey, oList)
+	saver.SaveList(saveKey, oList)
 
 	endTimeNano = time.Now().UnixNano()
 	timeUsed = float64(endTimeNano-startTimeNano) / 1000000000.0
 	fmt.Println("all used time with save:", timeUsed, "sec, saveTimes=", saver.GetSavetimes(), "save per sec=", float64(saver.GetSavetimes())/timeUsed)
+}
+
+func SetSaverConfig(savePath *string) {
+
+	var htype int = 1
+	savePathCfg := strings.Split(*savePath, "://")
+	saverConf := make(map[string]string, 1)
+	if len(savePathCfg) > 1 {
+		switch savePathCfg[0] {
+		case "file":
+			saverConf["dir"] = savePathCfg[1]
+			htype = 1
+		case "mc":
+			saverConf["host"] = savePathCfg[1]
+			htype = 2
+		case "redis":
+			saverConf["host"] = savePathCfg[1]
+			htype = 3
+		default:
+			htype = 1
+			saverConf["dir"] = "./filecache/"
+		}
+	}
+	saver.SetHandler(htype, saverConf)
+	//fmt.Println("htype=", htype, "config=", saverConf)
 }

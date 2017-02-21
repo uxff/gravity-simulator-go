@@ -5,7 +5,7 @@ package saver
 
 import (
 	"encoding/json"
-	"fmt"
+	"log"
 	"os"
 
 	orbs "../orbs"
@@ -50,14 +50,14 @@ func (this *McSaver) SaveList(key *string, oList []orbs.Orb) bool {
 	if strList, err := json.Marshal(oList); err == nil {
 		return this.Save(key, strList)
 	} else {
-		fmt.Println("set", *key, "json.Marshal error:", err)
+		log.Println("set", *key, "json.Marshal error:", err)
 	}
 	return false
 }
 func (this *McSaver) Save(key *string, val []byte) bool {
 	errMc := this.mc.Set(&memcache.Item{Key: *key, Value: val})
 	if errMc != nil {
-		fmt.Println("save failed:", errMc)
+		log.Println("save failed:", errMc)
 		return false
 	}
 
@@ -78,7 +78,7 @@ func (this *FileSaver) SaveList(key *string, oList []orbs.Orb) bool {
 	if strList, err := json.Marshal(oList); err == nil {
 		return this.Save(key, strList)
 	} else {
-		fmt.Println("set", *key, "json.Marshal error:", err)
+		log.Println("set", *key, "json.Marshal error:", err)
 	}
 	return false
 }
@@ -92,14 +92,14 @@ func (this *FileSaver) Save(key *string, val []byte) bool {
 		cacheFile, errOpen := os.OpenFile(fileFullpath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, os.ModePerm)
 
 		if errOpen != nil {
-			fmt.Println("open", fileFullpath, "error:", errOpen)
+			log.Println("open", fileFullpath, "error:", errOpen)
 			break
 		}
 		defer cacheFile.Close()
 
 		_, errW := cacheFile.Write(val)
 		if errW != nil {
-			fmt.Println("write file error:", errW)
+			log.Println("write file error:", errW)
 			break
 		}
 
@@ -117,9 +117,9 @@ func (this *McSaver) LoadList(cacheKey *string) (oList []orbs.Orb) {
 	if orbListStrVal, err := mc.Get(*cacheKey); err == nil {
 		orbListStr = string(orbListStrVal.Value)
 		err := json.Unmarshal(orbListStrVal.Value, &oList)
-		fmt.Println("mc.get len(val)=", len(orbListStr), "after unmarshal, len=", len(oList), "json.Unmarshal err=", err)
+		log.Println("mc.get len(val)=", len(orbListStr), "after unmarshal, len=", len(oList), "json.Unmarshal err=", err)
 	} else {
-		fmt.Println("mc.get", *cacheKey, "error:", err)
+		log.Println("mc.get", *cacheKey, "error:", err)
 	}
 	return oList
 }
@@ -133,7 +133,7 @@ func (this *FileSaver) LoadList(cacheKey *string) (oList []orbs.Orb) {
 		cacheFile, errOpen := os.OpenFile(fileFullpath, os.O_RDONLY, os.ModePerm)
 
 		if errOpen != nil {
-			fmt.Println("open", fileFullpath, "error:", errOpen)
+			log.Println("open", fileFullpath, "error:", errOpen)
 			break
 		}
 		defer cacheFile.Close()
@@ -149,7 +149,7 @@ func (this *FileSaver) LoadList(cacheKey *string) (oList []orbs.Orb) {
 		}
 		errEnc := json.Unmarshal(allContent, &oList)
 		if errEnc != nil {
-			fmt.Println("json.Marshal error:", errEnc)
+			log.Println("json.Marshal error:", errEnc)
 			break
 		}
 		ret = true
@@ -171,7 +171,7 @@ func (this *Saver) SetHandler(htype int, config map[string]string) (handler Save
 	case 2: //mc
 		this.saveHandler = new(McSaver)
 	default:
-		fmt.Println("unknown htype:", htype)
+		log.Println("unknown htype:", htype)
 	}
 	this.saveHandler.SetConfig(config)
 	return this.saveHandler

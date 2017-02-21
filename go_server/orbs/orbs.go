@@ -4,7 +4,7 @@
 package orbs
 
 import (
-	"fmt"
+	"log"
 	"math"
 	"math/rand"
 )
@@ -164,7 +164,7 @@ func (o *Orb) CalcGravityAll(oList []Orb) Acc {
 
 			// 碰撞机制 非弹性碰撞 动量守恒 m1v1+m2v2=(m1+m2)v
 			if o.Mass > target.Mass {
-				//fmt.Println(o.Id, "crashed", target.Id, "isTooNearly", isTooNearly, "me=", o, "ta=", target)
+				//log.Println(o.Id, "crashed", target.Id, "isTooNearly", isTooNearly, "me=", o, "ta=", target)
 				// 碰撞后速度 v = (m1v1+m2v2)/(m1+m2)
 				o.Mass += target.Mass
 				o.Vx = (target.Mass*target.Vx + o.Mass*o.Vx) / o.Mass
@@ -174,7 +174,7 @@ func (o *Orb) CalcGravityAll(oList []Orb) Acc {
 				target.Mass = 0
 				target.Stat = 2
 			} else {
-				//fmt.Println(o.Id, "crashed by", target.Id, "isTooNearly", isTooNearly, "me=", o, "ta=", target)
+				//log.Println(o.Id, "crashed by", target.Id, "isTooNearly", isTooNearly, "me=", o, "ta=", target)
 				target.Mass += target.Mass
 				target.Vx = (target.Mass*target.Vx + o.Mass*o.Vx) / target.Mass
 				target.Vy = (target.Mass*target.Vy + o.Mass*o.Vy) / target.Mass
@@ -221,10 +221,10 @@ func ClearOrbList(oList []Orb) []Orb {
 			alive--
 		}
 	}
-	//fmt.Println("when clear alive=", alive)
+	//log.Println("when clear alive=", alive)
 	return oList
 }
 
 func ShowMonitorInfo() {
-	fmt.Println("maxVelo=", maxVeloX, maxVeloY, maxVeloZ, "maxAcc=", maxAccX, maxAccY, maxAccZ, "maxMass=", maxMassId, maxMass)
+	log.Println("maxVelo=", maxVeloX, maxVeloY, maxVeloZ, "maxAcc=", maxAccX, maxAccY, maxAccZ, "maxMass=", maxMassId, maxMass)
 }
