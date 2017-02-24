@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"log"
 	"os"
+	"strings"
 
 	orbs "../orbs"
 	"github.com/bradfitz/gomemcache/memcache"
@@ -69,7 +70,7 @@ func (this *FileSaver) SetConfig(config map[string]string) bool {
 		this.savedir = dir
 		return true
 	} else {
-		this.savedir = "./go_server/filecache/"
+		this.savedir = "./filecache/"
 	}
 	return false
 }
@@ -117,7 +118,10 @@ func (this *McSaver) LoadList(cacheKey *string) (oList []orbs.Orb) {
 	if orbListStrVal, err := mc.Get(*cacheKey); err == nil {
 		orbListStr = string(orbListStrVal.Value)
 		err := json.Unmarshal(orbListStrVal.Value, &oList)
-		log.Println("mc.get len(val)=", len(orbListStr), "after unmarshal, len=", len(oList), "json.Unmarshal err=", err)
+		if err != nil {
+
+			log.Println("mc.get len(val)=", len(orbListStr), "after unmarshal, len=", len(oList), "json.Unmarshal err=", err)
+		}
 	} else {
 		log.Println("mc.get", *cacheKey, "error:", err)
 	}
@@ -193,4 +197,27 @@ func (this *Saver) SaveList(key *string, oList []orbs.Orb) bool {
 }
 func (this *Saver) GetSavetimes() int {
 	return this.saveTimes
+}
+func (this *Saver) SetSavepath(savePath *string) {
+
+	//var htype int = 1
+	savePathCfg := strings.Split(*savePath, "://")
+	saverConf := make(map[string]string, 1)
+	if len(savePathCfg) > 1 {
+		switch savePathCfg[0] {
+		case "file":
+			saverConf["dir"] = savePathCfg[1]
+			this.htype = 1
+		case "mc":
+			saverConf["host"] = savePathCfg[1]
+			this.htype = 2
+		case "redis":
+			saverConf["host"] = savePathCfg[1]
+			this.htype = 3
+		default:
+			this.htype = 1
+			saverConf["dir"] = "./filecache/"
+		}
+	}
+	this.SetHandler(this.htype, saverConf)
 }

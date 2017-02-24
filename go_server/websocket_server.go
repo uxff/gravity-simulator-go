@@ -9,10 +9,10 @@ import (
 	"net/http"
 	"net/url"
 	//"time"
-	orbs "./orbs"
+	//orbs "./orbs"
 	saverpkg "./saver"
 
-	"github.com/bradfitz/gomemcache/memcache"
+	//"github.com/bradfitz/gomemcache/memcache"
 	"github.com/gorilla/websocket"
 )
 
@@ -86,8 +86,6 @@ func handleOrbs(w http.ResponseWriter, r *http.Request) {
 			list := saver.GetList(&mcKey) //getListFromMc(mc, &mcKey)
 			ret.Data["list"] = list
 		}
-		//getListFromMc(mc, &string(message))
-		//strMessage := mcKey //string(message)
 
 		retStr, errJson := json.Marshal(ret)
 		if errJson != nil {
@@ -113,31 +111,15 @@ func handleOrbs(w http.ResponseWriter, r *http.Request) {
 	log.Println("closed:", c.LocalAddr().String())
 }
 
-// 从数据库获取orbList
-func getListFromMc(mc *memcache.Client, mcKey *string) (v []orbs.Orb) {
-	if orbListStrVal, err := mc.Get(*mcKey); err == nil {
-		err := json.Unmarshal(orbListStrVal.Value, &v)
-		if err != nil {
-			log.Println("json.Unmarshal err=", err)
-		}
-		//fmt.Println("len(val)=", len(orbListStr), "after unmarshal, len=", len(mapHap), "err:", err)
-	} else {
-		log.Println("mc get(", *mcKey, ") err=", err)
-	}
-	return v
-}
-
 //func home(w http.ResponseWriter, r *http.Request) {
 //	homeTemplate.Execute(w, "ws://"+r.Host+"/echo")
 //}
 
 func main() {
+	var savePath = flag.String("savepath", "mc://127.0.0.1:11211", "where to save, support mc/file/redis\n\tlike: file://./filecache/")
 	flag.Parse()
 
-	var htype int = 1
-	saverConf := map[string]string{"dir": "./go_server/filecache"}
-	//saverConf := map[string]string{"host": "mc.lo:11211"}
-	saver.SetHandler(htype, saverConf)
+	saver.SetSavepath(savePath)
 
 	log.SetFlags(0)
 
