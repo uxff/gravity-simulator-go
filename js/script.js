@@ -233,20 +233,21 @@ function initializeLesson() {
     }
 
     //MyWebsocket.doSend('k='+mcKey);
-        $('#zoom_up').on('click', function() {
-            zoomBase = zoomBase*zoomStep;
-            $('#zoom').val(zoomBase);
-        });
-        $('#zoom_down').on('click', function() {
-            zoomBase = zoomBase/zoomStep;
-            $('#zoom').val(zoomBase);
-        });
-        $('#reConnect').on('click', function() {
-            wsUri = 'ws://'+$('#ws-addr').val()+'/orbs';
-            MyWebsocket.wsUri = wsUri;
-            //alert(wsUri);
-            MyWebsocket.initWebsocket();
-        });
+    $('#ws-addr').val(defaultHost);
+    $('#zoom_up').on('click', function() {
+        zoomBase = zoomBase*zoomStep;
+        $('#zoom').val(zoomBase);
+    });
+    $('#zoom_down').on('click', function() {
+        zoomBase = zoomBase/zoomStep;
+        $('#zoom').val(zoomBase);
+    });
+    $('#reConnect').on('click', function() {
+        wsUri = 'ws://'+$('#ws-addr').val()+'/orbs';
+        MyWebsocket.wsUri = wsUri;
+        //alert(wsUri);
+        MyWebsocket.initWebsocket();
+    });
     
     animate();
 }

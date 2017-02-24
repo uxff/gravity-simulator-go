@@ -1,4 +1,5 @@
-var wsUri = "ws://mc.lo:8081/orbs";//host mc.lo redirect to 127.0.0.1
+var defaultHost = window.document.location.host || '127.0.0.1:8081';
+var wsUri = "ws://"+defaultHost+"/orbs";//host mc.lo redirect to 127.0.0.1
 var mcKey = 'thelist1';
 var MyWebsocket = {
     wsUri: wsUri,

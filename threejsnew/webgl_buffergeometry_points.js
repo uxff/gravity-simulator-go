@@ -177,6 +177,7 @@
                 }
                 MyWebsocket.receiveCallback = recvData;
 
+                $('#ws-addr').val(defaultHost);
                 $('#zoom_up').on('click', function() {
                     zoomBase = zoomBase*zoomStep;
                     $('#zoom').val(zoomBase);
