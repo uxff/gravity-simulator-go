@@ -81,7 +81,7 @@
                 //    context.stroke();
                 //};
 				var sprite = new THREE.TextureLoader().load( "./textures/spark1.png" );
-                var material = new THREE.PointsMaterial( { size: 20, map: sprite, blending: THREE.AdditiveBlending, depthTest: false, transparent : true } );
+                var material = new THREE.PointsMaterial( { size: 250, map: sprite, blending: THREE.AdditiveBlending, depthTest: false, transparent : true } );
                 //var material = new THREE.SpriteCanvasMaterial( { color: Math.random() * 0x808080 + 0x808080, program: programStroke } );
 
 
@@ -117,8 +117,10 @@
 				//
                 color = new THREE.Color();
 
-				camera = new THREE.PerspectiveCamera( 27, window.innerWidth / window.innerHeight, 5, 35000 );
-				camera.position.z = 2750;
+				camera = new THREE.PerspectiveCamera( 27, window.innerWidth / window.innerHeight, 5, 350000 );
+				camera.position.x = 1200;
+				camera.position.y = 2400;
+				camera.position.z = 1000;
 
 				scene = new THREE.Scene();
 				//scene.fog = new THREE.Fog( 0x050505, 2000, 3500 );
@@ -144,6 +146,9 @@
 				//
 
 				stats = new Stats();
+				stats.domElement.style.position = 'absolute';
+				stats.domElement.style.top = (window.innerHeight - 50 )+'px';
+				stats.domElement.style.zIndex = 10;
 				container.appendChild( stats.dom );
 
 				//
