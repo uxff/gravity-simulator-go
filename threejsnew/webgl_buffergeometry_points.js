@@ -46,6 +46,9 @@
                     var orb = list[i];
 
                     // positions
+                    if (orb.st!=1) {
+                        orb.x = orb.y = orb.z = 0;
+                    }
 
                     var x = orb.x;
                     var y = orb.y;
@@ -82,7 +85,7 @@
                 //    context.stroke();
                 //};
 				var sprite = new THREE.TextureLoader().load( "./textures/spark1.png" );
-                var material = new THREE.PointsMaterial( { size: 250, map: sprite, blending: THREE.AdditiveBlending, depthTest: false, transparent : true } );
+                var material = new THREE.PointsMaterial({ size: 250, map: sprite, blending: THREE.AdditiveBlending, depthTest: false, transparent : true });
                 //var material = new THREE.SpriteCanvasMaterial( { color: Math.random() * 0x808080 + 0x808080, program: programStroke } );
 
 
