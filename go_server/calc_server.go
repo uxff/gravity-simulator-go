@@ -64,6 +64,8 @@ func main() {
 		return
 	}
 
+	fmt.Println("start calc, orbs:", num_orbs, "will times:", num_times*num_orbs*num_orbs, "use core:", numCpu)
+
 	realTimes, perTimes, tmpTimes := 0, 0, 0
 	startTimeNano := time.Now().UnixNano()
 
@@ -74,7 +76,9 @@ func main() {
 		tmpTimes += perTimes
 		if tmpTimes > 10000000 {
 			saver.SaveList(saveKey, oList)
-			oList = orbs.ClearOrbList(oList)
+			if i%10 == 1 {
+				oList = orbs.ClearOrbList(oList)
+			}
 			tmpTimes = 0
 		}
 	}
@@ -84,13 +88,12 @@ func main() {
 
 	endTimeNano := time.Now().UnixNano()
 	timeUsed := float64(endTimeNano-startTimeNano) / 1000000000.0
-	fmt.Println("core:", numCpu, "orbs:", num_orbs, len(oList), "times:", num_times, "real:", realTimes)
-	fmt.Println("use time:", timeUsed, "sec", "CPS:", float64(realTimes)/timeUsed, "save per sec=", float64(saver.GetSavetimes())/timeUsed)
+	fmt.Println("after calc, orbs:", len(oList), "real times:", realTimes, "used time:", timeUsed, "sec", "CPS:", float64(realTimes)/timeUsed)
 	orbs.ShowMonitorInfo()
 
 	saver.SaveList(saveKey, oList)
 
 	endTimeNano = time.Now().UnixNano()
-	timeUsed = float64(endTimeNano-startTimeNano) / 1000000000.0
-	fmt.Println("all used time with save:", timeUsed, "sec, saveTimes=", saver.GetSavetimes())
+	timeUsed2 := float64(endTimeNano-startTimeNano) / 1000000000.0
+	fmt.Println("all used time with save:", timeUsed2, "sec, saveTimes=", saver.GetSavetimes(), "save per sec=", float64(saver.GetSavetimes())/timeUsed, "clearTimes=", orbs.GetClearTimes())
 }

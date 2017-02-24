@@ -48,7 +48,7 @@ const MIN_CRITICAL_DIST = 1.0
 
 // 监控速度和加速度
 var maxVeloX, maxVeloY, maxVeloZ, maxAccX, maxAccY, maxAccZ, maxMass float64 = 0, 0, 0, 0, 0, 0, 0
-var maxMassId int = 0
+var maxMassId, clearTimes int = 0, 0
 
 // 初始化天体位置，质量，加速度 在一片区域随机分布
 func InitOrbs(num int, config *InitConfig) []Orb {
@@ -216,9 +216,13 @@ func ClearOrbList(oList []Orb) []Orb {
 		}
 	}
 	//log.Println("when clear alive=", alive)
+	clearTimes++
 	return oList
 }
 
 func ShowMonitorInfo() {
 	log.Println("maxVelo=", maxVeloX, maxVeloY, maxVeloZ, "maxAcc=", maxAccX, maxAccY, maxAccZ, "maxMass=", maxMassId, maxMass)
+}
+func GetClearTimes() int {
+	return clearTimes
 }
