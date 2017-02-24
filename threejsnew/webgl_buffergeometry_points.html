@@ -31,15 +31,18 @@
 	<body>
 
 		<div id="container"></div>
-		<div id="info"><a href="http://threejs.org" target="_blank">three.js</a> simulate gravity </div>
+		<div id="info"> simulate gravity, silutate globular cluster </div>
         <div style="position: absolute; top: 10px; left: 20px;">
-            Zoom: <button id="zoom_down">&nbsp;-&nbsp;</button><input id="zoom" value="1.0" readonly/><button id="zoom_up">&nbsp;+&nbsp;</button>
-            <br/>
             websocket server:<input name="ws-addr" id="ws-addr" value=""/><button id="reConnect">yes</button>
             <br/>
             <div id="ws-msg">
             websocket not already.
             </div>  
+        </div>
+        <div style="position: absolute; top: 10px; right: 20px;">
+            Zoom: <button id="zoom_down">&nbsp;-&nbsp;</button><input id="zoom" value="1.0" readonly/><button id="zoom_up">&nbsp;+&nbsp;</button>
+            <br/>
+            star me: <a href="https://github.com/uxff/gravity_sim_go" target="_blank">github.com/uxff/gravity_sim_go</a>
         </div>
 
 		<script src="./build/three.js"></script>
