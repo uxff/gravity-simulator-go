@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"flag"
-	//"html/template"
 	//"fmt"
 	"log"
 	"net/http"
@@ -24,11 +23,9 @@ type JsonRet struct {
 }
 
 var addr = flag.String("addr", "0.0.0.0:8081", "websocket server address")
-var mcHost = flag.String("mchost", "127.0.0.1:11211", "memcache server for reading data")
 
 var upgrader = websocket.Upgrader{} // use default options
 
-//var mc = memcache.New(*mcHost)
 var saver = saverpkg.Saver{}
 
 func echo(w http.ResponseWriter, r *http.Request) {
@@ -77,8 +74,6 @@ func handleOrbs(w http.ResponseWriter, r *http.Request) {
 		v, _ := url.ParseQuery(string(message))
 		mcKey := v.Get("k")
 
-		//for {
-
 		if len(mcKey) == 0 {
 			log.Println("illegal message ignored. message=", string(message))
 			ret.Data["list"] = nil
@@ -102,10 +97,6 @@ func handleOrbs(w http.ResponseWriter, r *http.Request) {
 		}
 
 		//time.Sleep(time.Millisecond * 100)
-		if len(mcKey) == 0 {
-			//break
-		}
-		//}
 		//break
 	}
 	log.Println("closed:", c.LocalAddr().String())

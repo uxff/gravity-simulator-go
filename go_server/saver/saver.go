@@ -7,9 +7,11 @@ import (
 	"encoding/json"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 
 	orbs "../orbs"
+	redis "github.com/alphazero/Go-Redis"
 	"github.com/bradfitz/gomemcache/memcache"
 )
 
@@ -38,12 +40,20 @@ type FileSaver struct {
 type McSaver struct {
 	mc *memcache.Client
 }
+type RedisSaver struct {
+	client redis.Client
+}
 
+/*
+	@param config["host"] = "mc://10.1.1.1:11211"
+*/
 func (this *McSaver) SetConfig(config map[string]string) bool {
 	host, ok := config["host"]
 	if ok {
 		this.mc = memcache.New(host)
 		return true
+	} else {
+		log.Println("empty config of mc saver")
 	}
 	return false
 }
@@ -64,6 +74,23 @@ func (this *McSaver) Save(key *string, val []byte) bool {
 
 	return true
 }
+func (this *McSaver) LoadList(cacheKey *string) (oList []orbs.Orb) {
+	mc := this.mc
+
+	if orbListStrVal, err := mc.Get(*cacheKey); err == nil {
+		err := json.Unmarshal(orbListStrVal.Value, &oList)
+		if err != nil {
+			log.Println("mc.get len(val)=", len(orbListStrVal.Value), "after unmarshal, len=", len(oList), "json.Unmarshal err=", err)
+		}
+	} else {
+		log.Println("mc.get", *cacheKey, "error:", err)
+	}
+	return oList
+}
+
+/*
+	@param config["dir"] = "file://./filecache"
+*/
 func (this *FileSaver) SetConfig(config map[string]string) bool {
 	dir, ok := config["dir"]
 	if ok {
@@ -110,20 +137,59 @@ func (this *FileSaver) Save(key *string, val []byte) bool {
 	return ret
 }
 
-func (this *McSaver) LoadList(cacheKey *string) (oList []orbs.Orb) {
-	var orbListStr string
+/*
+	@param config["host"] = "redis://10.1.1.1:6379"
+*/
+func (this *RedisSaver) SetConfig(config map[string]string) bool {
+	spec := redis.DefaultSpec()
+	hostAndPort := config["host"]
+	hostAndPortArr := strings.Split(hostAndPort, ":")
+	switch len(hostAndPortArr) {
+	case 0:
+		break
+	case 1:
+		spec.Host(hostAndPortArr[0])
+	case 2:
+		spec.Host(hostAndPortArr[0])
+		port, _ := strconv.Atoi(hostAndPortArr[1])
+		spec.Port(port)
+	}
+	spec.Db(0).Password("")
 
-	//var mc *memcache.Client = (*memcache.Client)(this.saveHandler)
-	mc := this.mc
-	if orbListStrVal, err := mc.Get(*cacheKey); err == nil {
-		orbListStr = string(orbListStrVal.Value)
-		err := json.Unmarshal(orbListStrVal.Value, &oList)
+	client, e := redis.NewSynchClientWithSpec(spec)
+	if e != nil {
+		log.Println("connect to redis server failed:", e)
+		return false
+	}
+	this.client = client
+	return true
+	return false
+}
+func (this *RedisSaver) SaveList(key *string, oList []orbs.Orb) bool {
+	if strList, err := json.Marshal(oList); err == nil {
+		return this.Save(key, strList)
+	} else {
+		log.Println("redis.set", *key, "json.Marshal error:", err)
+	}
+	return false
+}
+func (this *RedisSaver) Save(key *string, val []byte) bool {
+	err := this.client.Set(*key, val)
+	if err != nil {
+		log.Println("redis.save failed:", err)
+		return false
+	}
+
+	return true
+}
+func (this *RedisSaver) LoadList(cacheKey *string) (oList []orbs.Orb) {
+	if orbListStr, err := this.client.Get(*cacheKey); err == nil {
+		err := json.Unmarshal(orbListStr, &oList)
 		if err != nil {
-
-			log.Println("mc.get len(val)=", len(orbListStr), "after unmarshal, len=", len(oList), "json.Unmarshal err=", err)
+			log.Println("redis.get len(val)=", len(orbListStr), "after unmarshal, len=", len(oList), "json.Unmarshal err=", err)
 		}
 	} else {
-		log.Println("mc.get", *cacheKey, "error:", err)
+		log.Println("redis.get", *cacheKey, "error:", err)
 	}
 	return oList
 }
@@ -174,6 +240,8 @@ func (this *Saver) SetHandler(htype int, config map[string]string) (handler Save
 		this.saveHandler = new(FileSaver)
 	case 2: //mc
 		this.saveHandler = new(McSaver)
+	case 3:
+		this.saveHandler = new(RedisSaver)
 	default:
 		log.Println("unknown htype:", htype)
 	}
@@ -198,9 +266,11 @@ func (this *Saver) SaveList(key *string, oList []orbs.Orb) bool {
 func (this *Saver) GetSavetimes() int {
 	return this.saveTimes
 }
-func (this *Saver) SetSavepath(savePath *string) {
 
-	//var htype int = 1
+/*
+	@param savepath: like: "file://./filecahce","mc://10.0.0.1:11211","redis://10.1.1.1:6379"
+*/
+func (this *Saver) SetSavepath(savePath *string) {
 	savePathCfg := strings.Split(*savePath, "://")
 	saverConf := make(map[string]string, 1)
 	if len(savePathCfg) > 1 {

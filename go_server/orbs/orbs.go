@@ -43,12 +43,6 @@ type InitConfig struct {
 // 万有引力常数
 const G = 0.000021
 
-// 默认最大天体数量
-const MAX_PARTICLES = 100
-
-// 默认计算步数
-const FOR_TIMES = 10000
-
 // 最小天体距离值 两天体距离小于此值了会相撞
 const MIN_CRITICAL_DIST = 1.0
 
