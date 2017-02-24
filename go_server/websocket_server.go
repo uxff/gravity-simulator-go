@@ -112,7 +112,7 @@ func main() {
 
 	saver.SetSavepath(savePath)
 
-	log.SetFlags(0)
+	log.SetFlags(log.Lshortfile | log.LstdFlags)
 
 	http.Handle("/", http.FileServer(http.Dir(".")))
 	http.HandleFunc("/echo", echo)
