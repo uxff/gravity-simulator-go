@@ -12,6 +12,7 @@
             var color;
             var isInited = 0;
             var recvData, clearOrbs, initOrbs, updateOrbs;
+            var zoomBase = 1.0, zoomStep = Math.sqrt(2.0);
             
             recvData = function(dataList) {
                 //console.log('list=', dataList);
@@ -50,9 +51,9 @@
                     var y = orb.y;
                     var z = orb.z;
 
-                    positions[ i*3 ]     = x;
-                    positions[ i*3 + 1 ] = y;
-                    positions[ i*3 + 2 ] = z;
+                    positions[ i*3 ]     = x*zoomBase;
+                    positions[ i*3 + 1 ] = y*zoomBase;
+                    positions[ i*3 + 2 ] = z*zoomBase;
 
                     // colors
 
@@ -90,13 +91,16 @@
                 isInited = 1;
             }
             updateOrbs = function(list) {
+                if (list.length != NUM_PARTICLES) {
+                    return initOrbs(list);
+                }
                 var geometry = points.geometry;
                 for (var i in list) {
                     var orb = list[i];
 
-                    positions[ i*3 ]     = orb.x;
-                    positions[ i*3 + 1 ] = orb.y;
-                    positions[ i*3 + 2 ] = orb.z;
+                    positions[ i*3 ]     = orb.x*zoomBase;
+                    positions[ i*3 + 1 ] = orb.y*zoomBase;
+                    positions[ i*3 + 2 ] = orb.z*zoomBase;
                 }
 
                 geometry.addAttribute( 'position', new THREE.BufferAttribute( positions, 3 ) );
@@ -170,6 +174,14 @@
                 }
                 MyWebsocket.receiveCallback = recvData;
 
+                $('#zoom_up').on('click', function() {
+                    zoomBase = zoomBase*zoomStep;
+                    $('#zoom').val(zoomBase);
+                });
+                $('#zoom_down').on('click', function() {
+                    zoomBase = zoomBase/zoomStep;
+                    $('#zoom').val(zoomBase);
+                });
                 $('#reConnect').on('click', function() {
                     wsUri = 'ws://'+$('#ws-addr').val()+'/orbs';
                     MyWebsocket.wsUri = wsUri;
@@ -207,7 +219,7 @@
 
 				//points.rotation.x = time * 0.25;
 				//points.rotation.y = time * 0.5;
-                if (ticker%20==0) {
+                if (ticker%10==0) {
                     //updateDots();
                     MyWebsocket.doSend('k='+mcKey);
                 }
