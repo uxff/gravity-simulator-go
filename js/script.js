@@ -29,6 +29,7 @@ var colors = [
 var particleLight;
 var ticker = 0;
 var zoomBase = 1.0, zoomStep = Math.sqrt(2.0);// = document.getElementById('zoom').value;
+var NUM_PARTICLES = 0;
 
 var lesson1 = {
     scene: null,
@@ -130,6 +131,13 @@ var lesson1 = {
         return colors[Math.floor(Math.random() * colors.length)];
     },
     initOrbs: function(list) {
+        if (list==undefined) {
+            return false;
+        }
+        NUM_PARTICLES = list.length;
+        for (var i in this.orbList) {
+            this.scene.remove(this.orbList[i]);
+        }
         for (var i in list) {
             var orb = list[i];
             var sphere = new THREE.Mesh(new THREE.SphereGeometry(7, 12, 12), new THREE.MeshLambertMaterial({ color: orb.id*311331 }));
@@ -146,6 +154,12 @@ var lesson1 = {
         }
     },
     updateOrbs: function(list) {
+        if (list==undefined) {
+            return false;
+        }
+        if (list.length != NUM_PARTICLES) {
+            return this.initOrbs(list);
+        }
         for (var i in list) {
             var orb = list[i];
             if (this.orbList.hasOwnProperty(orb.id)) {

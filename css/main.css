@@ -5,3 +5,13 @@
 html {
     overflow: hidden;
 }
+body {
+    font-family:Monospace;
+    font-size:13px;
+    text-align:center;
+
+    /*background-color: #050505;*/
+    margin: 0px;
+    overflow: hidden;
+}
+
