@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"math/rand"
 	"runtime"
 	"time"
@@ -31,12 +32,14 @@ func main() {
 	var configMass = flag.Float64("config-mass", 10.0, "the mass of orbs")
 	var configWide = flag.Float64("config-wide", 1000.0, "the wide of orbs")
 	var configVelo = flag.Float64("config-velo", 0.005, "the velo of orbs")
+	var configStyle = flag.Int("config-style", 1, "the style of orbs distribute, 1=cube,2=disc,3=sphere")
 	var configCpu = flag.Int("config-cpu", 0, "how many cpu u want use, 0=all")
 	var savePath = flag.String("savepath", "mc://127.0.0.1:11211", "where to save, support mc/file/redis\n\tlike: file://./filecache/")
 	var saveKey = flag.String("savekey", "thelist1", "key name for save, like key of memcache, or filename in save dir")
 
 	// flags 读取参数，必须要调用 flag.Parse()
 	flag.Parse()
+	log.SetFlags(0)
 
 	if *configCpu > 0 {
 		numCpu = *configCpu
@@ -53,7 +56,7 @@ func main() {
 	rand.Seed(int64(time.Now().Nanosecond()))
 
 	if num_orbs > 0 {
-		initConfig := orbs.InitConfig{*configMass, *configWide, *configVelo, *eternal}
+		initConfig := orbs.InitConfig{*configMass, *configWide, *configVelo, *eternal, *configStyle}
 		oList = orbs.InitOrbs(num_orbs, &initConfig)
 	} else {
 		oList = saver.GetList(saveKey)
@@ -64,7 +67,7 @@ func main() {
 		return
 	}
 
-	fmt.Println("start calc, orbs:", num_orbs, "will times:", num_times*num_orbs*num_orbs, "use core:", numCpu)
+	fmt.Println("start calc, orbs:", num_orbs, "will times:", num_times*num_orbs*num_orbs, "use cpu core:", numCpu)
 
 	realTimes, perTimes, tmpTimes := 0, 0, 0
 	startTimeNano := time.Now().UnixNano()

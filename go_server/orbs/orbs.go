@@ -38,6 +38,7 @@ type InitConfig struct {
 	Wide    float64
 	Velo    float64
 	Eternal float64
+	Style   int // 分布方式 1=立方体 2=圆盘圆柱 3=球形
 }
 
 // 万有引力常数
@@ -54,17 +55,53 @@ var maxMassId, clearTimes int = 0, 0
 func InitOrbs(num int, config *InitConfig) []Orb {
 	oList := make([]Orb, num)
 
-	for i := 0; i < num; i++ {
-		o := &oList[i]
-
-		o.X, o.Y, o.Z = (0.5-rand.Float64())*config.Wide, (0.5-rand.Float64())*config.Wide, (0.5-rand.Float64())*config.Wide
-		o.Vx = (rand.Float64() - 0.5) * config.Velo * 2.0
-		o.Vy = (rand.Float64() - 0.5) * config.Velo * 2.0
-		o.Vz = (rand.Float64() - 0.5) * config.Velo * 2.0
-		o.Size = 1
-		o.Mass = rand.Float64() * config.Mass
-		o.Id = i // rand.Int()
-		o.Stat = 1
+	switch config.Style {
+	case 0:
+		fallthrough
+	case 1: //立方体
+		for i := 0; i < num; i++ {
+			o := &oList[i]
+			o.X, o.Y, o.Z = (0.5-rand.Float64())*config.Wide, (0.5-rand.Float64())*config.Wide, (0.5-rand.Float64())*config.Wide
+			o.Vx = (rand.Float64() - 0.5) * config.Velo * 2.0
+			o.Vy = (rand.Float64() - 0.5) * config.Velo * 2.0
+			o.Vz = (rand.Float64() - 0.5) * config.Velo * 2.0
+			o.Size = 1
+			o.Mass = rand.Float64() * config.Mass
+			o.Id = i // rand.Int()
+			o.Stat = 1
+		}
+	case 2: //圆盘 随机选经度 随机选半径 随机选高低
+		for i := 0; i < num; i++ {
+			o := &oList[i]
+			long := rand.Float64() * math.Pi * 2
+			radius := rand.Float64() * config.Wide / 2.0
+			high := (0.5 - rand.Float64()) * config.Wide
+			o.X, o.Y = math.Cos(long)*radius, math.Sin(long)*radius
+			o.Z = high / 5
+			o.Vx = (rand.Float64() - 0.5) * config.Velo * 2.0
+			o.Vy = (rand.Float64() - 0.5) * config.Velo * 2.0
+			o.Vz = (rand.Float64() - 0.5) * config.Velo * 2.0
+			o.Size = 1
+			o.Mass = rand.Float64() * config.Mass
+			o.Id = i // rand.Int()
+			o.Stat = 1
+		}
+	case 3: //球形 随机经度 随机半径 随机高度*sin(半径)
+		for i := 0; i < num; i++ {
+			o := &oList[i]
+			long := rand.Float64() * math.Pi * 2
+			radius := rand.Float64() * config.Wide / 2.0
+			o.X, o.Y = math.Cos(long)*radius, math.Sin(long)*radius
+			o.Z = (0.5 - rand.Float64()) * math.Sqrt(config.Wide*config.Wide/4.0-radius*radius) * 2.0
+			o.Vx = (rand.Float64() - 0.5) * config.Velo * 2.0
+			o.Vy = (rand.Float64() - 0.5) * config.Velo * 2.0
+			o.Vz = (rand.Float64() - 0.5) * config.Velo * 2.0
+			o.Size = 1
+			o.Mass = rand.Float64() * config.Mass
+			o.Id = i // rand.Int()
+			o.Stat = 1
+		}
+	default:
 	}
 	// 如果配置了恒星，将最后一个设置为恒星
 	if config.Eternal != 0.0 {
@@ -73,6 +110,8 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 		eternalOrb.Mass = config.Eternal
 		eternalOrb.Id = eternalId //rand.Int()
 		eternalOrb.X, eternalOrb.Y, eternalOrb.Z = 0, 0, 0
+		eternalOrb.Vx, eternalOrb.Vy, eternalOrb.Vz = 0, 0, 0
+
 	}
 	return oList
 }
