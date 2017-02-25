@@ -51,6 +51,9 @@ const MIN_CRITICAL_DIST = 1.0
 var maxVeloX, maxVeloY, maxVeloZ, maxAccX, maxAccY, maxAccZ, maxMass, allMass, allWC float64 = 0, 0, 0, 0, 0, 0, 0, 0, 0
 var maxMassId, clearTimes int = 0, 0
 
+var c = make(chan int, 100)
+var nCount = 0
+
 // 初始化天体位置，质量，加速度 在一片区域随机分布
 func InitOrbs(num int, config *InitConfig) []Orb {
 	oList := make([]Orb, num)
@@ -122,38 +125,45 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 	return oList
 }
 
+func Prepare() {
+
+	go func() {
+		for {
+			//if cCount >= thelen {
+			//	break
+			//}
+			val, ok := <-c
+			if !ok {
+				//log.Println("close ok, over, closed and drained")
+				break
+			}
+			nCount += val
+			//log.Println("read once:", val)
+		}
+	}()
+
+}
+
 // 所有天体运动一次
 func UpdateOrbs(oList []Orb, nStep int) int {
 	thelen := len(oList)
-	c := make(chan int)
-	cCount := 0
 	for i := 0; i < thelen; i++ {
 		go oList[i].Update(oList, c, nStep)
 	}
-	for {
-		if cCount >= thelen {
-			break
-		}
-		cCount += <-c
-		//cCount += 1
-	}
-	// 以下方法运行时报错
-	//	for cval := range c {
-	//		cCount += cval
-	//	}
-	return cCount * cCount
+	return thelen * thelen
 }
 
 // 天体运动一次
 func (o *Orb) Update(oList []Orb, c chan int, nStep int) {
-	aAll := o.CalcGravityAll(oList)
+	// 先把位置移动起来，再计算环境中的加速度，再更新速度，为了更好地解决并行计算数据同步问题
 	if o.Stat == 1 {
-		o.Vx += aAll.Ax
-		o.Vy += aAll.Ay
-		o.Vz += aAll.Az
+		aAll := o.CalcGravityAll(oList)
 		o.X += o.Vx
 		o.Y += o.Vy
 		o.Z += o.Vz
+		o.Vx += aAll.Ax
+		o.Vy += aAll.Ay
+		o.Vz += aAll.Az
 		// 监控速度和加速度
 		if maxVeloX < math.Abs(o.Vx) {
 			maxVeloX = math.Abs(o.Vx)
@@ -177,9 +187,7 @@ func (o *Orb) Update(oList []Orb, c chan int, nStep int) {
 			maxMass = o.Mass
 			maxMassId = o.Id
 		}
-		//allMass += o.Mass
 	}
-	//o.CalcTimes += 1
 	c <- 1 //len(oList)
 }
 
@@ -189,37 +197,39 @@ func (o *Orb) CalcGravityAll(oList []Orb) Acc {
 	for i := 0; i < len(oList); i++ {
 		//c <- 1
 		target := &oList[i]
-		if target.Id == o.Id || target.Stat != 1 || o.Stat != 1 || o.Mass == 0 || target.Mass == 0 {
+		if target.Id == o.Id || target.Stat != 1 || o.Stat != 1 {
 			continue
 		}
 
 		dist := o.CalcDist(target)
 
 		// 距离太近，被撞
-		isTooNearly := dist*dist < MIN_CRITICAL_DIST*MIN_CRITICAL_DIST
-		// 速度太快，被撕裂
-		isTaRipped := dist*dist < (target.Vx*target.Vx+target.Vy*target.Vy+target.Vz*target.Vz)*10
+		isTooNearly := dist*dist < MIN_CRITICAL_DIST*MIN_CRITICAL_DIST*200
+		// 速度太快，被撕裂 me ripped by ta
+		isTaRipped := dist*dist < (o.Vx*o.Vx+o.Vy*o.Vy+o.Vz*o.Vz)*10*200
 
 		if isTooNearly || isTaRipped {
 
 			// 碰撞机制 非弹性碰撞 动量守恒 m1v1+m2v2=(m1+m2)v
 			if o.Mass > target.Mass {
-				//log.Println(o.Id, "crashed", target.Id, "isTooNearly", isTooNearly, "me=", o, "ta=", target)
+				//log.Println(o.Id, "crashed", target.Id, "isTooNearly", isTooNearly, isTaRipped, "me=", o, "ta=", target)
 				// 碰撞后速度 v = (m1v1+m2v2)/(m1+m2)
-				o.Mass += target.Mass
+				//由于并发数据分离，当前goroutine只允许操作当前orb,不允许操作别的orb，所以不允许操作ta的数据
+				//o.Mass += target.Mass
+				//在轮训时可能有多个o crashed ta,但是只有一个o crashed by ta
 				o.Vx = (target.Mass*target.Vx + o.Mass*o.Vx) / o.Mass
 				o.Vy = (target.Mass*target.Vy + o.Mass*o.Vy) / o.Mass
 				o.Vz = (target.Mass*target.Vz + o.Mass*o.Vz) / o.Mass
 				o.Size += 1
-				target.Mass = 0
-				target.Stat = 2
+				//target.Mass = 0
+				//target.Stat = 2
 			} else {
-				//log.Println(o.Id, "crashed by", target.Id, "isTooNearly", isTooNearly, "me=", o, "ta=", target)
-				target.Mass += target.Mass
-				target.Vx = (target.Mass*target.Vx + o.Mass*o.Vx) / target.Mass
-				target.Vy = (target.Mass*target.Vy + o.Mass*o.Vy) / target.Mass
-				target.Vz = (target.Mass*target.Vz + o.Mass*o.Vz) / target.Mass
-				target.Size += 1
+				//log.Println(o.Id, "crashed by", target.Id, "isTooNearly", isTooNearly, isTaRipped, "me=", o, "ta=", target)
+				//target.Mass += target.Mass
+				//target.Vx = (target.Mass*target.Vx + o.Mass*o.Vx) / target.Mass
+				//target.Vy = (target.Mass*target.Vy + o.Mass*o.Vy) / target.Mass
+				//target.Vz = (target.Mass*target.Vz + o.Mass*o.Vz) / target.Mass
+				//target.Size += 1
 				o.Mass = 0
 				o.Stat = 2
 			}
@@ -270,8 +280,11 @@ func ClearOrbList(oList []Orb) []Orb {
 }
 
 func ShowMonitorInfo() {
-	log.Printf("maxVelo=%.6g %.6g %.6g maxAcc=%.6g %.6g %.6g maxMass=%d %e allMass=%e %e\n", maxVeloX, maxVeloY, maxVeloZ, maxAccX, maxAccY, maxAccZ, maxMassId, maxMass, allMass, allWC)
+	log.Printf("maxVelo=%.6g %.6g %.6g maxAcc=%.6g %.6g %.6g maxMass=%d %e allMass=%e\n", maxVeloX, maxVeloY, maxVeloZ, maxAccX, maxAccY, maxAccZ, maxMassId, maxMass, allWC)
 }
 func GetClearTimes() int {
 	return clearTimes
+}
+func GetCalcTimes() int {
+	return nCount
 }
