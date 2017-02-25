@@ -48,7 +48,7 @@ const G = 0.000021
 const MIN_CRITICAL_DIST = 1.0
 
 // 监控速度和加速度
-var maxVeloX, maxVeloY, maxVeloZ, maxAccX, maxAccY, maxAccZ, maxMass float64 = 0, 0, 0, 0, 0, 0, 0
+var maxVeloX, maxVeloY, maxVeloZ, maxAccX, maxAccY, maxAccZ, maxMass, allMass, allWC float64 = 0, 0, 0, 0, 0, 0, 0, 0, 0
 var maxMassId, clearTimes int = 0, 0
 
 // 初始化天体位置，质量，加速度 在一片区域随机分布
@@ -69,28 +69,32 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 			o.Mass = rand.Float64() * config.Mass
 			o.Id = i // rand.Int()
 			o.Stat = 1
+			allMass += o.Mass
 		}
-	case 2: //圆盘 随机选经度 随机选半径 随机选高低
+	case 2: //圆盘 随机选经度 随机选半径 随机选高低 刻意降低垂直于柱面的速度
 		for i := 0; i < num; i++ {
 			o := &oList[i]
 			long := rand.Float64() * math.Pi * 2
 			radius := rand.Float64() * config.Wide / 2.0
 			high := (0.5 - rand.Float64()) * config.Wide
 			o.X, o.Y = math.Cos(long)*radius, math.Sin(long)*radius
-			o.Z = high / 5
-			o.Vx = (rand.Float64() - 0.5) * config.Velo * 2.0
-			o.Vy = (rand.Float64() - 0.5) * config.Velo * 2.0
-			o.Vz = (rand.Float64() - 0.5) * config.Velo * 2.0
+			o.Z = high / 256.0
+			//o.Vx = (rand.Float64() - 0.5) * config.Velo * 2.0 * math.Sqrt(config.Wide/(radius+1.0)) / 4.0
+			//o.Vy = (rand.Float64() - 0.5) * config.Velo * 2.0 * math.Sqrt(config.Wide/(radius+1.0)) / 4.0
+			o.Vx = math.Cos(long+math.Pi/2.0) * config.Velo * 2.0 //* math.Sqrt(config.Wide/(radius+1.0)) / 4.0
+			o.Vy = math.Sin(long+math.Pi/2.0) * config.Velo * 2.0 //* math.Sqrt(config.Wide/(radius+1.0)) / 4.0
+			o.Vz = (rand.Float64() - 0.5) * config.Velo * 2.0 / 256.0
 			o.Size = 1
 			o.Mass = rand.Float64() * config.Mass
 			o.Id = i // rand.Int()
 			o.Stat = 1
+			allMass += o.Mass
 		}
 	case 3: //球形 随机经度 随机半径 随机高度*sin(半径)
 		for i := 0; i < num; i++ {
 			o := &oList[i]
 			long := rand.Float64() * math.Pi * 2
-			radius := rand.Float64() * config.Wide / 2.0
+			radius := math.Sqrt(rand.Float64() * (config.Wide / 2.0 * config.Wide / 2.0))
 			o.X, o.Y = math.Cos(long)*radius, math.Sin(long)*radius
 			o.Z = (0.5 - rand.Float64()) * math.Sqrt(config.Wide*config.Wide/4.0-radius*radius) * 2.0
 			o.Vx = (rand.Float64() - 0.5) * config.Velo * 2.0
@@ -100,6 +104,7 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 			o.Mass = rand.Float64() * config.Mass
 			o.Id = i // rand.Int()
 			o.Stat = 1
+			allMass += o.Mass
 		}
 	default:
 	}
@@ -107,6 +112,7 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 	if config.Eternal != 0.0 {
 		eternalId := num - 1
 		eternalOrb := &oList[eternalId]
+		allMass += config.Eternal - eternalOrb.Mass
 		eternalOrb.Mass = config.Eternal
 		eternalOrb.Id = eternalId //rand.Int()
 		eternalOrb.X, eternalOrb.Y, eternalOrb.Z = 0, 0, 0
@@ -171,6 +177,7 @@ func (o *Orb) Update(oList []Orb, c chan int, nStep int) {
 			maxMass = o.Mass
 			maxMassId = o.Id
 		}
+		//allMass += o.Mass
 	}
 	//o.CalcTimes += 1
 	c <- 1 //len(oList)
@@ -246,12 +253,15 @@ func (o *Orb) CalcDist(target *Orb) float64 {
 
 // 清理orbList中的垃圾
 func ClearOrbList(oList []Orb) []Orb {
+	allWC = 0
 	var alive int = len(oList)
 	for i := 0; i < len(oList); i++ {
 		if oList[i].Stat != 1 {
 			oList = append(oList[:i], oList[i+1:]...)
 			i--
 			alive--
+		} else {
+			allWC += oList[i].Mass
 		}
 	}
 	//log.Println("when clear alive=", alive)
@@ -260,7 +270,7 @@ func ClearOrbList(oList []Orb) []Orb {
 }
 
 func ShowMonitorInfo() {
-	log.Println("maxVelo=", maxVeloX, maxVeloY, maxVeloZ, "maxAcc=", maxAccX, maxAccY, maxAccZ, "maxMass=", maxMassId, maxMass)
+	log.Printf("maxVelo=%.6g %.6g %.6g maxAcc=%.6g %.6g %.6g maxMass=%d %e allMass=%e %e\n", maxVeloX, maxVeloY, maxVeloZ, maxAccX, maxAccY, maxAccZ, maxMassId, maxMass, allMass, allWC)
 }
 func GetClearTimes() int {
 	return clearTimes

@@ -35,7 +35,8 @@ func main() {
 	var configStyle = flag.Int("config-style", 1, "the style of orbs distribute, 1=cube,2=disc,3=sphere")
 	var configCpu = flag.Int("config-cpu", 0, "how many cpu u want use, 0=all")
 	var savePath = flag.String("savepath", "mc://127.0.0.1:11211", "where to save, support mc/file/redis\n\tlike: file://./filecache/")
-	var saveKey = flag.String("savekey", "thelist1", "key name for save, like key of memcache, or filename in save dir")
+	var saveKey = flag.String("savekey", "thelist1", "key name to save, like key of memcache, or filename in save dir")
+	var loadKey = flag.String("loadkey", "thelist1", "key name to load, like key of memcache, or filename in save dir")
 
 	// flags 读取参数，必须要调用 flag.Parse()
 	flag.Parse()
@@ -59,7 +60,7 @@ func main() {
 		initConfig := orbs.InitConfig{*configMass, *configWide, *configVelo, *eternal, *configStyle}
 		oList = orbs.InitOrbs(num_orbs, &initConfig)
 	} else {
-		oList = saver.GetList(saveKey)
+		oList = saver.GetList(loadKey)
 		num_orbs = len(oList)
 	}
 	if *doShowList {
@@ -91,12 +92,19 @@ func main() {
 
 	endTimeNano := time.Now().UnixNano()
 	timeUsed := float64(endTimeNano-startTimeNano) / 1000000000.0
-	fmt.Println("after calc, orbs:", len(oList), "real times:", realTimes, "used time:", timeUsed, "sec", "CPS:", float64(realTimes)/timeUsed)
+	fmt.Printf("after calc, orbs:%d real times:%d used time:%6fs CPS:%e\n", len(oList), realTimes, timeUsed, float64(realTimes)/timeUsed)
 	orbs.ShowMonitorInfo()
 
 	saver.SaveList(saveKey, oList)
 
 	endTimeNano = time.Now().UnixNano()
 	timeUsed2 := float64(endTimeNano-startTimeNano) / 1000000000.0
-	fmt.Println("all used time with save:", timeUsed2, "sec, saveTimes=", saver.GetSavetimes(), "save per sec=", float64(saver.GetSavetimes())/timeUsed, "clearTimes=", orbs.GetClearTimes())
+	fmt.Printf("all used time with save:%6fs saveTimes:%d save/sec:%.2f clearTimes:%d\n", timeUsed2, saver.GetSavetimes(), float64(saver.GetSavetimes())/timeUsed, orbs.GetClearTimes())
 }
+
+/*
+	todo list:
+	去掉calcAllGravity中修改target属性并测试
+	实现多服务器计算
+
+*/
