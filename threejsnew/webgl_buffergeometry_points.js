@@ -192,6 +192,9 @@
                     //alert(wsUri);
                     MyWebsocket.initWebsocket();
                 });
+                $('#btnLoadkey').on('click', function() {
+                    loadKey = $('#loadkey').val();
+                });
                 
                 animate();
 			}
@@ -225,7 +228,7 @@
 				//points.rotation.y = time * 0.5;
                 if (ticker%10==0) {
                     //updateDots();
-                    MyWebsocket.doSend('k='+mcKey);
+                    MyWebsocket.doSend('k='+loadKey);
                 }
                 renderer.render( scene, camera );
 

@@ -199,7 +199,7 @@ function update() {
     //MyWebsocket.sceneMgr = lesson1;
     ++ticker;
     if ((ticker+1)%5 == 1) {
-        MyWebsocket.doSend('k='+mcKey);
+        MyWebsocket.doSend('k='+loadKey);
     }
     //// smoothly move the particleLight
     //var timer = Date.now() * 0.000025;
@@ -247,6 +247,9 @@ function initializeLesson() {
         MyWebsocket.wsUri = wsUri;
         //alert(wsUri);
         MyWebsocket.initWebsocket();
+    });
+    $('#btnLoadkey').on('click', function() {
+        loadKey = $('#loadkey').val();
     });
     
     animate();
