@@ -70,7 +70,7 @@ func main() {
 
 	fmt.Printf("start calc, orbs:%d will times:%d use cpu core:%d\n", num_orbs, num_times*num_orbs*num_orbs, numCpu)
 
-	realTimes, perTimes, tmpTimes, realCalc := 0, 0, 0, 0
+	realTimes, perTimes, tmpTimes := 0, 0, 0
 	startTimeNano := time.Now().UnixNano()
 
 	for i := 0; i < num_times; i++ {
@@ -80,7 +80,7 @@ func main() {
 		tmpTimes += perTimes
 		if tmpTimes > 10000000 {
 			saver.SaveList(saveKey, oList)
-			if i%10 == 1 {
+			if i%10 == 1 { //orbs.GetCrashed()%10 == 9 &&
 				oList = orbs.ClearOrbList(oList)
 			}
 			tmpTimes = 0
@@ -88,12 +88,11 @@ func main() {
 	}
 
 	oList = orbs.ClearOrbList(oList)
-	realCalc = orbs.GetCalcTimes()
 	//fmt.Println("when clear oList=", oList)
 
 	endTimeNano := time.Now().UnixNano()
 	timeUsed := float64(endTimeNano-startTimeNano) / 1000000000.0
-	fmt.Printf("after calc, orbs:%d real times:%d %d used time:%6fs CPS:%e\n", len(oList), realTimes, realCalc, timeUsed, float64(realTimes)/timeUsed)
+	fmt.Printf("after calc, orbs:%d real times:%d used time:%6fs CPS:%e\n", len(oList), realTimes, timeUsed, float64(realTimes)/timeUsed)
 	orbs.ShowMonitorInfo()
 
 	saver.SaveList(saveKey, oList)
@@ -106,7 +105,6 @@ func main() {
 
 /*
 	todo list:
-	去掉calcAllGravity中修改target属性并测试
+	去掉calcAllGravity中修改target属性并测试 done 使用crashEvent队列实现
 	实现多服务器计算
-
 */

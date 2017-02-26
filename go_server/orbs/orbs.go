@@ -38,14 +38,15 @@ type InitConfig struct {
 	Wide    float64
 	Velo    float64
 	Eternal float64
-	Style   int // 分布方式 1=立方体 2=圆盘圆柱 3=球形
+	Style   int // 分布方式 0=线性 1=立方体 2=圆盘圆柱 3=球形
+
 }
 
 // 万有引力常数
 const G = 0.000021
 
 // 最小天体距离值 两天体距离小于此值了会相撞
-const MIN_CRITICAL_DIST = 1.0
+const MIN_CRITICAL_DIST = 2.0
 
 // 监控速度和加速度
 var maxVeloX, maxVeloY, maxVeloZ, maxAccX, maxAccY, maxAccZ, maxMass, allMass, allWC float64 = 0, 0, 0, 0, 0, 0, 0, 0, 0
@@ -66,8 +67,24 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 	oList := make([]Orb, num)
 
 	switch config.Style {
-	case 0:
-		fallthrough
+	case 0: //线性
+		for i := 0; i < num; i++ {
+			o := &oList[i]
+			o.X, o.Y, o.Z = (0.5-rand.Float64())*config.Wide, (0.5-rand.Float64())*config.Wide/256.0, (0.5-rand.Float64())*config.Wide/256.0
+			if o.X < 0 {
+				o.Vx = (1.0 + rand.Float64()) * config.Velo
+				o.Vy = -(1.0 + rand.Float64()) * config.Velo //* math.Sqrt(config.Wide/(radius+1.0)) / 4.0
+			} else {
+				o.Vx = -(1.0 + rand.Float64()) * config.Velo
+				o.Vy = (1.0 + rand.Float64()) * config.Velo
+			}
+			o.Vz = (rand.Float64() - 0.5) * config.Velo * 2.0 / 256.0
+			o.Size = 1
+			o.Mass = rand.Float64() * config.Mass
+			o.Id = i // rand.Int()
+			o.Stat = 1
+			allMass += o.Mass
+		}
 	case 1: //立方体
 		for i := 0; i < num; i++ {
 			o := &oList[i]
@@ -136,7 +153,6 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 func UpdateOrbs(oList []Orb, nStep int) int {
 	thelen := len(oList)
 	nCount = 0
-	//var vm massVary
 	for i := 0; i < thelen; i++ {
 		oList[i].idx = i
 		go oList[i].Update(oList, c)
@@ -151,7 +167,7 @@ func UpdateOrbs(oList []Orb, nStep int) int {
 		case <-c:
 			nCount += 1
 		case ce := <-crashList:
-			// 接受质量变化信息
+			// 接收碰撞事件 这里处理事件引发的数据变化
 			target := &oList[ce.idx]
 			o := &oList[ce.crashedIdx]
 			target.Mass += o.Mass
@@ -165,6 +181,9 @@ func UpdateOrbs(oList []Orb, nStep int) int {
 			break
 		}
 		//log.Println("read once: val,nCount=", val, nCount)
+	}
+	if nCount != thelen {
+		log.Println("seems some goroutine do not work over: nCount,thelen=", nCount, thelen)
 	}
 	return thelen * thelen
 }
@@ -222,7 +241,7 @@ func (o *Orb) CalcGravityAll(oList []Orb) Acc {
 		// 距离太近，被撞
 		isTooNearly := dist*dist < MIN_CRITICAL_DIST*MIN_CRITICAL_DIST
 		// 速度太快，被撕裂 me ripped by ta
-		isMeRipped := dist*dist < (o.Vx*o.Vx+o.Vy*o.Vy+o.Vz*o.Vz)*10
+		isMeRipped := dist*dist < (o.Vx*o.Vx+o.Vy*o.Vy+o.Vz*o.Vz)*8
 
 		if isTooNearly || isMeRipped {
 
