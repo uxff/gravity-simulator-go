@@ -4,6 +4,8 @@
 		<title>Gravity simulate in 3D and websocket use webgl</title>
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+        <meta name="keywords" content="go,并行计算,万有引力,webgl,websocket"/>
+        <meta name="description" content="go并行计算模拟万有引力,使用websocket与前端通信，使用threejs实现webgl下的3d展示。"/>
 		<style>
 			body {
 				color: #cccccc;
@@ -31,7 +33,7 @@
 	<body>
 
 		<div id="container"></div>
-		<div id="info"> simulate gravity, silutate globular cluster </div>
+		<div id="info"></div>
         <div style="position: absolute; top: 10px; left: 20px;">
             websocket server:<input name="ws-addr" id="ws-addr" value=""/><button id="reConnect">yes</button><br/>
             &nbsp;server loadkey:<input name="k" id="loadkey" value="thelist1"/><button id="btnLoadkey">yes</button><br/>
@@ -42,7 +44,8 @@
         <div style="position: absolute; top: 10px; right: 20px;">
             Zoom: <button id="zoom_down">&nbsp;-&nbsp;</button><input id="zoom" value="1.0" readonly/><button id="zoom_up">&nbsp;+&nbsp;</button><br/>
             <br/>
-            star me: <a href="https://github.com/uxff/gravity_sim_go" target="_blank">github.com/uxff/gravity_sim_go</a>
+            star me: <a href="https://github.com/uxff/gravity_sim_go" target="_blank">github.com/uxff/gravity_sim_go</a><br/>
+            cube style: <a href="/index.html" target="_blank">link cube style</a><br/>
         </div>
 
 		<script src="./build/three.js"></script>

@@ -83,7 +83,7 @@
                 if (NUM_PARTICLES >= 20000) {
                     material = new THREE.PointsMaterial( { size: 200, vertexColors: THREE.VertexColors } );
                 } else {
-                    material = new THREE.PointsMaterial({ size: 250, map: sprite, blending: THREE.AdditiveBlending, depthTest: false, transparent : true });
+                    material = new THREE.PointsMaterial({ size: 200, map: sprite, blending: THREE.AdditiveBlending, depthTest: false, transparent : true });
                 }
                 //var programStroke = function ( context ) {
                 //    context.lineWidth = 0.025;
