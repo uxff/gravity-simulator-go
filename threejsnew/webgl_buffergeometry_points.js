@@ -13,6 +13,7 @@
             var isInited = 0;
             var recvData, clearOrbs, initOrbs, updateOrbs;
             var zoomBase = 1.0, zoomStep = Math.sqrt(2.0);
+            var sprite;
             
             recvData = function(dataList) {
                 //console.log('list=', dataList);
@@ -39,7 +40,7 @@
 				positions = new Float32Array( NUM_PARTICLES * 3 );
 				colors = new Float32Array( NUM_PARTICLES * 3 );
 
-				var n = 1000, n2 = n / 2; // particles spread in the cube
+				var n = NUM_PARTICLES, n2 = n / 2; // particles spread in the cube
 
                 //for ( var i = 0; i < positions.length; i += 3 ) {
                 for (var i in list) {
@@ -77,15 +78,19 @@
 
                 geometry.computeBoundingSphere();
 
-                //var material = new THREE.PointsMaterial( { size: 20, vertexColors: THREE.VertexColors } );
+                var material;
+                // 量大使用PointsMaterial渲染
+                if (NUM_PARTICLES >= 20000) {
+                    material = new THREE.PointsMaterial( { size: 200, vertexColors: THREE.VertexColors } );
+                } else {
+                    material = new THREE.PointsMaterial({ size: 250, map: sprite, blending: THREE.AdditiveBlending, depthTest: false, transparent : true });
+                }
                 //var programStroke = function ( context ) {
                 //    context.lineWidth = 0.025;
                 //    context.beginPath();
                 //    context.arc( 0, 0, 0.5, 0, Math.PI * 2, true );
                 //    context.stroke();
                 //};
-				var sprite = new THREE.TextureLoader().load( "./textures/spark1.png" );
-                var material = new THREE.PointsMaterial({ size: 250, map: sprite, blending: THREE.AdditiveBlending, depthTest: false, transparent : true });
                 //var material = new THREE.SpriteCanvasMaterial( { color: Math.random() * 0x808080 + 0x808080, program: programStroke } );
 
 
@@ -121,7 +126,6 @@
 
 				container = document.getElementById( 'container' );
 
-				//
                 color = new THREE.Color();
 
 				camera = new THREE.PerspectiveCamera( 27, window.innerWidth / window.innerHeight, 5, 350000 );
@@ -138,6 +142,7 @@
                 scene.add(axisHelper);
 
 				//
+                sprite = new THREE.TextureLoader().load( "./textures/spark1.png" );				//
 
 				geometry = new THREE.BufferGeometry();
 
