@@ -21,7 +21,7 @@ type Orb struct {
 	Size int     `json:"sz"` // 大小，用于计算吞并的天体数量
 	Stat int     `json:"st"` // 用于标记是否已爆炸 1=正常 2=已爆炸
 	Id   int     `json:"id"`
-	//CalcTimes int     `json:"calcTimes"`
+	idx  int
 }
 
 // 加速度结构体
@@ -51,8 +51,15 @@ const MIN_CRITICAL_DIST = 1.0
 var maxVeloX, maxVeloY, maxVeloZ, maxAccX, maxAccY, maxAccZ, maxMass, allMass, allWC float64 = 0, 0, 0, 0, 0, 0, 0, 0, 0
 var maxMassId, clearTimes int = 0, 0
 
-var c = make(chan int, 100)
-var nCount = 0
+var c = make(chan int, 10)
+var nCount, nCrashed int = 0, 0
+
+type crashEvent struct {
+	idx        int
+	crashedIdx int
+}
+
+var crashList = make(chan crashEvent, 10)
 
 // 初始化天体位置，质量，加速度 在一片区域随机分布
 func InitOrbs(num int, config *InitConfig) []Orb {
@@ -125,36 +132,45 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 	return oList
 }
 
-func Prepare() {
-
-	go func() {
-		for {
-			//if cCount >= thelen {
-			//	break
-			//}
-			val, ok := <-c
-			if !ok {
-				//log.Println("close ok, over, closed and drained")
-				break
-			}
-			nCount += val
-			//log.Println("read once:", val)
-		}
-	}()
-
-}
-
 // 所有天体运动一次
 func UpdateOrbs(oList []Orb, nStep int) int {
 	thelen := len(oList)
+	nCount = 0
+	//var vm massVary
 	for i := 0; i < thelen; i++ {
-		go oList[i].Update(oList, c, nStep)
+		oList[i].idx = i
+		go oList[i].Update(oList, c)
+	}
+	for {
+		if nCount >= thelen {
+			break
+		}
+		//log.Println("start waiting")
+		select {
+
+		case <-c:
+			nCount += 1
+		case ce := <-crashList:
+			// 接受质量变化信息
+			target := &oList[ce.idx]
+			o := &oList[ce.crashedIdx]
+			target.Mass += o.Mass
+			o.Mass = 0
+			target.Vx = (target.Mass*target.Vx + o.Mass*o.Vx) / target.Mass
+			target.Vy = (target.Mass*target.Vy + o.Mass*o.Vy) / target.Mass
+			target.Vz = (target.Mass*target.Vz + o.Mass*o.Vz) / target.Mass
+			target.Size += 1
+			//log.Println("the vary got:", ce)
+			nCrashed++
+			break
+		}
+		//log.Println("read once: val,nCount=", val, nCount)
 	}
 	return thelen * thelen
 }
 
 // 天体运动一次
-func (o *Orb) Update(oList []Orb, c chan int, nStep int) {
+func (o *Orb) Update(oList []Orb, c chan<- int) {
 	// 先把位置移动起来，再计算环境中的加速度，再更新速度，为了更好地解决并行计算数据同步问题
 	if o.Stat == 1 {
 		aAll := o.CalcGravityAll(oList)
@@ -188,7 +204,7 @@ func (o *Orb) Update(oList []Orb, c chan int, nStep int) {
 			maxMassId = o.Id
 		}
 	}
-	c <- 1 //len(oList)
+	c <- o.Id //len(oList)
 }
 
 // 计算天体受到的总体引力
@@ -204,34 +220,36 @@ func (o *Orb) CalcGravityAll(oList []Orb) Acc {
 		dist := o.CalcDist(target)
 
 		// 距离太近，被撞
-		isTooNearly := dist*dist < MIN_CRITICAL_DIST*MIN_CRITICAL_DIST*200
+		isTooNearly := dist*dist < MIN_CRITICAL_DIST*MIN_CRITICAL_DIST
 		// 速度太快，被撕裂 me ripped by ta
-		isTaRipped := dist*dist < (o.Vx*o.Vx+o.Vy*o.Vy+o.Vz*o.Vz)*10*200
+		isMeRipped := dist*dist < (o.Vx*o.Vx+o.Vy*o.Vy+o.Vz*o.Vz)*10
 
-		if isTooNearly || isTaRipped {
+		if isTooNearly || isMeRipped {
 
 			// 碰撞机制 非弹性碰撞 动量守恒 m1v1+m2v2=(m1+m2)v
-			if o.Mass > target.Mass {
-				//log.Println(o.Id, "crashed", target.Id, "isTooNearly", isTooNearly, isTaRipped, "me=", o, "ta=", target)
-				// 碰撞后速度 v = (m1v1+m2v2)/(m1+m2)
-				//由于并发数据分离，当前goroutine只允许操作当前orb,不允许操作别的orb，所以不允许操作ta的数据
-				//o.Mass += target.Mass
-				//在轮训时可能有多个o crashed ta,但是只有一个o crashed by ta
-				o.Vx = (target.Mass*target.Vx + o.Mass*o.Vx) / o.Mass
-				o.Vy = (target.Mass*target.Vy + o.Mass*o.Vy) / o.Mass
-				o.Vz = (target.Mass*target.Vz + o.Mass*o.Vz) / o.Mass
-				o.Size += 1
-				//target.Mass = 0
-				//target.Stat = 2
-			} else {
-				//log.Println(o.Id, "crashed by", target.Id, "isTooNearly", isTooNearly, isTaRipped, "me=", o, "ta=", target)
+			if o.Mass < target.Mass || isMeRipped {
+				//log.Println(o.Id, "crashed by", target.Id, "isTooNearly", isTooNearly, isMeRipped, "me=", o, "ta=", target)
 				//target.Mass += target.Mass
 				//target.Vx = (target.Mass*target.Vx + o.Mass*o.Vx) / target.Mass
 				//target.Vy = (target.Mass*target.Vy + o.Mass*o.Vy) / target.Mass
 				//target.Vz = (target.Mass*target.Vz + o.Mass*o.Vz) / target.Mass
 				//target.Size += 1
-				o.Mass = 0
+				// 碰撞对方的质量改变交给主goroutine，这里发送信息，不做修改操作
+				crashList <- crashEvent{target.idx, o.idx}
+				//o.Mass = 0
 				o.Stat = 2
+			} else {
+				//log.Println(o.Id, "crashed", target.Id, "isTooNearly", isTooNearly, isMeRipped, "me=", o, "ta=", target)
+				// 碰撞后速度 v = (m1v1+m2v2)/(m1+m2)
+				//由于并发数据分离，当前goroutine只允许操作当前orb,不允许操作别的orb，所以不允许操作ta的数据
+				//o.Mass += target.Mass
+				//在轮训时可能有多个o crashed ta,但是只有一个o crashed by ta
+				//o.Vx = (target.Mass*target.Vx + o.Mass*o.Vx) / o.Mass
+				//o.Vy = (target.Mass*target.Vy + o.Mass*o.Vy) / o.Mass
+				//o.Vz = (target.Mass*target.Vz + o.Mass*o.Vz) / o.Mass
+				//o.Size += 1
+				//target.Mass = 0
+				//target.Stat = 2
 			}
 		} else {
 			// 作用正常，累计计算受到的所有的万有引力
@@ -287,4 +305,7 @@ func GetClearTimes() int {
 }
 func GetCalcTimes() int {
 	return nCount
+}
+func GetCrashed() int {
+	return nCrashed
 }
