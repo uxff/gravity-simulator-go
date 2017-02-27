@@ -7,12 +7,14 @@ import (
 	"encoding/json"
 	"log"
 	"os"
-	"strconv"
+	//"strconv"
 	"strings"
+	"time"
 
 	orbs "../orbs"
-	redis "github.com/alphazero/Go-Redis"
+	//redis "github.com/alphazero/Go-Redis"
 	"github.com/bradfitz/gomemcache/memcache"
+	redigo "github.com/garyburd/redigo/redis"
 )
 
 const (
@@ -33,6 +35,7 @@ type SaverFace interface {
 	Save(key *string, val []byte) bool
 	SaveList(key *string, oList []orbs.Orb) bool
 	LoadList(key *string) []orbs.Orb
+	Clear()
 }
 type FileSaver struct {
 	savedir string
@@ -41,7 +44,8 @@ type McSaver struct {
 	mc *memcache.Client
 }
 type RedisSaver struct {
-	client redis.Client
+	//client redis.Client
+	client redigo.Conn
 }
 
 /*
@@ -86,6 +90,9 @@ func (this *McSaver) LoadList(cacheKey *string) (oList []orbs.Orb) {
 		log.Println("mc.get", *cacheKey, "error:", err)
 	}
 	return oList
+}
+func (this *McSaver) Clear() {
+	//this.mc.Close()
 }
 
 /*
@@ -136,10 +143,14 @@ func (this *FileSaver) Save(key *string, val []byte) bool {
 	}
 	return ret
 }
+func (this *FileSaver) Clear() {
+	// do none
+}
 
 /*
 	@param config["host"] = "redis://10.1.1.1:6379"
 */
+/* use alphazero/redis no connection pool
 func (this *RedisSaver) SetConfig(config map[string]string) bool {
 	spec := redis.DefaultSpec()
 	hostAndPort := config["host"]
@@ -163,7 +174,33 @@ func (this *RedisSaver) SetConfig(config map[string]string) bool {
 	}
 	this.client = client
 	return true
-	return false
+}*/
+/*	use redigo, redis pool */
+func (this *RedisSaver) SetConfig(config map[string]string) bool {
+
+	hostAndPort := config["host"]
+	if len(hostAndPort) == 0 {
+		hostAndPort = "127.0.0.1:6379"
+	}
+
+	redisPool := &redigo.Pool{
+		// 从配置文件获取maxidle以及maxactive，取不到则用后面的默认值
+		MaxIdle:     5,
+		MaxActive:   5,
+		IdleTimeout: 180 * time.Second,
+		Dial: func() (redigo.Conn, error) {
+			c, err := redigo.Dial("tcp", hostAndPort)
+			if err != nil {
+				return nil, err
+			}
+			// 选择db
+			c.Do("SELECT", 0)
+			return c, nil
+		},
+	}
+	this.client = redisPool.Get()
+
+	return true
 }
 func (this *RedisSaver) SaveList(key *string, oList []orbs.Orb) bool {
 	if strList, err := json.Marshal(oList); err == nil {
@@ -174,7 +211,8 @@ func (this *RedisSaver) SaveList(key *string, oList []orbs.Orb) bool {
 	return false
 }
 func (this *RedisSaver) Save(key *string, val []byte) bool {
-	err := this.client.Set(*key, val)
+	//err := this.client.Set(*key, val)
+	_, err := this.client.Do("SET", *key, val)
 	if err != nil {
 		log.Println("redis.save failed:", err)
 		return false
@@ -183,7 +221,10 @@ func (this *RedisSaver) Save(key *string, val []byte) bool {
 	return true
 }
 func (this *RedisSaver) LoadList(cacheKey *string) (oList []orbs.Orb) {
-	if orbListStr, err := this.client.Get(*cacheKey); err == nil {
+	//orbListStr, err := this.client.Get(*cacheKey)
+	orbListStr, err := redigo.Bytes(this.client.Do("GET", *cacheKey))
+
+	if err == nil {
 		err := json.Unmarshal(orbListStr, &oList)
 		if err != nil {
 			log.Println("redis.get len(val)=", len(orbListStr), "after unmarshal, len=", len(oList), "json.Unmarshal err=", err)
@@ -192,6 +233,9 @@ func (this *RedisSaver) LoadList(cacheKey *string) (oList []orbs.Orb) {
 		log.Println("redis.get", *cacheKey, "error:", err)
 	}
 	return oList
+}
+func (this *RedisSaver) Clear() {
+	this.client.Close()
 }
 
 func (this *FileSaver) LoadList(cacheKey *string) (oList []orbs.Orb) {
@@ -290,4 +334,7 @@ func (this *Saver) SetSavepath(savePath *string) {
 		}
 	}
 	this.SetHandler(this.htype, saverConf)
+}
+func (this *Saver) Clear() {
+	this.saveHandler.Clear()
 }

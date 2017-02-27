@@ -101,6 +101,7 @@ func main() {
 	timeUsed2 := float64(endTimeNano-startTimeNano) / 1000000000.0
 	fmt.Printf("all used time with save:%6fs saveTimes:%d save/sec:%.2f clearTimes:%d crashed:%d\n", timeUsed2, saver.GetSavetimes(), float64(saver.GetSavetimes())/timeUsed, orbs.GetClearTimes(), orbs.GetCrashed())
 
+	saver.Clear()
 }
 
 /*
