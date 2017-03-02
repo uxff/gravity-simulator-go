@@ -38,7 +38,7 @@ type InitConfig struct {
 	Wide    float64
 	Velo    float64
 	Eternal float64
-	Style   int // 分布方式 0=线性 1=立方体 2=圆盘圆柱 3=球形
+	Style   int // 个位：分布方式 0=线性 1=立方体 2=圆盘圆柱 3=球形 十位：聚集方式：0=均匀分布 1=中心靠拢开方分布
 
 }
 
@@ -65,12 +65,28 @@ var crashList = make(chan crashEvent, 10)
 // 初始化天体位置，质量，加速度 在一片区域随机分布
 func InitOrbs(num int, config *InitConfig) []Orb {
 	oList := make([]Orb, num)
+	//distStepAll, distStep := 0, 16
 
-	switch config.Style {
+	styleDistribute := config.Style % 10
+	styleAssemble := (config.Style / 10) % 10
+
+	switch styleDistribute {
 	case 0: //线性
 		for i := 0; i < num; i++ {
+			//distStep = i / distStepAll
+			var wide = config.Wide
+			switch styleAssemble {
+			case 1:
+				wide = config.Wide * math.Sqrt(float64(i+1)/float64(num))
+			case 2:
+				wide = config.Wide * math.Pow(float64(i+1)/float64(num), 2.0)
+			default:
+				wide = config.Wide
+			}
 			o := &oList[i]
-			o.X, o.Y, o.Z = (0.5-rand.Float64())*config.Wide, (0.5-rand.Float64())*config.Wide/256.0, (0.5-rand.Float64())*config.Wide/256.0
+			o.X = (0.5 - rand.Float64()) * wide
+			o.Y, o.Z = (0.5-rand.Float64())*config.Wide/256.0, (0.5-rand.Float64())*config.Wide/256.0
+
 			if o.X < 0 {
 				o.Vx = (1.0 + rand.Float64()) * config.Velo
 				o.Vy = -(1.0 + rand.Float64()) * config.Velo //* math.Sqrt(config.Wide/(radius+1.0)) / 4.0
@@ -88,7 +104,19 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 	case 1: //立方体
 		for i := 0; i < num; i++ {
 			o := &oList[i]
-			o.X, o.Y, o.Z = (0.5-rand.Float64())*config.Wide, (0.5-rand.Float64())*config.Wide, (0.5-rand.Float64())*config.Wide
+			var wide = config.Wide
+			switch styleAssemble {
+			case 1:
+				wide = config.Wide * math.Sqrt(float64(i+1)/float64(num))
+			case 2:
+				wide = config.Wide * math.Pow(float64(i+1)/float64(num), 2.0)
+			default:
+				wide = config.Wide
+			}
+			o.X = (0.5 - rand.Float64()) * wide
+			o.Y = (0.5 - rand.Float64()) * wide
+			o.Z = (0.5 - rand.Float64()) * wide
+
 			o.Vx = (rand.Float64() - 0.5) * config.Velo * 2.0
 			o.Vy = (rand.Float64() - 0.5) * config.Velo * 2.0
 			o.Vz = (rand.Float64() - 0.5) * config.Velo * 2.0
@@ -102,8 +130,17 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 		for i := 0; i < num; i++ {
 			o := &oList[i]
 			long := rand.Float64() * math.Pi * 2
-			radius := rand.Float64() * config.Wide / 2.0
 			high := (0.5 - rand.Float64()) * config.Wide
+			var wide = config.Wide
+			switch styleAssemble {
+			case 1:
+				wide = config.Wide * math.Sqrt(float64(i+1)/float64(num))
+			case 2:
+				wide = config.Wide * math.Pow(float64(i+1)/float64(num), 2.0)
+			default:
+				wide = config.Wide
+			}
+			radius := wide / 2.0 * math.Sqrt(rand.Float64())
 			o.X, o.Y = math.Cos(long)*radius, math.Sin(long)*radius
 			o.Z = high / 256.0
 			//o.Vx = (rand.Float64() - 0.5) * config.Velo * 2.0 * math.Sqrt(config.Wide/(radius+1.0)) / 4.0
@@ -117,13 +154,25 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 			o.Stat = 1
 			allMass += o.Mass
 		}
-	case 3: //球形 随机经度 随机半径 随机高度*sin(半径)
+	case 3: //球形
+		//方法一： 随机经度 随机半径 随机高度*sin(半径) 产生的数据从y轴上方看z面，不均匀
+		//方法二： 随机经度 随机维度*cos(随机维度)
 		for i := 0; i < num; i++ {
 			o := &oList[i]
+			var wide = config.Wide
+			switch styleAssemble {
+			case 1:
+				wide = config.Wide * math.Sqrt(float64(i+1)/float64(num))
+			case 2:
+				wide = config.Wide * math.Pow(float64(i+1)/float64(num), 2.0)
+			default:
+				wide = config.Wide
+			}
 			long := rand.Float64() * math.Pi * 2
-			radius := math.Sqrt(rand.Float64() * (config.Wide / 2.0 * config.Wide / 2.0))
-			o.X, o.Y = math.Cos(long)*radius, math.Sin(long)*radius
-			o.Z = (0.5 - rand.Float64()) * math.Sqrt(config.Wide*config.Wide/4.0-radius*radius) * 2.0
+			lati := math.Acos(rand.Float64()*2.0 - 1.0)
+			radius := math.Pow(rand.Float64(), 1.0/3.0) * wide / 2.0
+			o.X, o.Y = radius*math.Cos(long)*math.Sin(lati), radius*math.Sin(long)*math.Sin(lati)
+			o.Z = radius * math.Cos(lati)
 			o.Vx = (rand.Float64() - 0.5) * config.Velo * 2.0
 			o.Vy = (rand.Float64() - 0.5) * config.Velo * 2.0
 			o.Vz = (rand.Float64() - 0.5) * config.Velo * 2.0
@@ -162,12 +211,18 @@ func UpdateOrbs(oList []Orb, nStep int) int {
 			break
 		}
 		//log.Println("start waiting")
+		// 策略1 先处理nCrash,再处理nCount,必须申请thelen个crashEvent的chan
 		select {
 
 		case <-c:
 			nCount += 1
 		case ce := <-crashList:
 			// 接收碰撞事件 这里处理事件引发的数据变化
+			if ce.idx >= len(oList) || ce.crashedIdx >= len(oList) {
+				// 此处有问题
+				log.Println("seems error: crash:", ce, "len(oList):", len(oList), "nCount,nCrash:", nCount, nCrashed)
+				break
+			}
 			target := &oList[ce.idx]
 			o := &oList[ce.crashedIdx]
 			target.Mass += o.Mass

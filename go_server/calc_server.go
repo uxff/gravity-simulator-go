@@ -32,7 +32,7 @@ func main() {
 	var configMass = flag.Float64("config-mass", 10.0, "the mass of orbs")
 	var configWide = flag.Float64("config-wide", 1000.0, "the wide of orbs")
 	var configVelo = flag.Float64("config-velo", 0.005, "the velo of orbs")
-	var configStyle = flag.Int("config-style", 1, "the style of orbs distribute, 1=cube,2=disc,3=sphere")
+	var configStyle = flag.Int("config-style", 23, "AB, style of orbs arrange A & aggregation B\n\tarrange:0=avg,1=ladder,2=variance\t aggregation:0=line,1=cube,2=disc,3=sphere;\n\tlike: 23 #means variance cube")
 	var configCpu = flag.Int("config-cpu", 0, "how many cpu u want use, 0=all")
 	var savePath = flag.String("savepath", "mc://127.0.0.1:11211", "where to save, support mc/file/redis\n\tlike: file://./filecache/")
 	var saveKey = flag.String("savekey", "thelist1", "key name to save, like key of memcache, or filename in save dir")
