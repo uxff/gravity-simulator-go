@@ -322,7 +322,7 @@ func (o *Orb) CalcGravityAll(oList []Orb) Acc {
 				//crashList <- crashEvent{target.idx, o.idx}
 				o.crashedBy = i // 不能取target.idx // 待思考为什么
 				//o.Mass = 0
-				//o.Stat = 2
+				o.Stat = 2
 			} else {
 				//log.Println(o.Id, "crashed", target.Id, "isTooNearly", isTooNearly, isMeRipped, "me=", o, "ta=", target)
 				// 碰撞后速度 v = (m1v1+m2v2)/(m1+m2)
