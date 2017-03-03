@@ -81,6 +81,8 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 				wide = config.Wide * math.Sqrt(float64(i+1)/float64(num))
 			case 2:
 				wide = config.Wide * math.Pow(float64(i+1)/float64(num), 2.0)
+			case 3:
+				wide = config.Wide * math.Pow(float64(i+1)/float64(num), 4.0)
 			default:
 				wide = config.Wide
 			}
@@ -111,6 +113,8 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 				wide = config.Wide * math.Sqrt(float64(i+1)/float64(num))
 			case 2:
 				wide = config.Wide * math.Pow(float64(i+1)/float64(num), 2.0)
+			case 3:
+				wide = config.Wide * math.Pow(float64(i+1)/float64(num), 4.0)
 			default:
 				wide = config.Wide
 			}
@@ -138,6 +142,8 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 				wide = config.Wide * math.Sqrt(float64(i+1)/float64(num))
 			case 2:
 				wide = config.Wide * math.Pow(float64(i+1)/float64(num), 2.0)
+			case 3:
+				wide = config.Wide * math.Pow(float64(i+1)/float64(num), 4.0)
 			default:
 				wide = config.Wide
 			}
@@ -166,6 +172,8 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 				wide = config.Wide * math.Sqrt(float64(i+1)/float64(num))
 			case 2:
 				wide = config.Wide * math.Pow(float64(i+1)/float64(num), 2.0)
+			case 3:
+				wide = config.Wide * math.Pow(float64(i+1)/float64(num), 4.0)
 			default:
 				wide = config.Wide
 			}
@@ -212,41 +220,36 @@ func UpdateOrbs(oList []Orb, nStep int) int {
 		if nCount >= thelen {
 			break
 		}
-		//log.Println("start waiting")
-		// 策略1 先处理nCrash,再处理nCount,必须申请thelen个crashEvent的chan
 
 		okIdx := <-c
 		nCount++
 
-		if okIdx >= len(oList) {
-			log.Println("seems error: okIdx,len(oList)=", okIdx, len(oList))
-			break
-		}
+		//		if okIdx >= len(oList) {
+		//			log.Println("seems error: okIdx,len(oList)=", okIdx, len(oList))
+		//			break
+		//		}
 
 		// 被撞击信息包含在o中
 		if oList[okIdx].crashedBy >= 0 {
-			if oList[okIdx].crashedBy >= len(oList) {
-				log.Println("seems crashedBy illegal: crashedBy,len(oList)=", oList[okIdx].crashedBy, len(oList))
-				break
-			}
-			target := &oList[oList[okIdx].crashedBy]
+			//			if oList[okIdx].crashedBy >= len(oList) {
+			//				log.Println("seems crashedBy illegal: crashedBy,len(oList)=", oList[okIdx].crashedBy, len(oList))
+			//				break
+			//			}
 			o := &oList[okIdx]
+			target := &oList[oList[okIdx].crashedBy]
 			// 碰撞机制 非弹性碰撞 动量守恒 m1v1+m2v2=(m1+m2)v
 			targetMassOld := target.Mass
 			target.Mass += o.Mass
 			target.Vx = (targetMassOld*target.Vx + o.Mass*o.Vx) / target.Mass
 			target.Vy = (targetMassOld*target.Vy + o.Mass*o.Vy) / target.Mass
 			target.Vz = (targetMassOld*target.Vz + o.Mass*o.Vz) / target.Mass
-			target.Size += 1
+			target.Size++
 			o.Mass = 0
 			o.Stat = 2
 			nCrashed++
 		}
 
-		//log.Println("read once: val,nCount=", val, nCount)
 	}
-	// 方法1： 增加crashEvent队列，异步返回 使用这种方法要保证crashEvent很长
-	// 方法2:  在c chan 中同步返回 crashEvent
 	return thelen * nCount
 }
 
@@ -303,12 +306,12 @@ func (o *Orb) CalcGravityAll(oList []Orb) Acc {
 		// 距离太近，被撞
 		isTooNearly := dist*dist < MIN_CRITICAL_DIST*MIN_CRITICAL_DIST
 		// 速度太快，被撕裂 me ripped by ta
-		isMeRipped := dist*dist < (o.Vx*o.Vx+o.Vy*o.Vy+o.Vz*o.Vz)*8
+		isMeRipped := dist < math.Sqrt(o.Vx*o.Vx+o.Vy*o.Vy+o.Vz*o.Vz)*8
 
 		if isTooNearly || isMeRipped {
 
 			// 碰撞机制 非弹性碰撞 动量守恒 m1v1+m2v2=(m1+m2)v
-			if o.Mass < target.Mass || isMeRipped {
+			if o.Mass < target.Mass {
 				//log.Println(o.Id, "crashed by", target.Id, "isTooNearly", isTooNearly, isMeRipped, "me=", o, "ta=", target)
 				//target.Mass += target.Mass
 				//target.Vx = (target.Mass*target.Vx + o.Mass*o.Vx) / target.Mass
