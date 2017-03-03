@@ -68,7 +68,7 @@ func main() {
 		return
 	}
 
-	fmt.Printf("start calc, orbs:%d will times:%d use cpu core:%d\n", num_orbs, num_times*num_orbs*num_orbs, numCpu)
+	fmt.Printf("start calc, orbs:%d will times:%d use cpu core:%d allMass=%e\n", num_orbs, num_times*num_orbs*num_orbs, numCpu, orbs.GetAllMass())
 
 	realTimes, perTimes, tmpTimes := 0, 0, 0
 	startTimeNano := time.Now().UnixNano()

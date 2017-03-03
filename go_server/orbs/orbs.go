@@ -11,17 +11,18 @@ import (
 
 // 天体结构体声明
 type Orb struct {
-	X    float64 `json:"x"`  // 坐标x
-	Y    float64 `json:"y"`  // 坐标y
-	Z    float64 `json:"z"`  // 坐标z
-	Vx   float64 `json:"vx"` // 速度x
-	Vy   float64 `json:"vy"` // 速度y
-	Vz   float64 `json:"vz"` // 速度z
-	Mass float64 `json:"m"`  // 质量
-	Size int     `json:"sz"` // 大小，用于计算吞并的天体数量
-	Stat int     `json:"st"` // 用于标记是否已爆炸 1=正常 2=已爆炸
-	Id   int     `json:"id"`
-	idx  int
+	X         float64 `json:"x"`  // 坐标x
+	Y         float64 `json:"y"`  // 坐标y
+	Z         float64 `json:"z"`  // 坐标z
+	Vx        float64 `json:"vx"` // 速度x
+	Vy        float64 `json:"vy"` // 速度y
+	Vz        float64 `json:"vz"` // 速度z
+	Mass      float64 `json:"m"`  // 质量
+	Size      int     `json:"sz"` // 大小，用于计算吞并的天体数量
+	Stat      int     `json:"st"` // 用于标记是否已爆炸 1=正常 2=已爆炸
+	Id        int     `json:"id"`
+	idx       int
+	crashedBy int
 }
 
 // 加速度结构体
@@ -52,7 +53,7 @@ const MIN_CRITICAL_DIST = 2.0
 var maxVeloX, maxVeloY, maxVeloZ, maxAccX, maxAccY, maxAccZ, maxMass, allMass, allWC float64 = 0, 0, 0, 0, 0, 0, 0, 0, 0
 var maxMassId, clearTimes int = 0, 0
 
-var c = make(chan int, 10)
+var c = make(chan int, 1)
 var nCount, nCrashed int = 0, 0
 
 type crashEvent struct {
@@ -60,7 +61,7 @@ type crashEvent struct {
 	crashedIdx int
 }
 
-var crashList = make(chan crashEvent, 10)
+//var crashList = make(chan crashEvent, 1)
 
 // 初始化天体位置，质量，加速度 在一片区域随机分布
 func InitOrbs(num int, config *InitConfig) []Orb {
@@ -156,7 +157,7 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 		}
 	case 3: //球形
 		//方法一： 随机经度 随机半径 随机高度*sin(半径) 产生的数据从y轴上方看z面，不均匀
-		//方法二： 随机经度 随机维度*cos(随机维度)
+		//方法二： 随机经度 随机纬度=acos(rand(0-1))
 		for i := 0; i < num; i++ {
 			o := &oList[i]
 			var wide = config.Wide
@@ -201,10 +202,11 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 // 所有天体运动一次
 func UpdateOrbs(oList []Orb, nStep int) int {
 	thelen := len(oList)
-	nCount = 0
+	nCount := 0
 	for i := 0; i < thelen; i++ {
 		oList[i].idx = i
-		go oList[i].Update(oList, c)
+		oList[i].crashedBy = -1
+		go oList[i].Update(oList)
 	}
 	for {
 		if nCount >= thelen {
@@ -212,39 +214,44 @@ func UpdateOrbs(oList []Orb, nStep int) int {
 		}
 		//log.Println("start waiting")
 		// 策略1 先处理nCrash,再处理nCount,必须申请thelen个crashEvent的chan
-		select {
 
-		case <-c:
-			nCount += 1
-		case ce := <-crashList:
-			// 接收碰撞事件 这里处理事件引发的数据变化
-			if ce.idx >= len(oList) || ce.crashedIdx >= len(oList) {
-				// 此处有问题
-				log.Println("seems error: crash:", ce, "len(oList):", len(oList), "nCount,nCrash:", nCount, nCrashed)
-				break
-			}
-			target := &oList[ce.idx]
-			o := &oList[ce.crashedIdx]
-			target.Mass += o.Mass
-			o.Mass = 0
-			target.Vx = (target.Mass*target.Vx + o.Mass*o.Vx) / target.Mass
-			target.Vy = (target.Mass*target.Vy + o.Mass*o.Vy) / target.Mass
-			target.Vz = (target.Mass*target.Vz + o.Mass*o.Vz) / target.Mass
-			target.Size += 1
-			//log.Println("the vary got:", ce)
-			nCrashed++
+		okIdx := <-c
+		nCount++
+
+		if okIdx >= len(oList) {
+			log.Println("seems error: okIdx,len(oList)=", okIdx, len(oList))
 			break
 		}
+
+		// 被撞击信息包含在o中
+		if oList[okIdx].crashedBy >= 0 {
+			if oList[okIdx].crashedBy >= len(oList) {
+				log.Println("seems crashedBy illegal: crashedBy,len(oList)=", oList[okIdx].crashedBy, len(oList))
+				break
+			}
+			target := &oList[oList[okIdx].crashedBy]
+			o := &oList[okIdx]
+			// 碰撞机制 非弹性碰撞 动量守恒 m1v1+m2v2=(m1+m2)v
+			targetMassOld := target.Mass
+			target.Mass += o.Mass
+			target.Vx = (targetMassOld*target.Vx + o.Mass*o.Vx) / target.Mass
+			target.Vy = (targetMassOld*target.Vy + o.Mass*o.Vy) / target.Mass
+			target.Vz = (targetMassOld*target.Vz + o.Mass*o.Vz) / target.Mass
+			target.Size += 1
+			o.Mass = 0
+			o.Stat = 2
+			nCrashed++
+		}
+
 		//log.Println("read once: val,nCount=", val, nCount)
 	}
-	if nCount != thelen {
-		log.Println("seems some goroutine do not work over: nCount,thelen=", nCount, thelen)
-	}
-	return thelen * thelen
+	// 方法1： 增加crashEvent队列，异步返回 使用这种方法要保证crashEvent很长
+	// 方法2:  在c chan 中同步返回 crashEvent
+	return thelen * nCount
 }
 
 // 天体运动一次
-func (o *Orb) Update(oList []Orb, c chan<- int) {
+func (o *Orb) Update(oList []Orb) {
 	// 先把位置移动起来，再计算环境中的加速度，再更新速度，为了更好地解决并行计算数据同步问题
 	if o.Stat == 1 {
 		aAll := o.CalcGravityAll(oList)
@@ -278,7 +285,7 @@ func (o *Orb) Update(oList []Orb, c chan<- int) {
 			maxMassId = o.Id
 		}
 	}
-	c <- o.Id //len(oList)
+	c <- o.idx //len(oList)
 }
 
 // 计算天体受到的总体引力
@@ -309,9 +316,10 @@ func (o *Orb) CalcGravityAll(oList []Orb) Acc {
 				//target.Vz = (target.Mass*target.Vz + o.Mass*o.Vz) / target.Mass
 				//target.Size += 1
 				// 碰撞对方的质量改变交给主goroutine，这里发送信息，不做修改操作
-				crashList <- crashEvent{target.idx, o.idx}
+				//crashList <- crashEvent{target.idx, o.idx}
+				o.crashedBy = i // 不能取target.idx // 待思考为什么
 				//o.Mass = 0
-				o.Stat = 2
+				//o.Stat = 2
 			} else {
 				//log.Println(o.Id, "crashed", target.Id, "isTooNearly", isTooNearly, isMeRipped, "me=", o, "ta=", target)
 				// 碰撞后速度 v = (m1v1+m2v2)/(m1+m2)
@@ -382,4 +390,7 @@ func GetCalcTimes() int {
 }
 func GetCrashed() int {
 	return nCrashed
+}
+func GetAllMass() float64 {
+	return allMass
 }
