@@ -106,6 +106,5 @@ func main() {
 
 /*
 	todo list:
-	去掉calcAllGravity中修改target属性并测试 done 使用crashEvent队列实现
 	实现多服务器计算
 */

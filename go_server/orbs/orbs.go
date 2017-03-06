@@ -11,17 +11,17 @@ import (
 
 // 天体结构体声明
 type Orb struct {
-	X         float64 `json:"x"`  // 坐标x
-	Y         float64 `json:"y"`  // 坐标y
-	Z         float64 `json:"z"`  // 坐标z
-	Vx        float64 `json:"vx"` // 速度x
-	Vy        float64 `json:"vy"` // 速度y
-	Vz        float64 `json:"vz"` // 速度z
-	Mass      float64 `json:"m"`  // 质量
-	Size      int     `json:"sz"` // 大小，用于计算吞并的天体数量
-	Stat      int     `json:"st"` // 用于标记是否已爆炸 1=正常 2=已爆炸
-	Id        int     `json:"id"`
-	idx       int
+	X    float64 `json:"x"`  // 坐标x
+	Y    float64 `json:"y"`  // 坐标y
+	Z    float64 `json:"z"`  // 坐标z
+	Vx   float64 `json:"vx"` // 速度x
+	Vy   float64 `json:"vy"` // 速度y
+	Vz   float64 `json:"vz"` // 速度z
+	Mass float64 `json:"m"`  // 质量
+	Size int     `json:"sz"` // 大小，用于计算吞并的天体数量
+	Stat int     `json:"st"` // 用于标记是否已爆炸 1=正常 2=已爆炸
+	Id   int     `json:"id"`
+	//idx       int
 	crashedBy int
 }
 
@@ -44,7 +44,7 @@ type InitConfig struct {
 }
 
 // 万有引力常数
-const G = 0.000021
+const G = 0.000005
 
 // 最小天体距离值 两天体距离小于此值了会相撞
 const MIN_CRITICAL_DIST = 2.0
@@ -102,6 +102,7 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 			o.Mass = rand.Float64() * config.Mass
 			o.Id = i // rand.Int()
 			o.Stat = 1
+			o.crashedBy = -1
 			allMass += o.Mass
 		}
 	case 1: //立方体
@@ -129,6 +130,7 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 			o.Mass = rand.Float64() * config.Mass
 			o.Id = i // rand.Int()
 			o.Stat = 1
+			o.crashedBy = -1
 			allMass += o.Mass
 		}
 	case 2: //圆盘 随机选经度 随机选半径 随机选高低 刻意降低垂直于柱面的速度
@@ -159,6 +161,7 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 			o.Mass = rand.Float64() * config.Mass
 			o.Id = i // rand.Int()
 			o.Stat = 1
+			o.crashedBy = -1
 			allMass += o.Mass
 		}
 	case 3: //球形
@@ -189,6 +192,7 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 			o.Mass = rand.Float64() * config.Mass
 			o.Id = i // rand.Int()
 			o.Stat = 1
+			o.crashedBy = -1
 			allMass += o.Mass
 		}
 	default:
@@ -212,9 +216,9 @@ func UpdateOrbs(oList []Orb, nStep int) int {
 	thelen := len(oList)
 	nCount := 0
 	for i := 0; i < thelen; i++ {
-		oList[i].idx = i
+		//oList[i].idx = i
 		oList[i].crashedBy = -1
-		go oList[i].Update(oList)
+		go oList[i].Update(oList, i)
 	}
 	for {
 		if nCount >= thelen {
@@ -246,6 +250,7 @@ func UpdateOrbs(oList []Orb, nStep int) int {
 			target.Size++
 			o.Mass = 0
 			o.Stat = 2
+			o.crashedBy = -1
 			nCrashed++
 		}
 
@@ -254,7 +259,7 @@ func UpdateOrbs(oList []Orb, nStep int) int {
 }
 
 // 天体运动一次
-func (o *Orb) Update(oList []Orb) {
+func (o *Orb) Update(oList []Orb, idx int) {
 	// 先把位置移动起来，再计算环境中的加速度，再更新速度，为了更好地解决并行计算数据同步问题
 	if o.Stat == 1 {
 		aAll := o.CalcGravityAll(oList)
@@ -288,7 +293,7 @@ func (o *Orb) Update(oList []Orb) {
 			maxMassId = o.Id
 		}
 	}
-	c <- o.idx //len(oList)
+	c <- idx //len(oList)
 }
 
 // 计算天体受到的总体引力
