@@ -1,6 +1,6 @@
 var defaultHost = window.document.location.host || '127.0.0.1:8081';
 var wsUri = "ws://"+defaultHost+"/orbs";//host mc.lo redirect to 127.0.0.1
-var loadKey = 'thelist1';
+var sendVal = 'cmd=orbs&k=thelist1';
 var MyWebsocket = {
     wsUri: wsUri,
     websocket: null,
@@ -48,7 +48,7 @@ var MyWebsocket = {
             this.lastRecvData = evt.data;
             //console.log(data);
             if (this.receiveCallback != undefined) {
-                this.receiveCallback(data.data.list);
+                this.receiveCallback(data);
             }
         } catch (e) {
             console.log(e);

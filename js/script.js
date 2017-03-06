@@ -193,8 +193,22 @@ var lesson1 = {
     }
 };
 
-var UpdateOrbs = function(list) {
-    lesson1.updateOrbs(list);
+var UpdateOrbs = function(data) {
+    var cmd = data.data.cmd || undefined
+    switch (cmd) {
+        case 'orbs':
+            lesson1.updateOrbs(data.data.list);
+            break;
+        case 'taketask':
+            console.log(data);
+            break;
+        case 'recvorb':
+            break;
+        default:
+            console.log("unknown cmd:");
+            console.log(data);
+            break;
+    }
 }
 
 // Animate the scene
@@ -212,8 +226,8 @@ function update() {
     // 从服务器取数据，显示到屏幕
     //MyWebsocket.sceneMgr = lesson1;
     ++ticker;
-    if ((ticker+1)%5 == 1) {
-        MyWebsocket.doSend('k='+loadKey);
+    if ((ticker+1)%25 == 1) {
+        MyWebsocket.doSend(sendVal);
     }
     //// smoothly move the particleLight
     //var timer = Date.now() * 0.000025;
@@ -237,7 +251,7 @@ function initializeLesson() {
         wsUri = $('#ws-addr').val();
         if (window.document.domain != undefined) {
             
-            wsUri = 'ws://'+window.document.domain+':8081'+'/orbs';
+            wsUri = 'ws://'+window.document.domain+':8082'+'/orbs';
             $('#ws-addr').val(wsUri);
             MyWebsocket.wsUri = wsUri;
         }
@@ -247,7 +261,7 @@ function initializeLesson() {
     }
 
     //MyWebsocket.doSend('k='+mcKey);
-    $('#ws-addr').val(defaultHost);
+    $('#ws-addr').val(wsUri);
     $('#zoom_up').on('click', function() {
         zoomBase = zoomBase*zoomStep;
         $('#zoom').val(zoomBase);
@@ -257,13 +271,13 @@ function initializeLesson() {
         $('#zoom').val(zoomBase);
     });
     $('#reConnect').on('click', function() {
-        wsUri = 'ws://'+$('#ws-addr').val()+'/orbs';
+        wsUri = $('#ws-addr').val();
         MyWebsocket.wsUri = wsUri;
         //alert(wsUri);
         MyWebsocket.initWebsocket();
     });
-    $('#btnLoadkey').on('click', function() {
-        loadKey = $('#loadkey').val();
+    $('#btnSend').on('click', function() {
+        sendVal = $('#send-val').val();
     });
     
     animate();
