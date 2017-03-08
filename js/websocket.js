@@ -66,7 +66,7 @@ var MyWebsocket = {
     doSend: function (message) {
         //console.log(websocket.readyState == websocket.CLOSED);
         if (this.websocket && this.websocket.readyState == this.websocket.OPEN) {
-            this.writeToScreen("SENT: " + message);
+            //this.writeToScreen("SENT: " + message);
             this.websocket.send(message);
             this.lastSendData = message;
         } else {

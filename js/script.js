@@ -226,8 +226,8 @@ function update() {
     // 从服务器取数据，显示到屏幕
     //MyWebsocket.sceneMgr = lesson1;
     ++ticker;
-    if ((ticker+1)%25 == 1) {
-        MyWebsocket.doSend(sendVal);
+    if ((ticker+1)%125 == 1) {
+        //MyWebsocket.doSend(sendVal);
     }
     //// smoothly move the particleLight
     //var timer = Date.now() * 0.000025;

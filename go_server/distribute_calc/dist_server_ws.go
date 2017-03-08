@@ -51,6 +51,7 @@ func (this *CalcUnit) GetUncalcedId() (theIndex int, ok bool) {
 		if this.DoneList[this.WillCur] == byte(0) {
 			theIndex = this.WillCur
 			ok = true
+			this.WillCur++
 			break
 		}
 		this.WillCur++
@@ -58,7 +59,7 @@ func (this *CalcUnit) GetUncalcedId() (theIndex int, ok bool) {
 	return theIndex, ok
 }
 
-var allList = make(map[string]CalcUnit)
+var allList = make(map[string]*CalcUnit)
 
 var addr = flag.String("addr", "0.0.0.0:8082", "websocket server address of dist calc server")
 var savePath = flag.String("savepath", "mc://127.0.0.1:11211", "where to save, support mc/file/redis\n\tlike: file://./filecache/")
@@ -124,13 +125,13 @@ func handleTask(w http.ResponseWriter, r *http.Request) {
 				ret.Data["alllist"] = nil
 				break
 			}
-			var unit CalcUnit
+			var unit *CalcUnit
 			if _, ok := allList[key]; ok {
 				unit = allList[key]
 			} else {
-				unit = CalcUnit{Key: key}
+				unit = &CalcUnit{Key: key}
 				unit.SetPrepList(saver.GetList(&key)) //getListFromMc(mc, &mcKey)
-
+				allList[key] = unit
 			}
 			ret.Data["alllist"] = unit.PrepList
 
@@ -145,12 +146,13 @@ func handleTask(w http.ResponseWriter, r *http.Request) {
 				ret.Data["feedlist"] = make([]int, 0)
 				break
 			}
-			var unit CalcUnit
+			var unit *CalcUnit
 			if _, ok := allList[key]; ok {
 				unit = allList[key]
 			} else {
-				unit = CalcUnit{Key: key}
+				unit = &CalcUnit{Key: key}
 				unit.SetPrepList(saver.GetList(&key)) //getListFromMc(mc, &mcKey)
+				allList[key] = unit
 			}
 			var feedlist []int
 			for i := 0; i < calcNum; i++ {
