@@ -21,10 +21,15 @@
                     console.warn('list is undefined');
                     return ;
                 }
-                if (!isInited) {
-                    initOrbs(dataList);
+                if (dataList.data.list != undefined) {
+                    
+                    if (!isInited) {
+                        initOrbs(dataList.data.list);
+                    } else {
+                        updateOrbs(dataList.data.list);
+                    }
                 } else {
-                    updateOrbs(dataList);
+                    //console.log("unknown cmd:", dataList);
                 }
             }
             clearOrbs = function() {
@@ -182,7 +187,7 @@
                 }
                 MyWebsocket.receiveCallback = recvData;
 
-                $('#ws-addr').val(defaultHost);
+                $('#ws-addr').val(wsUri);
                 $('#zoom_up').on('click', function() {
                     zoomBase = zoomBase*zoomStep;
                     $('#zoom').val(zoomBase);
@@ -197,10 +202,9 @@
                     //alert(wsUri);
                     MyWebsocket.initWebsocket();
                 });
-                $('#btnLoadkey').on('click', function() {
-                    loadKey = $('#loadkey').val();
+                $('#btnSend').on('click', function() {
+                    sendVal = $('#send-val').val();
                 });
-                
                 animate();
 			}
 
@@ -231,9 +235,9 @@
 
 				//points.rotation.x = time * 0.25;
 				//points.rotation.y = time * 0.5;
-                if (ticker%10==0) {
+                if (ticker%110==0) {
                     //updateDots();
-                    MyWebsocket.doSend('k='+loadKey);
+                    MyWebsocket.doSend(sendVal);
                 }
                 renderer.render( scene, camera );
 

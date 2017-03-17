@@ -115,14 +115,15 @@ func handleTask(w http.ResponseWriter, r *http.Request) {
 		ret := JsonRet{Code: 1, Msg: "ok", Data: make(map[string]interface{})}
 		urlQuery, _ := url.ParseQuery(string(message))
 		cmd := urlQuery.Get("cmd")
+		key := urlQuery.Get("k")
 		ret.Data["cmd"] = cmd
+		ret.Data["key"] = key
 		switch cmd {
 		case "orbs":
-			key := urlQuery.Get("k")
 
 			if len(key) == 0 {
 				log.Println("illegal message ignored. message=", string(message))
-				ret.Data["alllist"] = nil
+				ret.Data["list"] = nil
 				break
 			}
 			var unit *CalcUnit
@@ -133,11 +134,10 @@ func handleTask(w http.ResponseWriter, r *http.Request) {
 				unit.SetPrepList(saver.GetList(&key)) //getListFromMc(mc, &mcKey)
 				allList[key] = unit
 			}
-			ret.Data["alllist"] = unit.PrepList
+			ret.Data["list"] = unit.PrepList
 
 			log.Println("get orbs done")
 		case "taketask":
-			key := urlQuery.Get("k")
 			calcNumVal := urlQuery.Get("calcnum")
 			calcNum, _ := strconv.Atoi(calcNumVal)
 
@@ -168,7 +168,6 @@ func handleTask(w http.ResponseWriter, r *http.Request) {
 			log.Println("take a task done")
 		case "recvorb":
 			// request give o orb // compile ok
-			key := urlQuery.Get("k")
 			var orb orbs.Orb
 			if len(key) == 0 {
 				log.Println("key not exist")

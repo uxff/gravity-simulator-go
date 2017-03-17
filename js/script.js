@@ -30,6 +30,8 @@ var particleLight;
 var ticker = 0;
 var zoomBase = 1.0, zoomStep = Math.sqrt(2.0);// = document.getElementById('zoom').value;
 var NUM_PARTICLES = 0;
+var MIN_DIST = 2.0;
+var G = 0.000025;
 
 var lesson1 = {
     scene: null,
@@ -40,6 +42,7 @@ var lesson1 = {
     clock: null,
     stats: null,
     orbList: {},// new Map();
+    dataList: null,// new Map();
     isInited: false,
 
     init: function() { // Initialization
@@ -198,15 +201,18 @@ var UpdateOrbs = function(data) {
     switch (cmd) {
         case 'orbs':
             lesson1.updateOrbs(data.data.list);
+            lesson1.dataList = data.data.list;
             break;
         case 'taketask':
             console.log(data);
+            
             break;
         case 'recvorb':
             break;
         default:
-            console.log("unknown cmd:");
-            console.log(data);
+            lesson1.updateOrbs(data.data.list);
+            //console.log("unknown cmd:");
+            //console.log(data);
             break;
     }
 }
@@ -227,7 +233,7 @@ function update() {
     //MyWebsocket.sceneMgr = lesson1;
     ++ticker;
     if ((ticker+1)%125 == 1) {
-        //MyWebsocket.doSend(sendVal);
+        MyWebsocket.doSend(sendVal);
     }
     //// smoothly move the particleLight
     //var timer = Date.now() * 0.000025;
@@ -260,7 +266,6 @@ function initializeLesson() {
         MyWebsocket.initWebsocket();
     }
 
-    //MyWebsocket.doSend('k='+mcKey);
     $('#ws-addr').val(wsUri);
     $('#zoom_up').on('click', function() {
         zoomBase = zoomBase*zoomStep;
@@ -281,6 +286,53 @@ function initializeLesson() {
     });
     
     animate();
+}
+
+var calcDist = function(o, target) {
+    return Math.sqrt((o.x-target.x)*(o.x-target.x) + (o.y-target.y)*(o.y-target.y) + (o.z-target.z)*(o.z-target.z));
+}
+var calcGravity = function(o, target, dist) {
+    var a = target.m / (dist*dist) * G;
+    var aAll = {};
+    aAll.x = - a * (o.x - target.x) / dist
+    aAll.y = - a * (o.y - target.y) / dist
+    aAll.z = - a * (o.z - target.z) / dist
+    return aAll;
+}
+
+var calcOrbs = function(orbId, orbList) {
+    if (orbList == undefined) {
+        console.log('orbList is not already');
+        return false;
+    }
+    if (orbId >= orbList.length) {
+        console.log('orbList as no id: '+orbId);
+        return false;
+    }
+    var o = orbList[orbId];
+    if (o.st != 1 || o.m == 0) {
+        console.log('orb status not ok:'+orbId, o);
+        return false;
+    }
+    var crashedBy = -1;
+    var gAll = 0;
+    for (var i in orbList) {
+        var ta = orbList[i];
+        if (ta.id == o.id || ta.st != 1 || o.st != 1) {
+            continue;
+        }
+        var dist = calcDist(o, ta);
+        var isTooNearly = dist*dist < 2*2;
+        var isMeRipped = dist < Math.sqrt(o.vx*o.vx+o.vy*o.vy+o.vz*o.vz) * 8
+        if (isTooNearly || isMeRipped) {
+            if (o.m < ta.m) {
+                crashedBy = i;
+                o.st = 2;
+            }
+        } else {
+            
+        }
+    }
 }
 
 if (window.addEventListener)
