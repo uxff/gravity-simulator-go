@@ -35,11 +35,13 @@ type Acc struct {
 
 // 配置
 type InitConfig struct {
-	Mass    float64
-	Wide    float64
-	Velo    float64
-	Eternal float64
-	Style   int // 个位：分布方式 0=线性 1=立方体 2=圆盘圆柱 3=球形 十位：聚集方式：0=均匀分布 1=中心靠拢开方分布
+	Mass         float64
+	Wide         float64
+	Velo         float64
+	Style        int     // 个位：分布方式 0=线性 1=立方体 2=圆盘圆柱 3=球形 十位：聚集方式：0=均匀分布 1=中心靠拢开方分布
+	BigMass      float64 // 大块头的质量 比如处于中心的黑洞
+	BigNum       int     // 大块头个数
+	BigDistStyle int     // big mass orb distribute style: 0=center 1=outer edge 2=middle of one radius 3=random
 
 }
 
@@ -197,15 +199,41 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 		}
 	default:
 	}
-	// 如果配置了恒星，将最后一个设置为恒星
-	if config.Eternal != 0.0 {
-		eternalId := num - 1
-		eternalOrb := &oList[eternalId]
-		allMass += config.Eternal - eternalOrb.Mass
-		eternalOrb.Mass = config.Eternal
-		eternalOrb.Id = eternalId //rand.Int()
-		eternalOrb.X, eternalOrb.Y, eternalOrb.Z = 0, 0, 0
-		eternalOrb.Vx, eternalOrb.Vy, eternalOrb.Vz = 0, 0, 0
+
+	// 如果配置了大块头质量 0=中心 1=边缘 2=半径的中点 3=随机
+	if config.BigMass != 0.0 {
+		for i := 0; i < config.BigNum; i++ {
+
+			eternalId := num - 1 - i
+			eternalOrb := &oList[eternalId]
+			allMass += config.BigMass - eternalOrb.Mass
+			eternalOrb.Mass = config.BigMass
+			eternalOrb.Id = eternalId //rand.Int()
+			eternalOrb.X, eternalOrb.Y, eternalOrb.Z = 0, 0, 0
+			eternalOrb.Vx, eternalOrb.Vy, eternalOrb.Vz = 0, 0, 0
+			switch config.BigDistStyle {
+			case 1:
+				// 环形分布
+				eternalOrb.X = math.Cos(float64(i)*math.Pi*2/float64(config.BigNum)) * config.Wide / 2.0
+				eternalOrb.Y = math.Sin(float64(i)*math.Pi*2/float64(config.BigNum)) * config.Wide / 2.0
+				// 逆时针运动
+				eternalOrb.Vx = -math.Sin(float64(i)*math.Pi*2/float64(config.BigNum)) * config.Velo
+				eternalOrb.Vy = math.Cos(float64(i)*math.Pi*2/float64(config.BigNum)) * config.Velo
+			case 2:
+				eternalOrb.X = math.Cos(float64(i)*math.Pi*2/float64(config.BigNum)) * config.Wide / 2.0 / 2.0
+				eternalOrb.Y = math.Sin(float64(i)*math.Pi*2/float64(config.BigNum)) * config.Wide / 2.0 / 2.0
+				eternalOrb.Vx = -math.Sin(float64(i)*math.Pi*2/float64(config.BigNum)) * config.Velo
+				eternalOrb.Vy = math.Cos(float64(i)*math.Pi*2/float64(config.BigNum)) * config.Velo
+			case 3:
+				eternalOrb.X = math.Cos(float64(i)*math.Pi*2/float64(config.BigNum)) * config.Wide / 2.0 * rand.Float64()
+				eternalOrb.Y = math.Sin(float64(i)*math.Pi*2/float64(config.BigNum)) * config.Wide / 2.0 * rand.Float64()
+				eternalOrb.Vx = -math.Sin(float64(i)*math.Pi*2/float64(config.BigNum)) * config.Velo
+				eternalOrb.Vy = math.Cos(float64(i)*math.Pi*2/float64(config.BigNum)) * config.Velo
+			case 0:
+				fallthrough
+			default:
+			}
+		}
 
 	}
 	return oList

@@ -27,12 +27,14 @@ func main() {
 
 	flag.IntVar(&num_orbs, "init-orbs", 0, "how many orbs init, do init when its value >1")
 	flag.IntVar(&num_times, "calc-times", 100, "how many times calc")
-	var eternal = flag.Float64("eternal", 15000.0, "the mass of eternal, 0 means no eternal")
 	var doShowList = flag.Bool("showlist", false, "show orb list and exit")
-	var configMass = flag.Float64("config-mass", 10.0, "the mass of orbs")
-	var configWide = flag.Float64("config-wide", 1000.0, "the wide of orbs")
-	var configVelo = flag.Float64("config-velo", 0.005, "the velo of orbs")
-	var configStyle = flag.Int("config-style", 23, "AB, style of orbs arrange A & aggregation B\n\tarrange:0=avg,1=ladder,2=variance\t aggregation:0=line,1=cube,2=disc,3=sphere;\n\tlike: 23 #means variance cube")
+	var configMass = flag.Float64("config-mass", 10.0, "config of the mass of orbs")
+	var configWide = flag.Float64("config-wide", 1000.0, "config of the wide of orbs")
+	var configVelo = flag.Float64("config-velo", 0.005, "config of the velo of orbs")
+	var configStyle = flag.Int("config-style", 23, "config of style of orbs, AB, A:arrange,B:aggregation\n\tarrange:0=avg,1=ladder,2=variance\t aggregation:0=line,1=cube,2=disc,3=sphere;\n\tlike: 23 #means variance cube")
+	var bigMass = flag.Float64("bigmass", 15000.0, "config of big mass orb, like a blackhole in center, 0 means no bigger")
+	var bigNum = flag.Int("bignum", 1, "config of number of big mass orbs, generally center has 1")
+	var bigMassStyle = flag.Int("bigstyle", 0, "config of big mass orb distribute style: 0=center 1=outer edge 2=middle of one radius 3=random")
 	var configCpu = flag.Int("config-cpu", 0, "how many cpu u want use, 0=all")
 	var savePath = flag.String("savepath", "mc://127.0.0.1:11211", "where to save, support mc/file/redis\n\tlike: file://./filecache/")
 	var saveKey = flag.String("savekey", "thelist1", "key name to save, like key of memcache, or filename in save dir")
@@ -57,7 +59,7 @@ func main() {
 	rand.Seed(int64(time.Now().Nanosecond()))
 
 	if num_orbs > 0 {
-		initConfig := orbs.InitConfig{*configMass, *configWide, *configVelo, *eternal, *configStyle}
+		initConfig := orbs.InitConfig{*configMass, *configWide, *configVelo, *configStyle, *bigMass, *bigNum, *bigMassStyle}
 		oList = orbs.InitOrbs(num_orbs, &initConfig)
 	} else {
 		oList = saver.GetList(loadKey)
