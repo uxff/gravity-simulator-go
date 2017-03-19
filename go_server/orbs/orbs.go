@@ -38,7 +38,8 @@ type InitConfig struct {
 	Mass         float64
 	Wide         float64
 	Velo         float64
-	Style        int     // 个位：分布方式 0=线性 1=立方体 2=圆盘圆柱 3=球形 十位：聚集方式：0=均匀分布 1=中心靠拢开方分布
+	Arrange      int // 个位：分布方式 0=线性 1=立方体 2=圆盘圆柱 3=球形 十位：聚集方式：0=均匀分布 1=中心靠拢开方分布
+	Assemble     int
 	BigMass      float64 // 大块头的质量 比如处于中心的黑洞
 	BigNum       int     // 大块头个数
 	BigDistStyle int     // big mass orb distribute style: 0=center 1=outer edge 2=middle of one radius 3=random
@@ -70,15 +71,15 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 	oList := make([]Orb, num)
 	//distStepAll, distStep := 0, 16
 
-	styleDistribute := config.Style % 10
-	styleAssemble := (config.Style / 10) % 10
+	//styleDistribute := config.Style % 10
+	//styleAssemble := (config.Style / 10) % 10
 
-	switch styleDistribute {
+	switch config.Arrange {
 	case 0: //线性
 		for i := 0; i < num; i++ {
 			//distStep = i / distStepAll
 			var wide = config.Wide
-			switch styleAssemble {
+			switch config.Assemble {
 			case 1:
 				wide = config.Wide * math.Sqrt(float64(i+1)/float64(num))
 			case 2:
@@ -111,7 +112,7 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 		for i := 0; i < num; i++ {
 			o := &oList[i]
 			var wide = config.Wide
-			switch styleAssemble {
+			switch config.Assemble {
 			case 1:
 				wide = config.Wide * math.Sqrt(float64(i+1)/float64(num))
 			case 2:
@@ -141,7 +142,7 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 			long := rand.Float64() * math.Pi * 2
 			high := (0.5 - rand.Float64()) * config.Wide
 			var wide = config.Wide
-			switch styleAssemble {
+			switch config.Assemble {
 			case 1:
 				wide = config.Wide * math.Sqrt(float64(i+1)/float64(num))
 			case 2:
@@ -172,7 +173,7 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 		for i := 0; i < num; i++ {
 			o := &oList[i]
 			var wide = config.Wide
-			switch styleAssemble {
+			switch config.Assemble {
 			case 1:
 				wide = config.Wide * math.Sqrt(float64(i+1)/float64(num))
 			case 2:
@@ -190,6 +191,155 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 			o.Vx = (rand.Float64() - 0.5) * config.Velo * 2.0
 			o.Vy = (rand.Float64() - 0.5) * config.Velo * 2.0
 			o.Vz = (rand.Float64() - 0.5) * config.Velo * 2.0
+			o.Size = 1
+			o.Mass = rand.Float64() * config.Mass
+			o.Id = i // rand.Int()
+			o.Stat = 1
+			o.crashedBy = -1
+			allMass += o.Mass
+		}
+	case 4: //线性 4轴
+		for i := 0; i < num; i++ {
+			//distStep = i / distStepAll
+			var wide = config.Wide
+			switch config.Assemble {
+			case 1:
+				wide = config.Wide * math.Sqrt(float64(i+1)/float64(num))
+			case 2:
+				wide = config.Wide * math.Pow(float64(i+1)/float64(num), 2.0)
+			case 3:
+				wide = config.Wide * math.Pow(float64(i+1)/float64(num), 4.0)
+			default:
+				wide = config.Wide
+			}
+			o := &oList[i]
+
+			o.X, o.Y, o.Z = (0.5-rand.Float64())*config.Wide/256.0, (0.5-rand.Float64())*config.Wide/256.0, (0.5-rand.Float64())*config.Wide/256.0
+			o.Vx, o.Vy, o.Vz = (rand.Float64()-0.5)*config.Velo/256.0, (rand.Float64()-0.5)*config.Velo/256.0, (rand.Float64()-0.5)*config.Velo/256.0
+			award := i % 2
+
+			switch award {
+			case 0:
+				o.X = (0.5 - rand.Float64()) * wide
+				if o.X < 0 {
+					o.Vx = (1.0 + rand.Float64()) * config.Velo
+					o.Vy = -(1.0 + rand.Float64()) * config.Velo //* math.Sqrt(config.Wide/(radius+1.0)) / 4.0
+				} else {
+					o.Vx = -(1.0 + rand.Float64()) * config.Velo
+					o.Vy = (1.0 + rand.Float64()) * config.Velo
+				}
+			case 1:
+				o.Y = (0.5 - rand.Float64()) * wide
+				if o.Y < 0 {
+					o.Vy = (1.0 + rand.Float64()) * config.Velo
+					o.Vz = -(1.0 + rand.Float64()) * config.Velo //* math.Sqrt(config.Wide/(radius+1.0)) / 4.0
+				} else {
+					o.Vy = -(1.0 + rand.Float64()) * config.Velo
+					o.Vz = (1.0 + rand.Float64()) * config.Velo
+				}
+			case 2:
+				o.Z = (0.5 - rand.Float64()) * wide
+				if o.Z < 0 {
+					o.Vz = (1.0 + rand.Float64()) * config.Velo
+					o.Vx = -(1.0 + rand.Float64()) * config.Velo //* math.Sqrt(config.Wide/(radius+1.0)) / 4.0
+				} else {
+					o.Vz = -(1.0 + rand.Float64()) * config.Velo
+					o.Vx = (1.0 + rand.Float64()) * config.Velo
+				}
+			default:
+			}
+
+			o.Size = 1
+			o.Mass = rand.Float64() * config.Mass
+			o.Id = i // rand.Int()
+			o.Stat = 1
+			o.crashedBy = -1
+			allMass += o.Mass
+		}
+	case 5: //线性 6轴
+		for i := 0; i < num; i++ {
+			//distStep = i / distStepAll
+			var wide = config.Wide
+			switch config.Assemble {
+			case 1:
+				wide = config.Wide * math.Sqrt(float64(i+1)/float64(num))
+			case 2:
+				wide = config.Wide * math.Pow(float64(i+1)/float64(num), 2.0)
+			case 3:
+				wide = config.Wide * math.Pow(float64(i+1)/float64(num), 4.0)
+			default:
+				wide = config.Wide
+			}
+			o := &oList[i]
+
+			o.X, o.Y, o.Z = (0.5-rand.Float64())*config.Wide/256.0, (0.5-rand.Float64())*config.Wide/256.0, (0.5-rand.Float64())*config.Wide/256.0
+			o.Vx, o.Vy, o.Vz = (rand.Float64()-0.5)*config.Velo/256.0, (rand.Float64()-0.5)*config.Velo/256.0, (rand.Float64()-0.5)*config.Velo/256.0
+			award := i % 3
+
+			switch award {
+			case 0:
+				o.X = (0.5 - rand.Float64()) * wide
+				if o.X < 0 {
+					o.Vx = (1.0 + rand.Float64()) * config.Velo
+					o.Vy = -(1.0 + rand.Float64()) * config.Velo //* math.Sqrt(config.Wide/(radius+1.0)) / 4.0
+				} else {
+					o.Vx = -(1.0 + rand.Float64()) * config.Velo
+					o.Vy = (1.0 + rand.Float64()) * config.Velo
+				}
+			case 1:
+				o.Y = (0.5 - rand.Float64()) * wide
+				if o.Y < 0 {
+					o.Vy = (1.0 + rand.Float64()) * config.Velo
+					o.Vz = -(1.0 + rand.Float64()) * config.Velo //* math.Sqrt(config.Wide/(radius+1.0)) / 4.0
+				} else {
+					o.Vy = -(1.0 + rand.Float64()) * config.Velo
+					o.Vz = (1.0 + rand.Float64()) * config.Velo
+				}
+			case 2:
+				o.Z = (0.5 - rand.Float64()) * wide
+				if o.Z < 0 {
+					o.Vz = (1.0 + rand.Float64()) * config.Velo
+					o.Vx = -(1.0 + rand.Float64()) * config.Velo //* math.Sqrt(config.Wide/(radius+1.0)) / 4.0
+				} else {
+					o.Vz = -(1.0 + rand.Float64()) * config.Velo
+					o.Vx = (1.0 + rand.Float64()) * config.Velo
+				}
+			default:
+			}
+
+			o.Size = 1
+			o.Mass = rand.Float64() * config.Mass
+			o.Id = i // rand.Int()
+			o.Stat = 1
+			o.crashedBy = -1
+			allMass += o.Mass
+		}
+	case 6: //线性 1轴
+		for i := 0; i < num; i++ {
+			//distStep = i / distStepAll
+			var wide = config.Wide
+			switch config.Assemble {
+			case 1:
+				wide = config.Wide * math.Sqrt(float64(i+1)/float64(num))
+			case 2:
+				wide = config.Wide * math.Pow(float64(i+1)/float64(num), 2.0)
+			case 3:
+				wide = config.Wide * math.Pow(float64(i+1)/float64(num), 4.0)
+			default:
+				wide = config.Wide
+			}
+			o := &oList[i]
+			o.X = (rand.Float64()) * wide
+			o.Y, o.Z = (0.5-rand.Float64())*config.Wide/256.0, (0.5-rand.Float64())*config.Wide/256.0
+
+			if o.X < 0 {
+				o.Vx = (1.0 + rand.Float64()) * config.Velo
+				o.Vy = -(1.0 + rand.Float64()) * config.Velo //* math.Sqrt(config.Wide/(radius+1.0)) / 4.0
+			} else {
+				o.Vx = -(1.0 + rand.Float64()) * config.Velo
+				o.Vy = (1.0 + rand.Float64()) * config.Velo
+			}
+			o.Vz = (rand.Float64() - 0.5) * config.Velo * 2.0 / 256.0
 			o.Size = 1
 			o.Mass = rand.Float64() * config.Mass
 			o.Id = i // rand.Int()
