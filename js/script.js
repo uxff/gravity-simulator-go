@@ -204,13 +204,20 @@ var UpdateOrbs = function(data) {
             lesson1.dataList = data.data.list;
             break;
         case 'taketask':
-            console.log(data);
+            //console.log(data);
+            for (i in data.data.feedlist) {
+                ret = calcOrbs(data.data.feedlist[i], lesson1.dataList);
+                oneTaskVal = 'cmd=recvorb&k=thelist1&o='+ret.join(',');
+                MyWebsocket.doSend(oneTaskVal);
+            }
             
             break;
         case 'recvorb':
+            console.log(data);
             break;
         default:
             lesson1.updateOrbs(data.data.list);
+            lesson1.dataList = data.data.list;
             //console.log("unknown cmd:");
             //console.log(data);
             break;
@@ -293,7 +300,7 @@ var calcDist = function(o, target) {
 }
 var calcGravity = function(o, target, dist) {
     var a = target.m / (dist*dist) * G;
-    var aAll = {};
+    var aAll = {x:0,y:0,z:0};
     aAll.x = - a * (o.x - target.x) / dist
     aAll.y = - a * (o.y - target.y) / dist
     aAll.z = - a * (o.z - target.z) / dist
@@ -315,7 +322,7 @@ var calcOrbs = function(orbId, orbList) {
         return false;
     }
     var crashedBy = -1;
-    var gAll = 0;
+    var gAll = {x:0,y:0,z:0};
     for (var i in orbList) {
         var ta = orbList[i];
         if (ta.id == o.id || ta.st != 1 || o.st != 1) {
@@ -330,9 +337,14 @@ var calcOrbs = function(orbId, orbList) {
                 o.st = 2;
             }
         } else {
-            
+            var gTmp = calcGravity(o, ta, dist);
+            gAll.x += gTmp.x
+            gAll.y += gTmp.y
+            gAll.z += gTmp.z
         }
     }
+    o.crashedBy = crashedBy;
+    //return gAll;
 }
 
 if (window.addEventListener)

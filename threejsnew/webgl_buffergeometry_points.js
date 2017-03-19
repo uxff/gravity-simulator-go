@@ -177,7 +177,7 @@
                     wsUri = $('#ws-addr').val();
                     if (window.document.domain != undefined) {
                         
-                        wsUri = 'ws://'+window.document.domain+':8081'+'/orbs';
+                        wsUri = 'ws://'+window.document.location.host+'/orbs';
                         $('#ws-addr').val(wsUri);
                         MyWebsocket.wsUri = wsUri;
                     }
@@ -197,7 +197,7 @@
                     $('#zoom').val(zoomBase);
                 });
                 $('#reConnect').on('click', function() {
-                    wsUri = 'ws://'+$('#ws-addr').val()+'/orbs';
+                    wsUri = $('#ws-addr').val();
                     MyWebsocket.wsUri = wsUri;
                     //alert(wsUri);
                     MyWebsocket.initWebsocket();
@@ -235,7 +235,7 @@
 
 				//points.rotation.x = time * 0.25;
 				//points.rotation.y = time * 0.5;
-                if (ticker%110==0) {
+                if (ticker%15==0) {
                     //updateDots();
                     MyWebsocket.doSend(sendVal);
                 }
