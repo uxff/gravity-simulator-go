@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	//"net/url"
 	"runtime"
+	"strconv"
+	"strings"
 	"time"
 
 	orbs "./orbs"
@@ -39,7 +42,9 @@ func main() {
 	var configCpu = flag.Int("config-cpu", 0, "how many cpu u want use, 0=all")
 	var savePath = flag.String("savepath", "mc://127.0.0.1:11211", "where to save, support mc/file/redis\n\tlike: file://./filecache/")
 	var saveKey = flag.String("savekey", "thelist1", "key name to save, like key of memcache, or filename in save dir")
-	var loadKey = flag.String("loadkey", "thelist1", "key name to load, like key of memcache, or filename in save dir")
+	var loadKey = flag.String("loadkey", "", "key name to load, like key of memcache, or filename in save dir")
+	var doMerge = flag.Bool("domerge", false, "merge from loadkey to savekey if true, replace if false")
+	var moveExp = flag.String("moveexp", "", "move expression, like: x=-150&vy=+0.01&m=+20 only position,velo,mass")
 
 	// flags 读取参数，必须要调用 flag.Parse()
 	flag.Parse()
@@ -52,6 +57,10 @@ func main() {
 	}
 	runtime.GOMAXPROCS(numCpu)
 
+	if len(*loadKey) == 0 {
+		*loadKey = *saveKey
+	}
+
 	saver.SetSavepath(savePath)
 
 	var oList []orbs.Orb
@@ -59,16 +68,73 @@ func main() {
 	// 根据时间设置随机数种子
 	rand.Seed(int64(time.Now().Nanosecond()))
 
+	// 如果配置了 -init-orbs 100 参数，则不会使用loadkey
 	if num_orbs > 0 {
 		initConfig := orbs.InitConfig{*configMass, *configWide, *configVelo, *configStyleArrange, *configStyleAssemble, *bigMass, *bigNum, *bigMassStyle}
 		oList = orbs.InitOrbs(num_orbs, &initConfig)
 	} else {
 		oList = saver.GetList(loadKey)
+		// 合并 取出savekey的数据，合并loadkey的数据后存放到savekey
+		if *doMerge {
+			if *loadKey == *saveKey {
+				fmt.Println("loadkey must not equal to save key when merge")
+			} else {
+				mList := saver.GetList(saveKey)
+				oList = append(oList, mList...)
+				// 重置id
+				for i := 0; i < len(oList); i++ {
+					oList[i].Id = i
+				}
+				saver.SaveList(saveKey, oList)
+			}
+		}
 		num_orbs = len(oList)
 	}
 	if *doShowList {
 		fmt.Println(oList)
 		return
+	}
+
+	// 执行批量操作，整体数据修改 比如改变位置 改变速度 改变质量
+	if len(*moveExp) > 0 {
+		expQuery := strings.Split(*moveExp, "&")
+		expParamMap := make(map[string]string)
+		for i := range expQuery {
+			sTmp := strings.Split(expQuery[i], "=")
+			if len(sTmp) > 1 {
+				expParamMap[sTmp[0]] = sTmp[1]
+			}
+		}
+		for i := 0; i < len(oList); i++ {
+			o := &oList[i]
+			for ek := range expParamMap {
+				s := expParamMap[ek]
+				switch ek {
+				case "x":
+					vTmp, _ := strconv.ParseFloat(s, 64)
+					o.X += vTmp
+				case "y":
+					vTmp, _ := strconv.ParseFloat(s, 64)
+					o.Y += vTmp
+				case "z":
+					vTmp, _ := strconv.ParseFloat(s, 64)
+					o.Z += vTmp
+				case "vx":
+					vTmp, _ := strconv.ParseFloat(s, 64)
+					o.Vx += vTmp
+				case "vy":
+					vTmp, _ := strconv.ParseFloat(s, 64)
+					o.Vy += vTmp
+				case "vz":
+					vTmp, _ := strconv.ParseFloat(s, 64)
+					o.Vz += vTmp
+				case "m":
+					vTmp, _ := strconv.ParseFloat(s, 64)
+					o.Mass += vTmp
+				}
+			}
+		}
+
 	}
 
 	fmt.Printf("start calc, orbs:%d will times:%d use cpu core:%d allMass=%e\n", num_orbs, num_times*num_orbs*num_orbs, numCpu, orbs.GetAllMass())
