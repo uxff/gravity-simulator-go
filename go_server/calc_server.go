@@ -102,23 +102,57 @@ func main() {
 		for i := range expQuery {
 			sTmp := strings.Split(expQuery[i], "=")
 			if len(sTmp) > 1 {
+				// 除法在命令行应该写作:  -moveexp "x=\/0.4" 不然会转义成git安装目录
+				// 处理多余的转义符 蛋疼的gitbash
+				if sTmp[1][0] == '\\' {
+					sTmp[1] = sTmp[1][1:]
+				}
 				expParamMap[sTmp[0]] = sTmp[1]
 			}
 		}
+		fmt.Println("moveExp=", *moveExp)
 		for i := 0; i < len(oList); i++ {
 			o := &oList[i]
 			for ek := range expParamMap {
 				s := expParamMap[ek]
 				switch ek {
+				// x,y,x 属于坐标移动 +-*/ 支持四种运算
 				case "x":
-					vTmp, _ := strconv.ParseFloat(s, 64)
-					o.X += vTmp
+					switch s[0] {
+					case '*':
+						vTmp, _ := strconv.ParseFloat(s[1:], 64)
+						o.X *= vTmp
+					case '/':
+						vTmp, _ := strconv.ParseFloat(s[1:], 64)
+						o.X /= vTmp
+					default:
+						vTmp, _ := strconv.ParseFloat(s, 64)
+						o.X += vTmp
+					}
 				case "y":
-					vTmp, _ := strconv.ParseFloat(s, 64)
-					o.Y += vTmp
+					switch s[0] {
+					case '*':
+						vTmp, _ := strconv.ParseFloat(s[1:], 64)
+						o.Y *= vTmp
+					case '/':
+						vTmp, _ := strconv.ParseFloat(s[1:], 64)
+						o.Y /= vTmp
+					default:
+						vTmp, _ := strconv.ParseFloat(s, 64)
+						o.Y += vTmp
+					}
 				case "z":
-					vTmp, _ := strconv.ParseFloat(s, 64)
-					o.Z += vTmp
+					switch s[0] {
+					case '*':
+						vTmp, _ := strconv.ParseFloat(s[1:], 64)
+						o.Z *= vTmp
+					case '/':
+						vTmp, _ := strconv.ParseFloat(s[1:], 64)
+						o.Z /= vTmp
+					default:
+						vTmp, _ := strconv.ParseFloat(s, 64)
+						o.Z += vTmp
+					}
 				case "vx":
 					vTmp, _ := strconv.ParseFloat(s, 64)
 					o.Vx += vTmp
