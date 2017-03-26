@@ -413,6 +413,7 @@ func UpdateOrbs(oList []Orb, nStep int) int {
 
 		// 被撞击信息包含在o中
 		if oList[okIdx].crashedBy >= 0 {
+			// 此操作可能会线程不安全，因为上面的goroutine中操作的orb可能和这里的target是同一内存块
 			//			if oList[okIdx].crashedBy >= len(oList) {
 			//				log.Println("seems crashedBy illegal: crashedBy,len(oList)=", oList[okIdx].crashedBy, len(oList))
 			//				break
@@ -545,6 +546,10 @@ func (o *Orb) CalcGravity(target *Orb, dist float64) Acc {
 // 计算距离
 func (o *Orb) CalcDist(target *Orb) float64 {
 	return math.Sqrt((o.X-target.X)*(o.X-target.X) + (o.Y-target.Y)*(o.Y-target.Y) + (o.Z-target.Z)*(o.Z-target.Z))
+}
+
+func (o *Orb) SetCrashedBy(crashedBy int) {
+	o.crashedBy = crashedBy
 }
 
 // 清理orbList中的垃圾

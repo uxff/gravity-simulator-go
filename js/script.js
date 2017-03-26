@@ -33,6 +33,8 @@ var NUM_PARTICLES = 0;
 var MIN_DIST = 2.0;
 var G = 0.000025;
 
+var enableCalc = false;
+
 var lesson1 = {
     scene: null,
     camera: null,
@@ -196,24 +198,28 @@ var lesson1 = {
     }
 };
 
-var UpdateOrbs = function(data) {
-    var cmd = data.data.cmd || undefined
+var RecvMessage = function(data) {
+    var cmd = data.data.cmd || undefined;
     switch (cmd) {
         case 'orbs':
             lesson1.updateOrbs(data.data.list);
             lesson1.dataList = data.data.list;
+            if (enableCalc) {
+                CalcUnit.stage = data.data.stage;
+                CalcUnit.setOrbList(data.data.list);
+                CalcUnit.key = data.data.key;
+            }
             break;
         case 'taketask':
             //console.log(data);
-            for (i in data.data.feedlist) {
-                ret = calcOrbs(data.data.feedlist[i], lesson1.dataList);
-                oneTaskVal = 'cmd=recvorb&k=thelist1&o='+ret.join(',');
-                MyWebsocket.doSend(oneTaskVal);
+            if (enableCalc) {
+                CalcUnit.stage = data.data.stage;
+                CalcUnit.setFeedList(data.data.feedlist);
+                CalcUnit.consume();
             }
-            
             break;
         case 'recvorb':
-            console.log(data);
+            //console.log(data);
             break;
         default:
             lesson1.updateOrbs(data.data.list);
@@ -258,7 +264,7 @@ function render() {
 // Initialize lesson on page load
 function initializeLesson() {
     lesson1.init();
-    MyWebsocket.receiveCallback = UpdateOrbs;//不能是lesson1.updateOrbs,函数复制有没有对象。
+    MyWebsocket.receiveCallback = RecvMessage;//不能是lesson1.updateOrbs,函数复制有没有对象。
 
     if (wsUri == undefined || wsUri.length==0) {
         wsUri = $('#ws-addr').val();
@@ -291,61 +297,21 @@ function initializeLesson() {
     $('#btnSend').on('click', function() {
         sendVal = $('#send-val').val();
     });
+    $('#btnEnableCalc').on('click', function() {
+        if (enableCalc) {
+            enableCalc = false;
+            $('#btnEnableCalc').html('do help calc');
+        } else {
+            enableCalc = true;
+            CalcUnit.reloadOrbList();
+            CalcUnit.reloadFeedList();
+            $('#btnEnableCalc').html('stop help calc');
+        }
+    });
     
     animate();
 }
 
-var calcDist = function(o, target) {
-    return Math.sqrt((o.x-target.x)*(o.x-target.x) + (o.y-target.y)*(o.y-target.y) + (o.z-target.z)*(o.z-target.z));
-}
-var calcGravity = function(o, target, dist) {
-    var a = target.m / (dist*dist) * G;
-    var aAll = {x:0,y:0,z:0};
-    aAll.x = - a * (o.x - target.x) / dist
-    aAll.y = - a * (o.y - target.y) / dist
-    aAll.z = - a * (o.z - target.z) / dist
-    return aAll;
-}
-
-var calcOrbs = function(orbId, orbList) {
-    if (orbList == undefined) {
-        console.log('orbList is not already');
-        return false;
-    }
-    if (orbId >= orbList.length) {
-        console.log('orbList as no id: '+orbId);
-        return false;
-    }
-    var o = orbList[orbId];
-    if (o.st != 1 || o.m == 0) {
-        console.log('orb status not ok:'+orbId, o);
-        return false;
-    }
-    var crashedBy = -1;
-    var gAll = {x:0,y:0,z:0};
-    for (var i in orbList) {
-        var ta = orbList[i];
-        if (ta.id == o.id || ta.st != 1 || o.st != 1) {
-            continue;
-        }
-        var dist = calcDist(o, ta);
-        var isTooNearly = dist*dist < 2*2;
-        var isMeRipped = dist < Math.sqrt(o.vx*o.vx+o.vy*o.vy+o.vz*o.vz) * 8
-        if (isTooNearly || isMeRipped) {
-            if (o.m < ta.m) {
-                crashedBy = i;
-                o.st = 2;
-            }
-        } else {
-            var gTmp = calcGravity(o, ta, dist);
-            gAll.x += gTmp.x
-            gAll.y += gTmp.y
-            gAll.z += gTmp.z
-        }
-    }
-    o.crashedBy = crashedBy;
-    //return gAll;
-}
 
 if (window.addEventListener)
     window.addEventListener('load', initializeLesson, false);
