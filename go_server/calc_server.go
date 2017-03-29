@@ -24,12 +24,12 @@ const FOR_TIMES = 10000
 var saver = saverpkg.Saver{}
 
 func main() {
-	num_orbs := MAX_PARTICLES
-	num_times := FOR_TIMES
+	numOrbs := MAX_PARTICLES
+	numTimes := FOR_TIMES
 	var numCpu int
 
-	flag.IntVar(&num_orbs, "init-orbs", 0, "how many orbs init, do init when its value >1")
-	flag.IntVar(&num_times, "calc-times", 100, "how many times calc")
+	flag.IntVar(&numOrbs, "init-orbs", 0, "how many orbs init, do init when its value >1")
+	flag.IntVar(&numTimes, "calc-times", 100, "how many times calc")
 	var doShowList = flag.Bool("showlist", false, "show orb list and exit")
 	var configMass = flag.Float64("config-mass", 10.0, "init mass of orbs")
 	var configWide = flag.Float64("config-wide", 1000.0, "init wide of orbs")
@@ -69,9 +69,9 @@ func main() {
 	rand.Seed(int64(time.Now().Nanosecond()))
 
 	// 如果配置了 -init-orbs 100 参数，则不会使用loadkey
-	if num_orbs > 0 {
+	if numOrbs > 0 {
 		initConfig := orbs.InitConfig{*configMass, *configWide, *configVelo, *configStyleArrange, *configStyleAssemble, *bigMass, *bigNum, *bigMassStyle}
-		oList = orbs.InitOrbs(num_orbs, &initConfig)
+		oList = orbs.InitOrbs(numOrbs, &initConfig)
 	} else {
 		oList = saver.GetList(loadKey)
 		// 合并 取出savekey的数据，合并loadkey的数据后存放到savekey
@@ -88,7 +88,7 @@ func main() {
 				saver.SaveList(saveKey, oList)
 			}
 		}
-		num_orbs = len(oList)
+		numOrbs = len(oList)
 	}
 	if *doShowList {
 		fmt.Println(oList)
@@ -159,12 +159,12 @@ func main() {
 
 	}
 
-	fmt.Printf("start calc, orbs:%d will times:%d use cpu core:%d allMass=%e\n", num_orbs, num_times*num_orbs*num_orbs, numCpu, orbs.GetAllMass())
+	fmt.Printf("start calc, orbs:%d will times:%d use cpu core:%d allMass=%e\n", numOrbs, numTimes*numOrbs*numOrbs, numCpu, orbs.GetAllMass())
 
 	realTimes, perTimes, tmpTimes := 0, 0, 0
 	startTimeNano := time.Now().UnixNano()
 
-	for i := 0; i < num_times; i++ {
+	for i := 0; i < numTimes; i++ {
 		perTimes = orbs.UpdateOrbs(oList, i)
 		realTimes += perTimes
 
