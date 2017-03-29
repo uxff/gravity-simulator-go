@@ -110,61 +110,49 @@ func main() {
 				expParamMap[sTmp[0]] = sTmp[1]
 			}
 		}
+
 		fmt.Println("moveExp=", *moveExp)
+
+		getOperVal := func(operChar byte, leftVal, paramVal float64) (retVal float64) {
+			switch operChar {
+			case '*':
+				leftVal *= paramVal
+			case '/':
+				leftVal /= paramVal
+			case '-':
+				leftVal -= paramVal
+			case '+':
+				leftVal += paramVal
+			default:
+			}
+			return leftVal
+		}
+
 		for i := 0; i < len(oList); i++ {
 			o := &oList[i]
 			for ek := range expParamMap {
 				s := expParamMap[ek]
+				if len(s) < 3 {
+					fmt.Println("illegal move exp:", s)
+					continue
+				}
+				vTmp, _ := strconv.ParseFloat(s[1:], 64)
 				switch ek {
 				// x,y,x 属于坐标移动 +-*/ 支持四种运算
 				case "x":
-					switch s[0] {
-					case '*':
-						vTmp, _ := strconv.ParseFloat(s[1:], 64)
-						o.X *= vTmp
-					case '/':
-						vTmp, _ := strconv.ParseFloat(s[1:], 64)
-						o.X /= vTmp
-					default:
-						vTmp, _ := strconv.ParseFloat(s, 64)
-						o.X += vTmp
-					}
+					o.X = getOperVal(s[0], o.X, vTmp)
 				case "y":
-					switch s[0] {
-					case '*':
-						vTmp, _ := strconv.ParseFloat(s[1:], 64)
-						o.Y *= vTmp
-					case '/':
-						vTmp, _ := strconv.ParseFloat(s[1:], 64)
-						o.Y /= vTmp
-					default:
-						vTmp, _ := strconv.ParseFloat(s, 64)
-						o.Y += vTmp
-					}
+					o.Y = getOperVal(s[0], o.Y, vTmp)
 				case "z":
-					switch s[0] {
-					case '*':
-						vTmp, _ := strconv.ParseFloat(s[1:], 64)
-						o.Z *= vTmp
-					case '/':
-						vTmp, _ := strconv.ParseFloat(s[1:], 64)
-						o.Z /= vTmp
-					default:
-						vTmp, _ := strconv.ParseFloat(s, 64)
-						o.Z += vTmp
-					}
+					o.Z = getOperVal(s[0], o.Z, vTmp)
 				case "vx":
-					vTmp, _ := strconv.ParseFloat(s, 64)
-					o.Vx += vTmp
+					o.Vx = getOperVal(s[0], o.Vx, vTmp)
 				case "vy":
-					vTmp, _ := strconv.ParseFloat(s, 64)
-					o.Vy += vTmp
+					o.Vy = getOperVal(s[0], o.Vy, vTmp)
 				case "vz":
-					vTmp, _ := strconv.ParseFloat(s, 64)
-					o.Vz += vTmp
+					o.Vz = getOperVal(s[0], o.Vz, vTmp)
 				case "m":
-					vTmp, _ := strconv.ParseFloat(s, 64)
-					o.Mass += vTmp
+					o.Mass = getOperVal(s[0], o.Mass, vTmp)
 				}
 			}
 		}
