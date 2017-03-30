@@ -1,5 +1,5 @@
 /*
-	saver for calc_server
+	saver manager for calc_server
 */
 package saver
 
@@ -26,6 +26,7 @@ const (
 type Saver struct {
 	htype       int
 	saveHandler SaverFace
+	loadHandler SaverFace
 	saveTimes   int
 }
 
@@ -299,7 +300,12 @@ func (this *Saver) GetHandler() (handler SaverFace) {
 
 // 从数据库获取orbList
 func (this *Saver) GetList(key *string) (oList []orbs.Orb) {
-	return this.saveHandler.LoadList(key)
+	if this.loadHandler != nil {
+		return this.loadHandler.LoadList(key)
+	} else {
+		log.Println("loadpath not exist, so use savepath instead")
+		return this.saveHandler.LoadList(key)
+	}
 }
 
 // 将orbList存到数据库
@@ -315,26 +321,52 @@ func (this *Saver) GetSavetimes() int {
 	@param savepath: like: "file://./filecahce","mc://10.0.0.1:11211","redis://10.1.1.1:6379"
 */
 func (this *Saver) SetSavepath(savePath *string) {
-	savePathCfg := strings.Split(*savePath, "://")
+	this.saveHandler = this.MakeSaverByPath(savePath)
+	if this.loadHandler == nil {
+		this.loadHandler = this.saveHandler
+	}
+}
+
+/*
+	@param schemePath: like: "file://./filecahce","mc://10.0.0.1:11211","redis://10.1.1.1:6379"
+*/
+func (this *Saver) SetLoadpath(schemePath *string) {
+	this.loadHandler = this.MakeSaverByPath(schemePath)
+}
+
+/*
+	根据schemePath获取SaverFace对应的对象
+	其实属于静态方法
+	@param schemePath: like: "file://./filecahce","mc://10.0.0.1:11211","redis://10.1.1.1:6379"
+*/
+func (this *Saver) MakeSaverByPath(schemePath *string) SaverFace {
+	savePathCfg := strings.Split(*schemePath, "://")
 	saverConf := make(map[string]string, 1)
+	var saveHandler SaverFace
 	if len(savePathCfg) > 1 {
 		switch savePathCfg[0] {
 		case "file":
 			saverConf["dir"] = savePathCfg[1]
-			this.htype = 1
+			saveHandler = new(FileSaver)
 		case "mc":
 			saverConf["host"] = savePathCfg[1]
-			this.htype = 2
+			saveHandler = new(McSaver)
 		case "redis":
 			saverConf["host"] = savePathCfg[1]
-			this.htype = 3
+			saveHandler = new(RedisSaver)
 		default:
-			this.htype = 1
-			saverConf["dir"] = "./filecache/"
+			log.Println("unknown save scheme:", savePathCfg[0])
 		}
+	} else {
+		log.Println("illegal savePathCfg:", savePathCfg)
 	}
-	this.SetHandler(this.htype, saverConf)
+	saveHandler.SetConfig(saverConf)
+	return saveHandler
 }
+
+/*
+	clear handler
+*/
 func (this *Saver) Clear() {
 	this.saveHandler.Clear()
 }

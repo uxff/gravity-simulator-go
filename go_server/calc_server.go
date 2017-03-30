@@ -42,7 +42,8 @@ func main() {
 	var configCpu = flag.Int("config-cpu", 0, "how many cpu u want use, 0=all")
 	var savePath = flag.String("savepath", "mc://127.0.0.1:11211", "where to save, support mc/file/redis\n\tlike: file://./filecache/")
 	var saveKey = flag.String("savekey", "thelist1", "key name to save, like key of memcache, or filename in save dir")
-	var loadKey = flag.String("loadkey", "", "key name to load, like key of memcache, or filename in save dir")
+	var loadPath = flag.String("loadpath", "", "where to load, support mc/file/redis\n\tlike: file://./filecache/, use savepath if no given")
+	var loadKey = flag.String("loadkey", "", "key name to load, like key of memcache, or filename in save dir, use savekey if no given")
 	var doMerge = flag.Bool("domerge", false, "merge from loadkey to savekey if true, replace if false")
 	var moveExp = flag.String("moveexp", "", "move expression, like: x=-150&vy=+0.01&m=+20 only position,velo,mass")
 
@@ -57,10 +58,16 @@ func main() {
 	}
 	runtime.GOMAXPROCS(numCpu)
 
+	// 如果没有设置loadkey，则使用savekey
 	if len(*loadKey) == 0 {
-		*loadKey = *saveKey
+		loadKey = saveKey
+	}
+	// 如果没有设置loadpath，则使用savepath
+	if len(*loadPath) == 0 {
+		loadPath = savePath
 	}
 
+	saver.SetLoadpath(loadPath)
 	saver.SetSavepath(savePath)
 
 	var oList []orbs.Orb
