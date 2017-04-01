@@ -504,10 +504,10 @@ func (o *Orb) CalcGravityAll(oList []Orb) Acc {
 				//target.Size += 1
 				// 碰撞对方的质量改变交给主goroutine，这里发送信息，不做修改操作
 				//crashList <- crashEvent{target.idx, o.idx}
-				o.crashedBy = i // 不能取target.idx // 待思考为什么
+				o.crashedBy = i // 不能取target.idx // 待思考为什么 协程间数据共享，不安全
 				//o.Mass = 0
 				o.Stat = 2
-			} else {
+				//} else {//改为提交撞击事件之后，可以忽略else
 				//log.Println(o.Id, "crashed", target.Id, "isTooNearly", isTooNearly, isMeRipped, "me=", o, "ta=", target)
 				// 碰撞后速度 v = (m1v1+m2v2)/(m1+m2)
 				//由于并发数据分离，当前goroutine只允许操作当前orb,不允许操作别的orb，所以不允许操作ta的数据

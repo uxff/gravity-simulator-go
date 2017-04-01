@@ -46,6 +46,7 @@ func main() {
 	var loadKey = flag.String("loadkey", "", "key name to load, like key of memcache, or filename in save dir, use savekey if no given")
 	var doMerge = flag.Bool("domerge", false, "merge from loadkey to savekey if true, replace if false")
 	var moveExp = flag.String("moveexp", "", "move expression, like: x=-150&vy=+0.01&m=+20 only position,velo,mass")
+	var saveDuration = flag.Int("save-duration", 100, "save to savepath per millisecond, 100 means 100ms")
 
 	// flags 读取参数，必须要调用 flag.Parse()
 	flag.Parse()
@@ -171,18 +172,30 @@ func main() {
 	realTimes, perTimes, tmpTimes := 0, 0, 0
 	startTimeNano := time.Now().UnixNano()
 
+	go func() {
+		for {
+			time.Sleep(time.Millisecond * time.Duration(*saveDuration))
+			saver.SaveList(saveKey, oList)
+			tmpTimes++
+			if tmpTimes > 10 {
+				tmpTimes = 0
+				oList = orbs.ClearOrbList(oList)
+			}
+		}
+	}()
+
 	for i := 0; i < numTimes; i++ {
 		perTimes = orbs.UpdateOrbs(oList, i)
 		realTimes += perTimes
 
-		tmpTimes += perTimes
-		if tmpTimes > 10000000 {
-			saver.SaveList(saveKey, oList)
-			if i%10 == 1 { //orbs.GetCrashed()%10 == 9 &&
-				oList = orbs.ClearOrbList(oList)
-			}
-			tmpTimes = 0
-		}
+		//		tmpTimes += perTimes
+		//		if tmpTimes > 10000000 {
+		//			saver.SaveList(saveKey, oList)
+		//			if i%10 == 1 { //orbs.GetCrashed()%10 == 9 &&
+		//				oList = orbs.ClearOrbList(oList)
+		//			}
+		//			tmpTimes = 0
+		//		}
 	}
 
 	oList = orbs.ClearOrbList(oList)
