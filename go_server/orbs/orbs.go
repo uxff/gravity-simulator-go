@@ -62,12 +62,10 @@ const MIN_CRITICAL_DIST = 2.0
 var maxVeloX, maxVeloY, maxVeloZ, maxAccX, maxAccY, maxAccZ, maxMass, allMass, allWC float64 = 0, 0, 0, 0, 0, 0, 0, 0, 0
 var maxMassId, clearTimes, willTimes, realTimes int = 0, 0, 0, 0
 
-var c = make(chan int, 10000)
-var crashEventChan = make(chan CrashEvent, 0)
+var c chan int                     //= make(chan int, 10000)	// orb.update()完成队列
+var crashEventChan chan CrashEvent //= make(chan CrashEvent, 0) // 撞击事件队列
 
 var nCount, nCrashed int = 0, 0
-
-//var crashList = make(chan crashEvent, 1)
 
 // 初始化天体位置，质量，加速度 在一片区域随机分布
 func InitOrbs(num int, config *InitConfig) []Orb {
@@ -108,7 +106,6 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 			o.Mass = rand.Float64() * config.Mass
 			o.Id = i // rand.Int()
 			o.Stat = 1
-			//o.crashedBy = -1
 			allMass += o.Mass
 		}
 	case 1: //立方体
@@ -136,7 +133,6 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 			o.Mass = rand.Float64() * config.Mass
 			o.Id = i // rand.Int()
 			o.Stat = 1
-			//o.crashedBy = -1
 			allMass += o.Mass
 		}
 	case 2: //圆盘 随机选经度 随机选半径 随机选高低 刻意降低垂直于柱面的速度
@@ -167,7 +163,6 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 			o.Mass = rand.Float64() * config.Mass
 			o.Id = i // rand.Int()
 			o.Stat = 1
-			//o.crashedBy = -1
 			allMass += o.Mass
 		}
 	case 3: //球形
@@ -198,7 +193,6 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 			o.Mass = rand.Float64() * config.Mass
 			o.Id = i // rand.Int()
 			o.Stat = 1
-			//o.crashedBy = -1
 			allMass += o.Mass
 		}
 	case 4: //线性 4轴
@@ -256,7 +250,6 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 			o.Mass = rand.Float64() * config.Mass
 			o.Id = i // rand.Int()
 			o.Stat = 1
-			//o.crashedBy = -1
 			allMass += o.Mass
 		}
 	case 5: //线性 6轴
@@ -314,7 +307,6 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 			o.Mass = rand.Float64() * config.Mass
 			o.Id = i // rand.Int()
 			o.Stat = 1
-			//o.crashedBy = -1
 			allMass += o.Mass
 		}
 	case 6: //线性 1轴
@@ -347,7 +339,6 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 			o.Mass = rand.Float64() * config.Mass
 			o.Id = i // rand.Int()
 			o.Stat = 1
-			//o.crashedBy = -1
 			allMass += o.Mass
 		}
 	default:
@@ -397,7 +388,10 @@ func UpdateOrbs(oList []Orb, numTimes int) int {
 	//theListLength = len(oList)
 	willTimes = len(oList) * len(oList) * numTimes
 	// 初始化chan CrashEvent ,orb.update()将会往crashEventChan中push事件
+	// 事件队列，提升效率 15%左右
 	crashEventChan = make(chan CrashEvent, len(oList))
+	// 分配足够的队列空间，提升效率 0.5%左右
+	c = make(chan int, len(oList))
 
 	for i := 0; i < numTimes; i++ {
 		realTimes += UpdateOrbsOnce(oList, i)
@@ -421,8 +415,10 @@ func UpdateOrbsOnce(oList []Orb, nStep int) int {
 
 		select {
 		case <-c:
+			// 正常计算完成任务返回
 			nCount++
 		case aEvent := <-crashEventChan:
+			// 收集事件队列信息
 			o := &oList[aEvent.Idx]
 			target := &oList[aEvent.CrashedBy]
 			//log.Println("aEvent=", o.Id, aEvent, target.Id)
@@ -431,16 +427,14 @@ func UpdateOrbsOnce(oList []Orb, nStep int) int {
 			target.Vx = (targetMassOld*target.Vx + o.Mass*o.Vx) / target.Mass
 			target.Vy = (targetMassOld*target.Vy + o.Mass*o.Vy) / target.Mass
 			target.Vz = (targetMassOld*target.Vz + o.Mass*o.Vz) / target.Mass
-			target.Size++
+			//target.Size++
 			o.Mass = 0
 			//o.Stat = 2
-			//o.crashedBy = -1
 			nCrashed++
 			//default:
 			//	log.Println("nothing when select")
 		}
 
-		// 忽略下面
 		continue
 	}
 	return thelen * nCount
