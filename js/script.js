@@ -151,7 +151,7 @@ var lesson1 = {
             sphere.position.y = orb.x;
             sphere.position.z = orb.z;
             sphere.castShadow = sphere.receiveShadow = true;
-            sphere.geometry.radius = 50 * orb.sz;
+            sphere.geometry.radius = 50;// * orb.sz;
             
             this.scene.add(sphere);
             this.orbList[orb.id] = sphere;

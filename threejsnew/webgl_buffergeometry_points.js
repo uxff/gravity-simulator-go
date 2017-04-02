@@ -133,7 +133,7 @@
 
                 color = new THREE.Color();
 
-				camera = new THREE.PerspectiveCamera( 27, window.innerWidth / window.innerHeight, 5, 350000 );
+				camera = new THREE.PerspectiveCamera( 27, window.innerWidth / window.innerHeight, 10, 5000000 );
 				camera.position.x = 1200;
 				camera.position.y = 2400;
 				camera.position.z = 1000;
