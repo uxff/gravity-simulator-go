@@ -169,10 +169,11 @@ func main() {
 
 	fmt.Printf("start calc, orbs:%d will times:%d use cpu core:%d allMass=%e\n", numOrbs, numTimes*numOrbs*numOrbs, numCpu, orbs.GetAllMass())
 
-	realTimes, perTimes, tmpTimes := 0, 0, 0
+	//realTimes, perTimes, tmpTimes := 0, 0, 0
 	startTimeNano := time.Now().UnixNano()
 
 	go func() {
+		tmpTimes := 0
 		for {
 			time.Sleep(time.Millisecond * time.Duration(*saveDuration))
 			saver.SaveList(saveKey, oList)
@@ -184,19 +185,20 @@ func main() {
 		}
 	}()
 
-	for i := 0; i < numTimes; i++ {
-		perTimes = orbs.UpdateOrbs(oList, i)
-		realTimes += perTimes
+	realTimes := orbs.UpdateOrbs(oList, numTimes)
+	//	for i := 0; i < numTimes; i++ {
+	//		perTimes = orbs.UpdateOrbs(oList, i)
+	//		realTimes += perTimes
 
-		//		tmpTimes += perTimes
-		//		if tmpTimes > 10000000 {
-		//			saver.SaveList(saveKey, oList)
-		//			if i%10 == 1 { //orbs.GetCrashed()%10 == 9 &&
-		//				oList = orbs.ClearOrbList(oList)
-		//			}
-		//			tmpTimes = 0
-		//		}
-	}
+	//		//		tmpTimes += perTimes
+	//		//		if tmpTimes > 10000000 {
+	//		//			saver.SaveList(saveKey, oList)
+	//		//			if i%10 == 1 { //orbs.GetCrashed()%10 == 9 &&
+	//		//				oList = orbs.ClearOrbList(oList)
+	//		//			}
+	//		//			tmpTimes = 0
+	//		//		}
+	//	}
 
 	oList = orbs.ClearOrbList(oList)
 	//fmt.Println("when clear oList=", oList)
