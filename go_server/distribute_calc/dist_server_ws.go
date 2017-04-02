@@ -79,7 +79,7 @@ func (this *CalcUnit) Reap(stage int, orb orbs.Orb, idx, crashedBy int) bool {
 	}
 	if crashedBy >= 0 && crashedBy < len(this.DoneList) {
 		//orb.CrashedBy = crashedBy
-		orb.SetCrashedBy(crashedBy)
+		//orb.SetCrashedBy(crashedBy)
 		target := &this.DoneList[crashedBy]
 		// 此处应该放在队列中，在所有stage升级的时候再处理crash事件
 		// 或者判断target是否已经stage up,如果没有up，也不能操作target.mass,所以此方案不妥
