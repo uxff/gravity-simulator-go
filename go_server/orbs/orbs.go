@@ -18,9 +18,9 @@ type Orb struct {
 	Vy   float64 `json:"vy"` // 速度y
 	Vz   float64 `json:"vz"` // 速度z
 	Mass float64 `json:"m"`  // 质量
-	Size int     `json:"sz"` // 大小，用于计算吞并的天体数量
 	Stat int     `json:"st"` // 用于标记是否已爆炸 1=正常 2=已爆炸
 	Id   int     `json:"id"`
+	//Size int     `json:"sz"` // 大小，用于计算吞并的天体数量
 	//idx       int
 	//crashedBy int
 }
@@ -102,7 +102,7 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 				o.Vy = (1.0 + rand.Float64()) * config.Velo
 			}
 			o.Vz = (rand.Float64() - 0.5) * config.Velo * 2.0 / 256.0
-			o.Size = 1
+			//o.Size = 1
 			o.Mass = rand.Float64() * config.Mass
 			o.Id = i // rand.Int()
 			o.Stat = 1
@@ -129,7 +129,7 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 			o.Vx = (rand.Float64() - 0.5) * config.Velo * 2.0
 			o.Vy = (rand.Float64() - 0.5) * config.Velo * 2.0
 			o.Vz = (rand.Float64() - 0.5) * config.Velo * 2.0
-			o.Size = 1
+			//o.Size = 1
 			o.Mass = rand.Float64() * config.Mass
 			o.Id = i // rand.Int()
 			o.Stat = 1
@@ -159,7 +159,7 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 			o.Vx = math.Cos(long+math.Pi/2.0) * config.Velo * 2.0 //* math.Sqrt(config.Wide/(radius+1.0)) / 4.0
 			o.Vy = math.Sin(long+math.Pi/2.0) * config.Velo * 2.0 //* math.Sqrt(config.Wide/(radius+1.0)) / 4.0
 			o.Vz = (rand.Float64() - 0.5) * config.Velo * 2.0 / 256.0
-			o.Size = 1
+			//o.Size = 1
 			o.Mass = rand.Float64() * config.Mass
 			o.Id = i // rand.Int()
 			o.Stat = 1
@@ -189,7 +189,7 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 			o.Vx = (rand.Float64() - 0.5) * config.Velo * 2.0
 			o.Vy = (rand.Float64() - 0.5) * config.Velo * 2.0
 			o.Vz = (rand.Float64() - 0.5) * config.Velo * 2.0
-			o.Size = 1
+			//o.Size = 1
 			o.Mass = rand.Float64() * config.Mass
 			o.Id = i // rand.Int()
 			o.Stat = 1
@@ -246,7 +246,7 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 			default:
 			}
 
-			o.Size = 1
+			//o.Size = 1
 			o.Mass = rand.Float64() * config.Mass
 			o.Id = i // rand.Int()
 			o.Stat = 1
@@ -303,7 +303,7 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 			default:
 			}
 
-			o.Size = 1
+			//o.Size = 1
 			o.Mass = rand.Float64() * config.Mass
 			o.Id = i // rand.Int()
 			o.Stat = 1
@@ -335,7 +335,7 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 				o.Vy = (1.0 + rand.Float64()) * config.Velo
 			}
 			o.Vz = (rand.Float64() - 0.5) * config.Velo * 2.0 / 256.0
-			o.Size = 1
+			//o.Size = 1
 			o.Mass = rand.Float64() * config.Mass
 			o.Id = i // rand.Int()
 			o.Stat = 1
@@ -562,13 +562,13 @@ func ClearOrbList(oList []Orb) []Orb {
 	allWC = 0
 	//var alive int = len(oList)
 	for i := 0; i < len(oList); i++ {
+		allWC += oList[i].Mass
 		if oList[i].Stat != 1 {
 			oList = append(oList[:i], oList[i+1:]...)
 			i--
 			//alive--
 			//} else {
 		}
-		allWC += oList[i].Mass
 	}
 	//log.Println("when clear alive=", alive)
 	clearTimes++
