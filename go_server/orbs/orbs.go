@@ -417,11 +417,11 @@ func UpdateOrbsOnce(oList []Orb, nStep int) int {
 		case <-c:
 			// 正常计算完成任务返回
 			nCount++
-		case aEvent := <-crashEventChan:
+		case anEvent := <-crashEventChan:
 			// 收集事件队列信息
-			o := &oList[aEvent.Idx]
-			target := &oList[aEvent.CrashedBy]
-			//log.Println("aEvent=", o.Id, aEvent, target.Id)
+			o := &oList[anEvent.Idx]
+			target := &oList[anEvent.CrashedBy]
+			log.Println("anEvent=", o.Id, anEvent, target.Id)
 			targetMassOld := target.Mass
 			target.Mass += o.Mass
 			target.Vx = (targetMassOld*target.Vx + o.Mass*o.Vx) / target.Mass
@@ -434,8 +434,6 @@ func UpdateOrbsOnce(oList []Orb, nStep int) int {
 			//default:
 			//	log.Println("nothing when select")
 		}
-
-		continue
 	}
 	return thelen * nCount
 }
@@ -453,22 +451,22 @@ func (o *Orb) Update(oList []Orb, idx int) {
 		o.Vz += aAll.Az
 		// 监控速度和加速度
 		if maxVeloX < math.Abs(o.Vx) {
-			maxVeloX = math.Abs(o.Vx)
+			maxVeloX = o.Vx
 		}
 		if maxVeloY < math.Abs(o.Vy) {
-			maxVeloY = math.Abs(o.Vy)
+			maxVeloY = o.Vy
 		}
 		if maxVeloZ < math.Abs(o.Vz) {
-			maxVeloZ = math.Abs(o.Vz)
+			maxVeloZ = o.Vz
 		}
 		if maxAccX < math.Abs(aAll.Ax) {
-			maxAccX = math.Abs(aAll.Ax)
+			maxAccX = aAll.Ax
 		}
 		if maxAccY < math.Abs(aAll.Ay) {
-			maxAccY = math.Abs(aAll.Ay)
+			maxAccY = aAll.Ay
 		}
 		if maxAccZ < math.Abs(aAll.Az) {
-			maxAccZ = math.Abs(aAll.Az)
+			maxAccZ = aAll.Az
 		}
 		if maxMass < o.Mass {
 			maxMass = o.Mass
