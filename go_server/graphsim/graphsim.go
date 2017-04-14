@@ -280,6 +280,7 @@ type Ring struct {
 	x       int
 	y       int
 	r       int
+	h       int
 	tiltDir float64 // 倾斜方向
 	tiltLen int     // 倾斜长度
 }
@@ -426,7 +427,7 @@ func main() {
 	rings := make([]Ring, *nHills)
 	for ri, _ := range rings {
 		r := &rings[ri]
-		r.x, r.y, r.r = (rand.Int() % width), (rand.Int() % height), (rand.Int() % (*hillWide))
+		r.x, r.y, r.r, r.h = (rand.Int() % width), (rand.Int() % height), (rand.Int()%(*hillWide) + 1), (rand.Int()%(5) + 2)
 		r.tiltDir, r.tiltLen = rand.Float64()*math.Pi, (rand.Int()%10)+1
 	}
 
@@ -465,7 +466,7 @@ func main() {
 				//rn := float64(r.tiltLen)*math.Sin(r.tiltDir-math.Atan2(float64(y), float64(y))) + float64(r.r)	// 尝试倾斜地图中的圆环 尝试失败
 				rn := (r.r)
 				if distM <= int(rn*rn) {
-					tmpColor++
+					tmpColor += float32(r.h) - float32(r.h*distM/(rn*rn))
 					//tmpColor += float32(distM) / float32(rn*rn) * rand.Float32()
 					if maxColor < tmpColor {
 						maxColor = tmpColor
