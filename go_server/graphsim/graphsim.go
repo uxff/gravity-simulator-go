@@ -75,19 +75,28 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 	var curX, curY int = pos % w.width, pos / w.height
 	var curDot *WaterDot = &w.data[pos]
 
-	if curDot.h > len(curDot.input)+2 {
-		if curDot.hasNext {
-			// 放开会产生莫名其妙的支流
-			fmt.Println("will discard my dir ", curDot)
-			//curDot.hasNext = false
-			return false
-		} else {
-			fmt.Println("cannot flow so much quantity")
-			return false
-		}
-	}
+	//	if curDot.h > len(curDot.input)+2 {
+	//		if curDot.hasNext {
+	//			// 放开会产生莫名其妙的支流
+	//			fmt.Println("will discard my dir ", curDot)
+	//			//curDot.hasNext = false
+	//			return false
+	//		} else {
+	//			fmt.Println("cannot flow so much quantity")
+	//			return false
+	//		}
+	//	}
 	// 过量退出，否则栈溢出
 	if curDot.q > 255 {
+		// 理应断开与上下游关系，产生积水
+		if curDot.hasNext {
+			fmt.Println("seems flow in circle, cut me->next, me=:", curDot)
+			curDot.hasNext = false
+			//curDot.h++
+			w.data[curDot.nextIdx].h++
+			w.data[curDot.nextIdx].input = []int{}
+			w.data[curDot.nextIdx].hasNext = false
+		}
 		fmt.Println("too much quantity me=", curDot)
 		return false
 	}
@@ -479,7 +488,7 @@ func main() {
 				//rn := float64(r.tiltLen)*math.Sin(r.tiltDir-math.Atan2(float64(y), float64(y))) + float64(r.r)	// 尝试倾斜地图中的圆环 尝试失败
 				rn := (r.r)
 				if distM <= int(rn*rn) {
-					tmpColor += float32(r.h) - float32(r.h*distM/(rn*rn))
+					tmpColor += float32(r.h) - float32(float64(r.h)*math.Sqrt(float64(distM)/float64((rn*rn))))
 					//tmpColor += float32(distM) / float32(rn*rn) * rand.Float32()
 					if maxColor < tmpColor {
 						maxColor = tmpColor
