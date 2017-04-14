@@ -18,7 +18,7 @@ type WaterDot struct {
 	x       float32
 	y       float32
 	dir     float64
-	h       int   // 高度水位
+	h       int   // 积水高度，产生积水不参与流动，流动停止
 	q       int   // 流量 0=无 历史流量
 	input   []int // 流入坐标
 	nextIdx int
@@ -92,17 +92,16 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 		return false
 	}
 
-	// 本地水位+1
-	curDot.h++
+	//curDot.h++
 	curDot.q++
 
 	// if have output, go output
 	if curDot.hasNext {
-		curDot.h--
-		if curDot.h < 0 {
-			fmt.Println("flow < 0")
-			curDot.h = 0
-		}
+		//curDot.h--
+		//if curDot.h < 0 {
+		//	fmt.Println("flow < 0")
+		//	curDot.h = 0
+		//}
 		// 查看下一个dot的input中有没有me
 		var nextHasMe bool = false
 		for _, itsInputIdx := range w.data[curDot.nextIdx].input {
@@ -138,7 +137,7 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 		// 查找较低的坑 优先流向低处
 		lowest, lowestVal := curDot.getLowestNeighbor(w, m)
 		if lowest < int(m.data[pos]) {
-			// 小了按照此方向走
+			// 低了按照此方向走
 			tx, ty = lowestVal.x, lowestVal.y
 			curDot.hasNext = true
 			fmt.Println("lower first", curDot)
@@ -171,7 +170,7 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 			continue
 		}
 		// 计算地形落差 地形较高 不允许流向高处
-		assumeFall := (int(m.data[ty*m.width+tx])*2 + w.data[ty*w.width+tx].h) - (int(m.data[pos])*2 + curDot.h)
+		assumeFall := (int(m.data[ty*m.width+tx])*1 + w.data[ty*w.width+tx].h) - (int(m.data[pos])*1 + curDot.h)
 		if assumeFall >= 1 {
 			fmt.Println("flow up, fall,dot,tx,ty=", assumeFall, curDot, tx, ty, "i=", i)
 			continue
@@ -226,11 +225,11 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 		curDot.dir = curDot.dir + rollDir/2.0
 
 		curDot.nextIdx = tx + w.width*ty
-		curDot.h--
-		if curDot.h < 0 {
-			fmt.Println("flow < 0")
-			curDot.h = 0
-		}
+		//curDot.h--
+		//if curDot.h < 0 {
+		//fmt.Println("flow < 0")
+		//curDot.h = 0
+		//}
 		// 查看下一个dot的input中有没有me
 		var nextHasMe bool = false
 		for _, itsInputIdx := range w.data[curDot.nextIdx].input {
@@ -249,11 +248,22 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 		return true
 	} else {
 		fmt.Println("cannot flow anywhere: curDot=", curDot)
+		// 积水
+		curDot.h++
 		if curDot.h > 1 {
-			curDot.h -= 2
-			m.data[pos] += 1
-			fmt.Println("convert water to topo:", curDot)
+			//curDot.h -= 2
+			//m.data[pos] += 1
+			//fmt.Println("convert water to topo:", curDot)
 		}
+		// 切断curDot跟下游的关系 本来就是断的
+		//curDot.hasNext = false
+		// 在next的input中去掉me
+		//curDot.nextidx
+		// 切断curDot跟上游的关系
+		for _, itsInputIdx := range curDot.input {
+			w.data[itsInputIdx].hasNext = false
+		}
+		curDot.input = make([]int, 0)
 	}
 	return false
 }
@@ -339,6 +349,7 @@ func (d *WaterDot) giveInputXY(inputX, inputY float32) {
 	d.x, d.y = (d.x+inputX)/2, (d.y+inputY)/2
 }
 
+// 此函数固定返回8个边界点，可能包含超出地图边界的点
 func (d *WaterDot) getNeighbors(w *WaterMap) []struct{ x, y int } {
 	pos := make([]struct{ x, y int }, 8)
 	pos[0].x, pos[0].y = int(d.x+1), int(d.y)
@@ -352,12 +363,14 @@ func (d *WaterDot) getNeighbors(w *WaterMap) []struct{ x, y int } {
 	return pos
 }
 
-/*获取周围最低的点 返回安全的坐标，不在地图外*/
+/*获取周围最低的点 最低点集合数组中随机取一个 返回安全的坐标，不在地图外*/
 func (d *WaterDot) getLowestNeighbor(w *WaterMap, m *Topomap) (lowest int, lowestVal struct{ x, y int }) {
 	pos := d.getNeighbors(w)
+	// 原理： highMap[high] = []struct{int,int}
 	highMap := make(map[int][]struct{ x, y int }, 8)
 	for _, nei := range pos {
 		if nei.x < 0 || nei.x > w.width-1 || nei.y < 0 || nei.y > w.height-1 {
+			// 超出地图边界的点
 			continue
 		}
 		if len(highMap[int(m.data[nei.x+nei.y*w.width])]) == 0 {
@@ -373,7 +386,7 @@ func (d *WaterDot) getLowestNeighbor(w *WaterMap, m *Topomap) (lowest int, lowes
 			lowest = k
 		}
 	}
-	//fmt.Println("lowest,highMap=", lowest, highMap)
+	//fmt.Println("lowest,highMap,count(highMap)=", lowest, highMap, len(highMap))
 	if len(highMap[lowest]) == 0 {
 		return lowest, lowestVal
 	}
@@ -532,6 +545,12 @@ func main() {
 
 	// 绘制WaterMap
 	for di, dot := range w.data {
+		// 绘制积水
+		if dot.h > 0 {
+			tmpColor := color.RGBA{0, 0xFF, 0xFF, 0xFF}
+			lineTo(img, int(dot.x-1)**zoom+*zoom/2, int(dot.y)**zoom+*zoom/2, int(dot.x+1)**zoom+*zoom/2, int(dot.y)**zoom+*zoom/2, tmpColor, tmpColor, 1.0)
+		}
+		// 绘制流动
 		if dot.hasNext {
 			tmpLevel := float32(m.data[di]) + float32(dot.h)
 			tmpColor := cs[int(float32(cslen)*(tmpLevel/maxColor))]
