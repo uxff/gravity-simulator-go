@@ -562,7 +562,14 @@ func main() {
 		// 绘制流动
 		if dot.hasNext {
 			tmpLevel := float32(m.data[di]) + float32(dot.h)
-			tmpColor := cs[int(float32(cslen)*(tmpLevel/maxColor))]
+			tmpLevel = float32(cslen) * (tmpLevel / maxColor)
+			if int(tmpLevel) >= len(cs) {
+				tmpLevel = float32(len(cs) - 1)
+			}
+			if tmpLevel < 0 {
+				tmpLevel = 0
+			}
+			tmpColor := cs[int(tmpLevel)]
 			lineTo(img, int(dot.x)**zoom+*zoom/2, int(dot.y)**zoom+*zoom/2, (dot.nextIdx%w.width)**zoom+*zoom/2, (dot.nextIdx/w.width)**zoom+*zoom/2, color.RGBA{0, 0, 0xFF, 0xFF}, tmpColor, *riverArrowScale)
 			//fmt.Println("hasNext:", dot, w.data[dot.nextIdx])
 		}
