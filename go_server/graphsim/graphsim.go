@@ -47,18 +47,18 @@ func (this *FlowList) Init(x int, y int, w *WaterMap, maxlen int) {
 	this.List = make([]int, maxlen)
 	//this.lastDot = &this.List[0]
 	if maxlen > 0 {
-
 		this.lastIdx = x + y*w.width
 		this.List[0] = this.lastIdx
 		this.lastDot = &w.data[this.lastIdx]
 		this.lastDot.x = float32(x) + 0.5
 		this.lastDot.y = float32(y) + 0.5
 		this.lastDot.q = 1
-		this.length = 1
+		this.length = int32(maxlen)
 		theDir := rand.Float64() * math.Pi * 2.0
 		this.lastDot.dir = theDir
 	}
 	this.step = 1
+	this.length = int32(maxlen)
 	//log.Println("new dir:", theDir, this.lastDot)
 
 	//w.data[x+y*w.width] = *this.lastDot
@@ -81,10 +81,10 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 	var curDot *WaterDot = &w.data[pos]
 
 	// 过量退出，否则栈溢出
-	if curDot.q > 32 {
+	if curDot.q > 255 {
 		// 理应断开与上下游关系，产生积水
 		if curDot.hasNext {
-			if w.data[curDot.nextIdx].q > 30 {
+			if w.data[curDot.nextIdx].q > 250 {
 				log.Println("seems flow in circle, cut me->next, me=:", curDot)
 				curDot.h++
 				curDot.hasNext = false
@@ -450,9 +450,17 @@ func main() {
 	//}
 	// 转换痕迹为ridge 为每个环分配随机半径
 	ridgeRings := make([]Ring, ridge.length)
+	baseTowardX, baseTowardY := (rand.Int()%width-width/2)/20, (rand.Int()%height-height/2)/20
 	for ri := 0; ri < int(ridge.length); ri++ {
 		r := &ridgeRings[ri]
-		r.x, r.y, r.r = ridge.List[ri]%width, ridge.List[ri]/width, (rand.Int() % (*ridgeWide))
+		if ri == 0 {
+			// 第一个
+			//r.x, r.y, r.r = ridge.List[ri]%width, ridge.List[ri]/width, (rand.Int() % (*ridgeWide))
+			r.x, r.y, r.r, r.h = (rand.Int() % width), (rand.Int() % height), (rand.Int()%(*ridgeWide) + 1), (rand.Int()%(5) + 2)
+		} else {
+			// 其他
+			r.x, r.y, r.r, r.h = ridgeRings[ri-1].x+(rand.Int()%*ridgeWide)-*ridgeWide/2+baseTowardX, ridgeRings[ri-1].y+(rand.Int()%*ridgeWide)-*ridgeWide/2+baseTowardY, (rand.Int()%(*ridgeWide) + 1), (rand.Int()%(5) + 2)
+		}
 	}
 	log.Println("ridgeRings=", ridgeRings)
 
@@ -464,8 +472,10 @@ func main() {
 			// 收集ridgeRings产生的attitude
 			for _, r := range ridgeRings {
 				distM := (x-r.x)*(x-r.x) + (y-r.y)*(y-r.y)
+				rn := (r.r)
 				if distM <= r.r*r.r {
-					tmpColor++
+					//tmpColor++
+					tmpColor += float32(r.h) - float32(float64(r.h)*math.Sqrt(math.Sqrt(float64(distM)/float64((rn*rn)))))
 					//tmpColor += float32(distM) / float32(r.r*r.r) * rand.Float32()
 					if maxColor < tmpColor {
 						maxColor = tmpColor
@@ -480,7 +490,7 @@ func main() {
 				rn := (r.r)
 				if distM <= int(rn*rn) {
 					// 产生的ring中间隆起
-					tmpColor += float32(r.h) - float32(float64(r.h)*math.Sqrt(float64(distM)/float64((rn*rn))))
+					tmpColor += float32(r.h) - float32(float64(r.h)*math.Sqrt(math.Sqrt(float64(distM)/float64((rn*rn)))))
 					//tmpColor += float32(distM) / float32(rn*rn) * rand.Float32()
 					if maxColor < tmpColor {
 						maxColor = tmpColor
