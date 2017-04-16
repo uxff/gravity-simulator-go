@@ -8,6 +8,7 @@ import (
 	"flag"
 	//"image/jpeg"
 	"image/png"
+	"log"
 	"math"
 	"math/rand"
 	"os"
@@ -45,17 +46,20 @@ type WaterMap struct {
 func (this *FlowList) Init(x int, y int, w *WaterMap, maxlen int) {
 	this.List = make([]int, maxlen)
 	//this.lastDot = &this.List[0]
-	this.lastIdx = x + y*w.width
-	this.List[0] = this.lastIdx
-	this.lastDot = &w.data[this.lastIdx]
-	this.lastDot.x = float32(x) + 0.5
-	this.lastDot.y = float32(y) + 0.5
-	this.lastDot.q = 1
-	this.length = 1
-	theDir := rand.Float64() * math.Pi * 2.0
-	this.lastDot.dir = theDir
+	if maxlen > 0 {
+
+		this.lastIdx = x + y*w.width
+		this.List[0] = this.lastIdx
+		this.lastDot = &w.data[this.lastIdx]
+		this.lastDot.x = float32(x) + 0.5
+		this.lastDot.y = float32(y) + 0.5
+		this.lastDot.q = 1
+		this.length = 1
+		theDir := rand.Float64() * math.Pi * 2.0
+		this.lastDot.dir = theDir
+	}
 	this.step = 1
-	//fmt.Println("new dir:", theDir, this.lastDot)
+	//log.Println("new dir:", theDir, this.lastDot)
 
 	//w.data[x+y*w.width] = *this.lastDot
 }
@@ -69,6 +73,7 @@ func (this *FlowList) Init(x int, y int, w *WaterMap, maxlen int) {
 	注水，选择方向，流动耦合
 */
 func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
+	//log.Println("START INJECT: pos=", pos)
 	if pos >= len(w.data) {
 		return false
 	}
@@ -76,11 +81,11 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 	var curDot *WaterDot = &w.data[pos]
 
 	// 过量退出，否则栈溢出
-	if curDot.q > 255 {
+	if curDot.q > 32 {
 		// 理应断开与上下游关系，产生积水
 		if curDot.hasNext {
-			if w.data[curDot.nextIdx].q > 240 {
-				fmt.Println("seems flow in circle, cut me->next, me=:", curDot)
+			if w.data[curDot.nextIdx].q > 30 {
+				log.Println("seems flow in circle, cut me->next, me=:", curDot)
 				curDot.h++
 				curDot.hasNext = false
 				for _, itsInputIdx := range curDot.input {
@@ -88,10 +93,10 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 				}
 				curDot.input = []int{}
 			} else {
-				fmt.Println("none circle exceed occur? next q=", w.data[curDot.nextIdx].q)
+				log.Println("none circle exceed occur? next q=", w.data[curDot.nextIdx].q)
 			}
 		}
-		fmt.Println("too much quantity me=", curDot)
+		log.Println("too much quantity me=", curDot)
 		return false
 	}
 
@@ -137,12 +142,15 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 			// 低了按照此方向走
 			tx, ty = lowestVal.x, lowestVal.y
 			curDot.hasNext = true
-			fmt.Println("lower first curDot,tx,ty=", curDot, tx, ty)
+			tIdx = ty*m.width + tx
+			log.Println("lower first curDot,tx,ty=", curDot, tx, ty)
 			break
-		} else if lowest > int(m.data[pos]) {
+		} else if lowest > int(m.data[pos])+curDot.h {
 			curDot.hasNext = false
-			fmt.Println("desire to go out", curDot)
-			break
+			curDot.dir += math.Pi
+			log.Println("desire to go out, continue, curDot,m.h,pos=", curDot, int(m.data[pos]), pos, ",lowest,lowestVal", lowest, lowestVal)
+			//break
+			continue
 		}
 
 		var pit1 float64 = rand.Float64() - rand.Float64()
@@ -154,7 +162,7 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 		// 碰到边界
 		tx, ty = int(float64(curDot.x)+allvx), int(float64(curDot.y)+allvy)
 		if tx < 0 || ty < 0 || int(tx) > w.width-1 || int(ty) > w.height-1 {
-			fmt.Println("over bound tx,ty:", tx, ty, "o=", curDot, "i=", i)
+			log.Println("over bound tx,ty:", tx, ty, "o=", curDot, "i=", i)
 			//continue
 			// 任其流出地图外，不再让其流回来
 			//curDot.h--
@@ -163,7 +171,7 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 		if tx == curX && ty == curY {
 			// 内部移动后还在内部，将下次的基点延长
 			curDot.x, curDot.y = curDot.x+float32(allvx)/2, curDot.y+float32(allvy)/2
-			//fmt.Println("inner step")
+			//log.Println("inner step")
 			continue
 		}
 		// 计算地形落差 地形较高 不允许流向高处
@@ -171,7 +179,8 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 
 		assumeFall := (int(m.data[tIdx])*1 + w.data[tIdx].h) - (int(m.data[pos])*1 + curDot.h)
 		if assumeFall >= 1 {
-			fmt.Println("flow up, fall,dot,tx,ty=", assumeFall, curDot, tx, ty, "i=", i)
+			curDot.dir += math.Pi
+			log.Println("flow up, fall,dot,tx,ty=", assumeFall, curDot, tx, ty, "i=", i)
 			continue
 		}
 
@@ -180,10 +189,10 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 			//continue
 			// 撤销对方指向me的next，如果我方地形高
 			if assumeFall < 0 {
-				fmt.Println("discard target next direct me,target=", curDot, w.data[ty*m.width+tx])
+				log.Println("discard target next direct me,target=", curDot, w.data[ty*m.width+tx])
 				w.data[tIdx].hasNext = false
 			} else {
-				fmt.Println("cannot flow to target because its next is me: me=", curDot, "target=", w.data[ty*m.width+tx], "i=", i)
+				log.Println("cannot flow to target because its next is me: me=", curDot, "target=", w.data[ty*m.width+tx], "i=", i)
 				continue
 			}
 		}
@@ -196,13 +205,14 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 			near2x, near2y := curX, ty
 			if w.data[near1x+near1y*w.width].hasNext && w.data[near1x+near1y*w.width].nextIdx == (near2x+near2y*w.width) {
 				// 下游是2
-				fmt.Println("become cross:x,y,tx,ty=", curX, curY, tx, ty, "redir to x,y=", near2x, near2y)
+				log.Println("become cross:x,y,tx,ty=", curX, curY, tx, ty, "redir to x,y=", near2x, near2y)
 				tx, ty = near2x, near2y
 			} else if w.data[near2x+near2y*w.width].hasNext && w.data[near2x+near2y*w.width].nextIdx == (near1x+near1y*w.width) {
 				// 下游是1
-				fmt.Println("become cross:x,y,tx,ty=", curX, curY, tx, ty, "redir to x,y=", near1x, near1y)
+				log.Println("become cross:x,y,tx,ty=", curX, curY, tx, ty, "redir to x,y=", near1x, near1y)
 				tx, ty = near1x, near1y
 			}
+			tIdx = ty*m.width + tx
 		}
 
 		curDot.hasNext = true
@@ -211,7 +221,7 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 
 	// 选择成功则流入
 	if curDot.hasNext {
-		fmt.Println("got dir ok: rollDir=", rollDir, "pos xy=", pos, curX, curY, "target x,y:", tx, ty)
+		log.Println("got dir ok: rollDir=", rollDir, "pos xy=", pos, curX, curY, "target x,y:", tx, ty, "curH,tarH=", m.data[pos], m.data[tIdx])
 		// 不能过于激进地修改方向，否则曲线太弯曲容易eatself
 		//		if curDot.dir-theDir < -math.Pi {
 		//			curDot.dir = (curDot.dir+theDir)/2.0 - math.Pi
@@ -240,7 +250,7 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 		//w.data[curDot.nextIdx].h++
 		return w.InjectWater(curDot.nextIdx, m)
 	} else {
-		fmt.Println("cannot flow anywhere: curDot=", curDot)
+		log.Println("cannot flow anywhere: curDot=", curDot)
 		// 积水
 		curDot.h++
 		// 切断curDot跟下游的关系 本来就是断的
@@ -268,6 +278,7 @@ func (this *WaterMap) Init(width int, height int) {
 		for y := 0; y < this.height; y++ {
 			this.data[x+y*this.width].x = float32(x) + 0.5
 			this.data[x+y*this.width].y = float32(y) + 0.5
+			this.data[x+y*this.width].hasNext = false
 		}
 	}
 }
@@ -288,7 +299,7 @@ func colorTpl(colorTplFile string) []color.Color {
 	var colorTplPng, err = png.Decode(colorTplFileIo)
 
 	if err != nil {
-		fmt.Println("png.decode err when read colorTpl:", err)
+		log.Println("png.decode err when read colorTpl:", err)
 		return nil
 	}
 	theLen := colorTplPng.Bounds().Dy()
@@ -332,7 +343,8 @@ func (d *WaterDot) calcInputAvgDir(w *WaterMap) (dir float64, hasDir bool) {
 }
 
 func (d *WaterDot) giveInputXY(inputX, inputY float32) {
-	d.x, d.y = (d.x+inputX)/2, (d.y+inputY)/2
+	//d.x, d.y = (d.x+inputX)/2, (d.y+inputY)/2
+	d.x, d.y = inputX, inputY
 }
 
 // 此函数固定返回8个边界点，可能包含超出地图边界的点
@@ -351,15 +363,16 @@ func (d *WaterDot) getNeighbors(w *WaterMap) []struct{ x, y int } {
 
 /*获取周围最低的点 最低点集合数组中随机取一个 返回安全的坐标，不在地图外*/
 func (d *WaterDot) getLowestNeighbor(w *WaterMap, m *Topomap) (lowest int, lowestVal struct{ x, y int }) {
-	pos := d.getNeighbors(w)
+	arrNei := d.getNeighbors(w)
+	//log.Println("d,arrNei=", d, arrNei)
 	// 原理： highMap[high] = []struct{int,int}
 	highMap := make(map[int][]struct{ x, y int }, 8)
-	for _, nei := range pos {
+	for _, nei := range arrNei {
 		if nei.x < 0 || nei.x > w.width-1 || nei.y < 0 || nei.y > w.height-1 {
 			// 超出地图边界的点
 			continue
 		}
-		high := int(m.data[nei.x+nei.y*w.width])
+		high := int(m.data[nei.x+nei.y*w.width]) + d.h
 		if len(highMap[int(high)]) == 0 {
 			highMap[high] = []struct{ x, y int }{{nei.x, nei.y}} //make([]struct{ x, y int }, 1)
 			//highMap[int(m.data[nei.x+nei.y*w.width])][0].x, highMap[int(m.data[nei.x+nei.y*w.width])][0].y = nei.x, nei.y
@@ -373,7 +386,7 @@ func (d *WaterDot) getLowestNeighbor(w *WaterMap, m *Topomap) (lowest int, lowes
 			lowest = k
 		}
 	}
-	//fmt.Println("lowest,highMap,count(highMap),d=", lowest, highMap, len(highMap), *d)
+	//log.Println("lowest,highMap,count(highMap),d=", lowest, highMap, len(highMap), *d)
 	if len(highMap[lowest]) == 0 {
 		return lowest, lowestVal
 	}
@@ -406,13 +419,13 @@ func main() {
 	w.Init(width, height)
 	m.Init(width, height)
 	river.Init(width/2, height/2, &w, *times+1)
-	ridge.Init(width/2, height/2, &w, *nRidge+1)
+	ridge.Init(width/2, height/2, &w, *nRidge)
 	ridge.step = float64(*ridgeStep)
 
 	if _, derr := os.Open(*outdir); derr != nil {
-		fmt.Println("dir seems not exist:", *outdir, derr)
+		log.Println("dir seems not exist:", *outdir, derr)
 		if cerr := os.Mkdir(*outdir, os.ModePerm); cerr != nil {
-			fmt.Println("os.mkdir:", *outdir, cerr)
+			log.Println("os.mkdir:", *outdir, cerr)
 			//return
 		}
 	}
@@ -441,7 +454,7 @@ func main() {
 		r := &ridgeRings[ri]
 		r.x, r.y, r.r = ridge.List[ri]%width, ridge.List[ri]/width, (rand.Int() % (*ridgeWide))
 	}
-	fmt.Println("ridgeRings=", ridgeRings)
+	log.Println("ridgeRings=", ridgeRings)
 
 	// 生成地图 制造地形
 	var tmpColor, maxColor float32 = 1, 1
@@ -457,7 +470,7 @@ func main() {
 					if maxColor < tmpColor {
 						maxColor = tmpColor
 					}
-					//fmt.Println("color fill x,y,r,c=", x, y, r, tmpColor)
+					//log.Println("color fill x,y,r,c=", x, y, r, tmpColor)
 				}
 			}
 			// 收集rings产生的attitude
@@ -472,14 +485,14 @@ func main() {
 					if maxColor < tmpColor {
 						maxColor = tmpColor
 					}
-					//fmt.Println("color fill x,y,r,c=", x, y, r, tmpColor, "r=", r)
+					//log.Println("color fill x,y,r,c=", x, y, r, tmpColor, "r=", r)
 				}
 			}
 
 			m.data[x+y*width] = uint8(tmpColor) //+ uint8(rand.Int()%2) //int8(width - x)
 		}
 	}
-	maxColor *= 3
+	maxColor *= 2
 
 	// 获取颜色模板
 	var colorTplFile string = "image/color-tpl.png"
@@ -509,6 +522,7 @@ func main() {
 		idx := rand.Int() % len(w.data)
 		//x, y := idx%w.width, idx/w.width
 		//w.data[idx].x, w.data[idx].y = float32(x)+0.5, float32(y)+0.5
+		w.data[idx].hasNext = false
 		w.InjectWater(idx, &m)
 	}
 	// 顺序洒水
@@ -521,7 +535,7 @@ func main() {
 	//		idx :=
 	//		//x, y := idx%w.width, idx/w.width
 	//		//w.data[idx].x, w.data[idx].y = float32(x)+0.5, float32(y)+0.5
-	w.InjectWater(w.width/2+w.width*w.height/2, &m)
+	//w.InjectWater(w.width/2+w.width*w.height/2, &m)
 
 	// 绘制river
 	// 使用zoomstep lineTo
@@ -557,12 +571,12 @@ func main() {
 			}
 			nextX, nextY := dot.nextIdx%w.width, dot.nextIdx/w.height
 			if (nextX-int(dot.x))*(nextX-int(dot.x))+(nextY-int(dot.y))*(nextY-int(dot.y)) > 4 {
-				//fmt.Println("the next is too far:", dot)
+				//log.Println("the next is too far:", dot)
 				continue
 			}
 			tmpColor := cs[int(tmpLevel)]
 			lineTo(img, int(dot.x)**zoom+*zoom/2, int(dot.y)**zoom+*zoom/2, (dot.nextIdx%w.width)**zoom+*zoom/2, (dot.nextIdx/w.width)**zoom+*zoom/2, color.RGBA{0, 0, 0xFF, 0xFF}, tmpColor, *riverArrowScale)
-			//fmt.Println("hasNext:", dot, w.data[dot.nextIdx])
+			//log.Println("hasNext:", dot, w.data[dot.nextIdx])
 		}
 	}
 
@@ -577,11 +591,11 @@ func main() {
 	// 输出图片文件
 	//jpeg.Encode(picFile, img, nil)
 	if err := png.Encode(picFile2, img); err != nil {
-		fmt.Println("png.Encode error:", err)
+		log.Println("png.Encode error:", err)
 	}
 
 	if *bShowMap {
-		//fmt.Println("map=", m)
+		//log.Println("map=", m)
 		str := "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ~!@#$%^&*-=_+()[]{}<>\\/;:,.???????????????????????????????????????"
 		for di, dd := range m.data {
 			fmt.Printf("%c", str[dd])
@@ -589,7 +603,7 @@ func main() {
 				fmt.Printf("\n")
 			}
 		}
-		//fmt.Println("wmap=", w)
+		//log.Println("wmap=", w)
 	}
-	fmt.Println("done w,h=", width, height, "maxColor=", maxColor, "nHills=", *nHills, "flowlen=", river.length, "ridgelen=", ridge.length)
+	log.Println("done w,h=", width, height, "maxColor=", maxColor, "nHills=", *nHills, "flowlen=", river.length, "ridgelen=", ridge.length)
 }
