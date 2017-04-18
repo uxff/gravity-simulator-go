@@ -60,7 +60,8 @@ const MIN_CRITICAL_DIST = 2.0
 
 // 监控速度和加速度
 var maxVeloX, maxVeloY, maxVeloZ, maxAccX, maxAccY, maxAccZ, maxMass, allMass, allWC float64 = 0, 0, 0, 0, 0, 0, 0, 0, 0
-var maxMassId, clearTimes, willTimes, realTimes int = 0, 0, 0, 0
+var maxMassId int = 0
+var clearTimes, willTimes, realTimes int64 = 0, 0, 0
 
 var c chan int                     //= make(chan int, 10000)	// orb.update()完成队列
 var crashEventChan chan CrashEvent //= make(chan CrashEvent, 0) // 撞击事件队列
@@ -383,10 +384,10 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 	return oList
 }
 
-func UpdateOrbs(oList []Orb, numTimes int) int {
+func UpdateOrbs(oList []Orb, numTimes int) int64 {
 	realTimes = 0
 	//theListLength = len(oList)
-	willTimes = len(oList) * len(oList) * numTimes
+	willTimes = int64(len(oList)) * int64(len(oList)) * int64(numTimes)
 	// 初始化chan CrashEvent ,orb.update()将会往crashEventChan中push事件
 	// 事件队列，提升效率 15%左右
 	crashEventChan = make(chan CrashEvent, len(oList))
@@ -400,7 +401,7 @@ func UpdateOrbs(oList []Orb, numTimes int) int {
 }
 
 // 所有天体运动一次
-func UpdateOrbsOnce(oList []Orb, nStep int) int {
+func UpdateOrbsOnce(oList []Orb, nStep int) int64 {
 	thelen := len(oList)
 	nCount := 0
 	for i := 0; i < thelen; i++ {
@@ -435,7 +436,7 @@ func UpdateOrbsOnce(oList []Orb, nStep int) int {
 			//	log.Println("nothing when select")
 		}
 	}
-	return thelen * nCount
+	return int64(thelen) * int64(nCount)
 }
 
 // 天体运动一次
@@ -576,7 +577,7 @@ func ClearOrbList(oList []Orb) []Orb {
 func ShowMonitorInfo() {
 	log.Printf("maxVelo=%.6g %.6g %.6g maxAcc=%.6g %.6g %.6g maxMass=%d %e allMass=%e\n", maxVeloX, maxVeloY, maxVeloZ, maxAccX, maxAccY, maxAccZ, maxMassId, maxMass, allWC)
 }
-func GetClearTimes() int {
+func GetClearTimes() int64 {
 	return clearTimes
 }
 func GetCalcTimes() int {
@@ -588,9 +589,9 @@ func GetCrashed() int {
 func GetAllMass() float64 {
 	return allMass
 }
-func GetRealTimes() int {
+func GetRealTimes() int64 {
 	return realTimes
 }
-func GetWillTimes() int {
+func GetWillTimes() int64 {
 	return willTimes
 }

@@ -167,7 +167,7 @@ func main() {
 
 	}
 
-	fmt.Printf("start calc, orbs:%d will times:%d use cpu core:%d allMass=%e\n", numOrbs, numTimes*numOrbs*numOrbs, numCpu, orbs.GetAllMass())
+	fmt.Printf("start calc, orbs:%d will times:%d use cpu core:%d allMass=%e\n", numOrbs, int64(numTimes)*int64(numOrbs)*int64(numOrbs), numCpu, orbs.GetAllMass())
 
 	//realTimes, perTimes, tmpTimes := 0, 0, 0
 	startTimeNano := time.Now().UnixNano()
@@ -189,7 +189,6 @@ func main() {
 	//	for i := 0; i < numTimes; i++ {
 	//		perTimes = orbs.UpdateOrbs(oList, i)
 	//		realTimes += perTimes
-
 	//		//		tmpTimes += perTimes
 	//		//		if tmpTimes > 10000000 {
 	//		//			saver.SaveList(saveKey, oList)
