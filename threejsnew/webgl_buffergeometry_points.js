@@ -73,9 +73,9 @@
                     var orb = list[i];
 
                     // positions
-                    if (orb.st!=1) {
-                        orb.x = orb.y = orb.z = 0;
-                    }
+                    //if (orb.st!=1) {
+                    //    orb.x = orb.y = orb.z = 0;
+                    //}
 
                     var x = orb.x;
                     var y = orb.y;
@@ -144,7 +144,7 @@
                     positions[ i*3 + 0 ] = orb.x*zoomBase;
                     positions[ i*3 + 1 ] = orb.y*zoomBase;
                     positions[ i*3 + 2 ] = orb.z*zoomBase;
-                    sizes[ i ] = Math.sqrt(Math.sqrt(orb.m)) * 100;//sizes[ i ] = 100;//
+                    //sizes[ i ] = Math.sqrt(Math.sqrt(orb.m)) * 100;//sizes[ i ] = 100;//
                 }
 
                 //geometry.addAttribute( 'position', new THREE.BufferAttribute( positions, 3 ) );
@@ -269,7 +269,7 @@
 
 				//points.rotation.x = time * 0.25;
 				//points.rotation.y = time * 0.5;
-                if (ticker%115==0) {
+                if (ticker%15==0) {
                     //updateDots();
                     MyWebsocket.doSend(sendVal);
                 }

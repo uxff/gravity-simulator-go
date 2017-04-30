@@ -22,11 +22,11 @@ type JsonRet struct {
 	Data map[string]interface{} `json:"data"`
 }
 type TinyOrb struct {
-	X    float32 `json:"x"`
-	Y    float32 `json:"y"`
-	Z    float32 `json:"z"`
-	M    float32 `json:"m"`
-	Stat int     `json:"st"`
+	X float32 `json:"x"`
+	Y float32 `json:"y"`
+	Z float32 `json:"z"`
+	M float32 `json:"m"`
+	//Stat int     `json:"st"`
 }
 
 var addr = flag.String("addr", "0.0.0.0:8081", "websocket server address")
@@ -62,11 +62,13 @@ func ToTinyOrbList(list []orbs.Orb) []TinyOrb {
 	for i := 0; i < len(list); i++ {
 		o := &olist[i]
 		t := &list[i]
-		o.M = float32(t.Mass)
-		o.Stat = int(t.Stat)
-		o.X = float32(t.X)
-		o.Y = float32(t.Y)
-		o.Z = float32(t.Z)
+		//o.Stat = int(t.Stat)
+		if t.Stat == 1 {
+			o.X = float32(t.X)
+			o.Y = float32(t.Y)
+			o.Z = float32(t.Z)
+			o.M = float32(t.Mass)
+		}
 	}
 	return olist
 }
