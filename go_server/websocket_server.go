@@ -21,6 +21,8 @@ type JsonRet struct {
 	Msg  string                 `json:"msg"`
 	Data map[string]interface{} `json:"data"`
 }
+
+// 使用精简数据格式传输，提高网络使用率，降低chrome内存使用，使chrome支持100W粒子
 type TinyOrb struct {
 	X float32 `json:"x"`
 	Y float32 `json:"y"`
