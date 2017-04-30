@@ -46,7 +46,7 @@ func main() {
 	var loadKey = flag.String("loadkey", "", "key name to load, like key of memcache, or filename in save dir, use savekey if no given")
 	var doMerge = flag.Bool("domerge", false, "merge from loadkey to savekey if true, replace if false")
 	var moveExp = flag.String("moveexp", "", "move expression, like: x=-150&vy=+0.01&m=+20 only position,velo,mass")
-	var saveDuration = flag.Int("save-duration", 100, "save to savepath per millisecond, 100 means 100ms")
+	var saveDuration = flag.Int("save-duration", 500, "save to savepath per millisecond, 100 means 100ms")
 
 	// flags 读取参数，必须要调用 flag.Parse()
 	flag.Parse()
