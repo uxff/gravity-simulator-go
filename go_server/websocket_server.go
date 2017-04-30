@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	//"time"
-	//orbs "./orbs"
+	orbs "./orbs"
 	saverpkg "./saver"
 
 	//"github.com/bradfitz/gomemcache/memcache"
@@ -20,6 +20,13 @@ type JsonRet struct {
 	Code int                    `json:"code"`
 	Msg  string                 `json:"msg"`
 	Data map[string]interface{} `json:"data"`
+}
+type TinyOrb struct {
+	X    float32 `json:"x"`
+	Y    float32 `json:"y"`
+	Z    float32 `json:"z"`
+	M    float32 `json:"m"`
+	Stat int     `json:"st"`
 }
 
 var addr = flag.String("addr", "0.0.0.0:8081", "websocket server address")
@@ -48,6 +55,20 @@ func echo(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
+}
+
+func ToTinyOrbList(list []orbs.Orb) []TinyOrb {
+	olist := make([]TinyOrb, len(list))
+	for i := 0; i < len(list); i++ {
+		o := &olist[i]
+		t := &list[i]
+		o.M = float32(t.Mass)
+		o.Stat = int(t.Stat)
+		o.X = float32(t.X)
+		o.Y = float32(t.Y)
+		o.Z = float32(t.Z)
+	}
+	return olist
 }
 
 func handleOrbs(w http.ResponseWriter, r *http.Request) {
@@ -79,7 +100,8 @@ func handleOrbs(w http.ResponseWriter, r *http.Request) {
 			ret.Data["list"] = nil
 		} else {
 			list := saver.GetList(&mcKey) //getListFromMc(mc, &mcKey)
-			ret.Data["list"] = list
+			tinyList := ToTinyOrbList(list)
+			ret.Data["list"] = tinyList
 		}
 
 		retStr, errJson := json.Marshal(ret)

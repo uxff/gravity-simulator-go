@@ -113,7 +113,7 @@
 
                 var material;
                 // 量大使用PointsMaterial渲染
-                // 使用自带方块操作 数量到100W时，50%几率崩溃
+                // 使用自带方块操作 数量50W时，显示良好 数量到100W时，50%几率崩溃
                 //material = new THREE.PointsMaterial( { size: 200, vertexColors: THREE.VertexColors } );
                 // 使用图片 spark1.png 显示 数量50W时，显示良好 数量100W时，90%几率崩溃
                 //material = new THREE.PointsMaterial({ size: 200, map: sprite, blending: THREE.AdditiveBlending, depthTest: false, transparent : true });
@@ -141,7 +141,7 @@
                 for (var i in list) {
                     var orb = list[i];
 
-                    positions[ i*3 + 0 ]     = orb.x*zoomBase;
+                    positions[ i*3 + 0 ] = orb.x*zoomBase;
                     positions[ i*3 + 1 ] = orb.y*zoomBase;
                     positions[ i*3 + 2 ] = orb.z*zoomBase;
                     sizes[ i ] = Math.sqrt(Math.sqrt(orb.m)) * 100;//sizes[ i ] = 100;//
