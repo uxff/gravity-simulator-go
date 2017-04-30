@@ -164,7 +164,7 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 			o.Vz = (rand.Float64() - 0.5) * config.Velo * 2.0 / 256.0
 			//o.Size = 1
 			o.Mass = rand.Float64() * config.Mass
-			o.Id = int(rand.Int31()) // i //
+			o.Id = i //int(rand.Int31()) //
 			o.Stat = 1
 			allMass += o.Mass
 		}
@@ -196,7 +196,7 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 			o.Vz = (rand.Float64() - 0.5) * config.Velo * 2.0
 			//o.Size = 1
 			o.Mass = rand.Float64() * config.Mass
-			o.Id = int(rand.Int31()) // i //
+			o.Id = i //int(rand.Int31()) //
 			o.Stat = 1
 			allMass += o.Mass
 		}
@@ -490,7 +490,7 @@ func (o *Orb) CalcGravityAll(oList []Orb, idx int) Acc {
 	for i := 0; i < len(oList); i++ {
 		//c <- 1
 		target := &oList[i]
-		if target.Stat != 1 || o.Stat != 1 || idx == i /*target.Id == o.Id*/ {
+		if target.Stat != 1 || o.Stat != 1 || /*idx == i*/ target.Id == o.Id {
 			continue
 		}
 
