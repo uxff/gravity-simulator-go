@@ -5,7 +5,7 @@
 
 			var camera, scene, renderer, controls, geometry;
 
-			var points, positions, colors;
+			var points, positions, colors, sizes;
             // 可流程运行150W个particles 在chrome中150W占用内存3.8G 基本到极限
             var NUM_PARTICLES = 0;
             var ticker = 0;
@@ -41,10 +41,31 @@
                 clearOrbs();
 
                 //var geometry = points.geometry;
+                // 最大支持 50W 当设置了100W粒子的时候，chrome申请超过4G内存并崩溃
                 NUM_PARTICLES = list.length;
 				positions = new Float32Array( NUM_PARTICLES * 3 );
 				colors = new Float32Array( NUM_PARTICLES * 3 );
+				sizes = new Float32Array( NUM_PARTICLES );
+                /* custom color
+                */
+                var uniforms = {
 
+                    color:     { value: new THREE.Color( 0xffffff ) },
+                    texture:   { value: new THREE.TextureLoader().load( "textures/spark1.png" ) }
+
+                };
+
+                var shaderMaterial = new THREE.ShaderMaterial( {
+
+                    uniforms:       uniforms,
+                    vertexShader:   document.getElementById( 'vertexshader' ).textContent,
+                    fragmentShader: document.getElementById( 'fragmentshader' ).textContent,
+
+                    blending:       THREE.AdditiveBlending,
+                    depthTest:      false,
+                    transparent:    true
+
+                });
 				var n = NUM_PARTICLES, n2 = n / 2; // particles spread in the cube
 
                 //for ( var i = 0; i < positions.length; i += 3 ) {
@@ -60,36 +81,46 @@
                     var y = orb.y;
                     var z = orb.z;
 
-                    positions[ i*3 ]     = x*zoomBase;
+                    positions[ i*3 + 0 ] = x*zoomBase;
                     positions[ i*3 + 1 ] = y*zoomBase;
                     positions[ i*3 + 2 ] = z*zoomBase;
 
                     // colors
-
+/*
                     var vx = ( x / n ) + 0.5;
                     var vy = ( y / n ) + 0.5;
                     var vz = ( z / n ) + 0.5;
 
                     color.setRGB( vx, vy, vz );
 
-                    colors[ i*3 ]     = color.r;
+                    colors[ i*3 + 0 ] = color.r;
                     colors[ i*3 + 1 ] = color.g;
                     colors[ i*3 + 2 ] = color.b;
-
+*/
+                    /* 经过测试 50W个orb 绘制显示fps在[15-45]范围内，基本良好 */
+                    color.setHSL( Math.random(), 1.0, 0.5 );//color.setHSL( orb.id / 2147483647, 1.0, 0.5 );//color.setHSL( orb.m / 11, 1.0, 0.5 );//
+                    colors[ i*3 + 0 ] = color.r;
+                    colors[ i*3 + 1 ] = color.g;
+                    colors[ i*3 + 2 ] = color.b;
+                    sizes[ i ] = Math.sqrt(Math.sqrt(orb.m)) * 100;//sizes[ i ] = 100;//
                 }
 
                 geometry.addAttribute( 'position', new THREE.BufferAttribute( positions, 3 ) );
-                geometry.addAttribute( 'color', new THREE.BufferAttribute( colors, 3 ) );
+                geometry.addAttribute( 'customColor', new THREE.BufferAttribute( colors, 3 ) );
+                geometry.addAttribute( 'size', new THREE.BufferAttribute( sizes, 1 ) );
 
                 geometry.computeBoundingSphere();
 
                 var material;
                 // 量大使用PointsMaterial渲染
-                if (NUM_PARTICLES >= 20000) {
-                    material = new THREE.PointsMaterial( { size: 200, vertexColors: THREE.VertexColors } );
-                } else {
-                    material = new THREE.PointsMaterial({ size: 200, map: sprite, blending: THREE.AdditiveBlending, depthTest: false, transparent : true });
-                }
+                // 使用自带方块操作 数量到100W时，50%几率崩溃
+                //material = new THREE.PointsMaterial( { size: 200, vertexColors: THREE.VertexColors } );
+                // 使用图片 spark1.png 显示 数量50W时，显示良好 数量100W时，90%几率崩溃
+                //material = new THREE.PointsMaterial({ size: 200, map: sprite, blending: THREE.AdditiveBlending, depthTest: false, transparent : true });
+                //points = new THREE.Points( geometry, material );
+                /* 使用 customColor 效果 数量50W时，显示良好 数量100W时，90%几率崩溃 */
+                points = new THREE.Points( geometry, shaderMaterial );
+                /* 某种canvas绘制arc效果 很慢
                 //var programStroke = function ( context ) {
                 //    context.lineWidth = 0.025;
                 //    context.beginPath();
@@ -97,9 +128,8 @@
                 //    context.stroke();
                 //};
                 //var material = new THREE.SpriteCanvasMaterial( { color: Math.random() * 0x808080 + 0x808080, program: programStroke } );
+                */
 
-
-                points = new THREE.Points( geometry, material );
                 scene.add( points );
                 isInited = 1;
             }
@@ -111,13 +141,17 @@
                 for (var i in list) {
                     var orb = list[i];
 
-                    positions[ i*3 ]     = orb.x*zoomBase;
+                    positions[ i*3 + 0 ]     = orb.x*zoomBase;
                     positions[ i*3 + 1 ] = orb.y*zoomBase;
                     positions[ i*3 + 2 ] = orb.z*zoomBase;
+                    sizes[ i ] = Math.sqrt(Math.sqrt(orb.m)) * 100;//sizes[ i ] = 100;//
                 }
 
-                geometry.addAttribute( 'position', new THREE.BufferAttribute( positions, 3 ) );
-                geometry.addAttribute( 'color', new THREE.BufferAttribute( colors, 3 ) );
+                //geometry.addAttribute( 'position', new THREE.BufferAttribute( positions, 3 ) );
+                //geometry.addAttribute( 'color', new THREE.BufferAttribute( colors, 3 ) );
+                geometry.attributes.position.needsUpdate = true;
+                geometry.attributes.customColor.needsUpdate = true;
+                geometry.attributes.size.needsUpdate = true;
 
                 geometry.computeBoundingSphere();
 
@@ -235,7 +269,7 @@
 
 				//points.rotation.x = time * 0.25;
 				//points.rotation.y = time * 0.5;
-                if (ticker%15==0) {
+                if (ticker%115==0) {
                     //updateDots();
                     MyWebsocket.doSend(sendVal);
                 }
