@@ -43,7 +43,7 @@ var lesson1 = {
     controls: null,
     clock: null,
     stats: null,
-    orbList: {},// new Map();
+    orbList: [],// new Map();
     dataList: null,// new Map();
     isInited: false,
 
@@ -145,16 +145,19 @@ var lesson1 = {
         }
         for (var i in list) {
             var orb = list[i];
-            var sphere = new THREE.Mesh(new THREE.SphereGeometry(7, 12, 12), new THREE.MeshLambertMaterial({ color: orb.id*311331 }));
+            var orbColor = new THREE.Color();
+            color.setHSL( Math.random(), 1.0, 0.5 );
+            var orbSize = new THREE.SphereGeometry(Math.sqrt(Math.sqrt(orb.m)) * 10;
+            var sphere = new THREE.Mesh(orbSize, 12, 12), new THREE.MeshLambertMaterial({ color: orbColor }));
             //sphere.rotation.y = -Math.PI / 2;
             sphere.position.x = orb.y;
             sphere.position.y = orb.x;
             sphere.position.z = orb.z;
             sphere.castShadow = sphere.receiveShadow = true;
-            sphere.geometry.radius = 50;// * orb.sz;
+            //sphere.geometry.radius = 500;//Math.sqrt(Math.sqrt(orb.m)) * 100//50;// * orb.sz;// 此值对显示大小无效
             
             this.scene.add(sphere);
-            this.orbList[orb.id] = sphere;
+            this.orbList[i] = sphere;//.push(sphere);
             this.isInited = true;
         }
     },
@@ -167,33 +170,12 @@ var lesson1 = {
         }
         for (var i in list) {
             var orb = list[i];
-            if (this.orbList.hasOwnProperty(orb.id)) {
-                
-                var sphere = this.orbList[orb.id];
-                //console.log(sphere);
-                if (orb.st!=1) {
-                    // remove sphere
-                    this.scene.remove(sphere);
-                } else {
-                    sphere.position.x = orb.y * zoomBase;
-                    sphere.position.y = orb.x * zoomBase;
-                    sphere.position.z = orb.z * zoomBase;
-                    //sphere.geometry.radius = 50 * orb.sz;
-                }
-            } else {
-                //console.log('id='+orb.id+' not exist in orbList, will ');
-                //add new sphere
-                var sphere = new THREE.Mesh(new THREE.SphereGeometry(8, 12, 12), new THREE.MeshLambertMaterial({ color: orb.id*311331 }));
-                //sphere.rotation.y = -Math.PI / 2;
-                sphere.position.x = orb.y * zoomBase;
-                sphere.position.y = orb.x * zoomBase;
-                sphere.position.z = orb.z * zoomBase;
-                sphere.castShadow = sphere.receiveShadow = true;
-                //sphere.geometry.radius = 50 * orb.sz;
-                
-                this.scene.add(sphere);
-                this.orbList[orb.id] = sphere;
-            }
+            var sphere = this.orbList[i];
+            //console.log(sphere);
+            sphere.position.x = orb.y * zoomBase;
+            sphere.position.y = orb.x * zoomBase;
+            sphere.position.z = orb.z * zoomBase;
+            //sphere.geometry.radius = 50 * orb.sz;
         }
     }
 };
@@ -245,7 +227,7 @@ function update() {
     // 从服务器取数据，显示到屏幕
     //MyWebsocket.sceneMgr = lesson1;
     ++ticker;
-    if ((ticker+1)%125 == 1) {
+    if ((ticker+1)%25 == 1) {
         MyWebsocket.doSend(sendVal);
     }
     //// smoothly move the particleLight
