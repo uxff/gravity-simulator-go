@@ -56,7 +56,7 @@ type CrashEvent struct {
 const G = 0.000005
 
 // 最小天体距离值 两天体距离小于此值了会相撞
-const MIN_CRITICAL_DIST = 2.0
+const MIN_CRITICAL_DIST = 2
 
 // 监控速度和加速度
 var maxVeloX, maxVeloY, maxVeloZ, maxAccX, maxAccY, maxAccZ, maxMass, allMass, allWC float64 = 0, 0, 0, 0, 0, 0, 0, 0, 0
@@ -144,11 +144,13 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 			var wide = config.Wide
 			switch config.Assemble {
 			case 1:
-				wide = config.Wide * math.Sqrt(float64(i+1)/float64(num))
+				wide = config.Wide * math.Sqrt(float64(i+1+MIN_CRITICAL_DIST*100)/float64(num+MIN_CRITICAL_DIST*100))
 			case 2:
-				wide = config.Wide * math.Pow(float64(i+1)/float64(num), 2.0)
+				wide = config.Wide * math.Pow(float64(i+1+MIN_CRITICAL_DIST*100)/float64(num+MIN_CRITICAL_DIST*100), 2.0)
 			case 3:
-				wide = config.Wide * math.Pow(float64(i+1)/float64(num), 4.0)
+				wide = config.Wide * math.Pow(float64(i+1+MIN_CRITICAL_DIST*100)/float64(num+MIN_CRITICAL_DIST*100), 3.0)
+			case 4:
+				wide = config.Wide * math.Pow(float64(i+1+MIN_CRITICAL_DIST*100)/float64(num+MIN_CRITICAL_DIST*100), 4.0)
 			default:
 				wide = config.Wide
 			}
@@ -162,7 +164,7 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 			o.Vz = (rand.Float64() - 0.5) * config.Velo * 2.0 / 256.0
 			//o.Size = 1
 			o.Mass = rand.Float64() * config.Mass
-			o.Id = i // rand.Int()
+			o.Id = int(rand.Int31()) // i //
 			o.Stat = 1
 			allMass += o.Mass
 		}
@@ -174,11 +176,13 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 			var wide = config.Wide
 			switch config.Assemble {
 			case 1:
-				wide = config.Wide * math.Sqrt(float64(i+1)/float64(num))
+				wide = config.Wide * math.Sqrt(float64(i+MIN_CRITICAL_DIST*100)/float64(num+MIN_CRITICAL_DIST*100))
 			case 2:
-				wide = config.Wide * math.Pow(float64(i+1)/float64(num), 2.0)
+				wide = config.Wide * math.Pow(float64(i+MIN_CRITICAL_DIST*100)/float64(num+MIN_CRITICAL_DIST*100), 2.0)
 			case 3:
-				wide = config.Wide * math.Pow(float64(i+1)/float64(num), 4.0)
+				wide = config.Wide * math.Pow(float64(i+MIN_CRITICAL_DIST*100)/float64(num+MIN_CRITICAL_DIST*100), 3.0)
+			case 4:
+				wide = config.Wide * math.Pow(float64(i+MIN_CRITICAL_DIST*100)/float64(num+MIN_CRITICAL_DIST*100), 4.0)
 			default:
 				wide = config.Wide
 			}
@@ -192,7 +196,7 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 			o.Vz = (rand.Float64() - 0.5) * config.Velo * 2.0
 			//o.Size = 1
 			o.Mass = rand.Float64() * config.Mass
-			o.Id = i // rand.Int()
+			o.Id = int(rand.Int31()) // i //
 			o.Stat = 1
 			allMass += o.Mass
 		}
@@ -404,6 +408,8 @@ func UpdateOrbs(oList []Orb, numTimes int) int64 {
 func UpdateOrbsOnce(oList []Orb, nStep int) int64 {
 	thelen := len(oList)
 	nCount := 0
+	var o, target *Orb
+	var targetMassOld float64
 	for i := 0; i < thelen; i++ {
 		//oList[i].idx = i
 		//oList[i].crashedBy = -1
@@ -419,11 +425,13 @@ func UpdateOrbsOnce(oList []Orb, nStep int) int64 {
 			// 正常计算完成任务返回
 			nCount++
 		case anEvent := <-crashEventChan:
+			nCrashed++
 			// 收集事件队列信息
-			o := &oList[anEvent.Idx]
-			target := &oList[anEvent.CrashedBy]
-			log.Println("anEvent=", o.Id, anEvent, target.Id)
-			targetMassOld := target.Mass
+			o = &oList[anEvent.Idx]
+			// 只处理自己被谁撞击合并
+			target = &oList[anEvent.CrashedBy]
+			log.Println("a CrashEvent:", o.Id, "crashed by", target.Id, "index:", anEvent, "nCrashed:", nCrashed, "nStep:", nStep)
+			targetMassOld = target.Mass
 			target.Mass += o.Mass
 			target.Vx = (targetMassOld*target.Vx + o.Mass*o.Vx) / target.Mass
 			target.Vy = (targetMassOld*target.Vy + o.Mass*o.Vy) / target.Mass
@@ -431,7 +439,6 @@ func UpdateOrbsOnce(oList []Orb, nStep int) int64 {
 			//target.Size++
 			o.Mass = 0
 			//o.Stat = 2
-			nCrashed++
 			//default:
 			//	log.Println("nothing when select")
 		}
@@ -483,7 +490,7 @@ func (o *Orb) CalcGravityAll(oList []Orb, idx int) Acc {
 	for i := 0; i < len(oList); i++ {
 		//c <- 1
 		target := &oList[i]
-		if target.Stat != 1 || o.Stat != 1 || target.Id == o.Id {
+		if target.Stat != 1 || o.Stat != 1 || idx == i /*target.Id == o.Id*/ {
 			continue
 		}
 
@@ -495,33 +502,15 @@ func (o *Orb) CalcGravityAll(oList []Orb, idx int) Acc {
 		isMeRipped := dist < math.Sqrt(o.Vx*o.Vx+o.Vy*o.Vy+o.Vz*o.Vz)*8
 
 		if isTooNearly || isMeRipped {
-
 			// 碰撞机制 非弹性碰撞 动量守恒 m1v1+m2v2=(m1+m2)v
 			if o.Mass < target.Mass {
-				//log.Println(o.Id, "crashed by", target.Id, "isTooNearly", isTooNearly, isMeRipped, "me=", o, "ta=", target)
-				//target.Mass += target.Mass
-				//target.Vx = (target.Mass*target.Vx + o.Mass*o.Vx) / target.Mass
-				//target.Vy = (target.Mass*target.Vy + o.Mass*o.Vy) / target.Mass
-				//target.Vz = (target.Mass*target.Vz + o.Mass*o.Vz) / target.Mass
-				//target.Size += 1
-				// 碰撞对方的质量改变交给主goroutine，这里发送信息，不做修改操作
-				o.Stat = 2
+				// 碰撞事件交给主goroutine处理对方的质量改变，这里发送信息，不做修改操作
+				o.Stat = 2 // 此处必须对自己标记，否则会出现被多个ta撞击的事件
 				crashEventChan <- CrashEvent{idx, i}
 				//o.crashedBy = i // 不能取target.idx // 待思考为什么 协程间数据共享，不安全
-				//o.Mass = 0
-				//} else {//改为提交撞击事件之后，可以忽略else
-				//log.Println(o.Id, "crashed", target.Id, "isTooNearly", isTooNearly, isMeRipped, "me=", o, "ta=", target)
-				// 碰撞后速度 v = (m1v1+m2v2)/(m1+m2)
-				//由于并发数据分离，当前goroutine只允许操作当前orb,不允许操作别的orb，所以不允许操作ta的数据
-				//o.Mass += target.Mass
-				//在轮训时可能有多个o crashed ta,但是只有一个o crashed by ta
-				//o.Vx = (target.Mass*target.Vx + o.Mass*o.Vx) / o.Mass
-				//o.Vy = (target.Mass*target.Vy + o.Mass*o.Vy) / o.Mass
-				//o.Vz = (target.Mass*target.Vz + o.Mass*o.Vz) / o.Mass
-				//o.Size += 1
-				//target.Mass = 0
-				//target.Stat = 2
+				// 由于并发数据分离，当前goroutine只允许操作当前orb,不允许操作别的orb，所以不允许操作ta的数据
 			}
+			// no else 在循环时可能有多个o crashed ta,但是只有一个o crashed by ta
 		} else {
 			// 作用正常，累计计算受到的所有的万有引力
 			gTmp := o.CalcGravity(&oList[i], dist)
