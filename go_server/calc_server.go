@@ -91,7 +91,11 @@ func main() {
 				oList = append(oList, mList...)
 				// 重置id
 				for i := 0; i < len(oList); i++ {
-					oList[i].Id = i
+					if oList[i].Id < 0 {
+						oList[i].Id = -int32(i + 1)
+					} else {
+						oList[i].Id = int32(i)
+					}
 				}
 				saver.SaveList(saveKey, oList)
 			}

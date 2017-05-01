@@ -18,9 +18,9 @@ type Orb struct {
 	Vy   float64 `json:"vy"` // 速度y
 	Vz   float64 `json:"vz"` // 速度z
 	Mass float64 `json:"m"`  // 质量
-	Stat int     `json:"st"` // 用于标记是否已爆炸 1=正常 2=已爆炸
-	Id   int     `json:"id"`
-	//Size int     `json:"sz"` // 大小，用于计算吞并的天体数量
+	Id   int32   `json:"id"` // Id<0表示状态不正常 不能参与计算,不能当下标使用,只能参与比较
+	//Stat int32   `json:"st"` // 用于标记是否已爆炸 1=正常 2=已爆炸 //作废 Id instead
+	//Size int     `json:"sz"` // 大小，用于计算吞并的天体数量 //作废 Mass instead
 	//idx       int
 	//crashedBy int
 }
@@ -38,8 +38,8 @@ type InitConfig struct {
 	Mass         float64
 	Wide         float64
 	Velo         float64
-	Arrange      int // 个位：分布方式 0=线性 1=立方体 2=圆盘圆柱 3=球形 十位：聚集方式：0=均匀分布 1=中心靠拢开方分布
-	Assemble     int
+	Arrange      int     // 分布方式 0=线性 1=立方体 2=圆盘圆柱 3=球形
+	Assemble     int     // 聚集方式：0=均匀分布 1=中心靠拢开方分布 2=比例加权分布 3=比例立方
 	BigMass      float64 // 大块头的质量 比如处于中心的黑洞
 	BigNum       int     // 大块头个数
 	BigDistStyle int     // big mass orb distribute style: 0=center 1=outer edge 2=middle of one radius 3=random
@@ -60,7 +60,7 @@ const MIN_CRITICAL_DIST = 2
 
 // 监控速度和加速度
 var maxVeloX, maxVeloY, maxVeloZ, maxAccX, maxAccY, maxAccZ, maxMass, allMass, allWC float64 = 0, 0, 0, 0, 0, 0, 0, 0, 0
-var maxMassId int = 0
+var maxMassId int32 = 0
 var clearTimes, willTimes, realTimes int64 = 0, 0, 0
 
 var c chan int                     //= make(chan int, 10000)	// orb.update()完成队列
@@ -71,11 +71,17 @@ var nCount, nCrashed int = 0, 0
 // 初始化天体位置，质量，加速度 在一片区域随机分布
 func InitOrbs(num int, config *InitConfig) []Orb {
 	oList := make([]Orb, num)
-	//distStepAll, distStep := 0, 16
 
-	//styleDistribute := config.Style % 10
-	//styleAssemble := (config.Style / 10) % 10
+	// 通用属性设置
+	for i := 0; i < num; i++ {
+		o := &oList[i]
+		o.Mass = rand.Float64() * config.Mass
+		o.Id = int32(i + 1) // rand.Int()
+		//o.Stat = 1
+		allMass += o.Mass
+	}
 
+	// 排列分布 与 中心聚集
 	switch config.Arrange {
 	case 0: //线性
 		for i := 0; i < num; i++ {
@@ -103,11 +109,6 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 				o.Vy = (1.0 + rand.Float64()) * config.Velo
 			}
 			o.Vz = (rand.Float64() - 0.5) * config.Velo * 2.0 / 256.0
-			//o.Size = 1
-			o.Mass = rand.Float64() * config.Mass
-			o.Id = i // rand.Int()
-			o.Stat = 1
-			allMass += o.Mass
 		}
 	case 1: //立方体
 		for i := 0; i < num; i++ {
@@ -130,11 +131,6 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 			o.Vx = (rand.Float64() - 0.5) * config.Velo * 2.0
 			o.Vy = (rand.Float64() - 0.5) * config.Velo * 2.0
 			o.Vz = (rand.Float64() - 0.5) * config.Velo * 2.0
-			//o.Size = 1
-			o.Mass = rand.Float64() * config.Mass
-			o.Id = i // rand.Int()
-			o.Stat = 1
-			allMass += o.Mass
 		}
 	case 2: //圆盘 随机选经度 随机选半径 随机选高低 刻意降低垂直于柱面的速度
 		for i := 0; i < num; i++ {
@@ -162,11 +158,6 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 			o.Vx = math.Cos(long+math.Pi/2.0) * config.Velo * 2.0 //* math.Sqrt(config.Wide/(radius+1.0)) / 4.0
 			o.Vy = math.Sin(long+math.Pi/2.0) * config.Velo * 2.0 //* math.Sqrt(config.Wide/(radius+1.0)) / 4.0
 			o.Vz = (rand.Float64() - 0.5) * config.Velo * 2.0 / 256.0
-			//o.Size = 1
-			o.Mass = rand.Float64() * config.Mass
-			o.Id = i //int(rand.Int31()) //
-			o.Stat = 1
-			allMass += o.Mass
 		}
 	case 3: //球形
 		//方法一： 随机经度 随机半径 随机高度*sin(半径) 产生的数据从y轴上方看z面，不均匀
@@ -194,11 +185,6 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 			o.Vx = (rand.Float64() - 0.5) * config.Velo * 2.0
 			o.Vy = (rand.Float64() - 0.5) * config.Velo * 2.0
 			o.Vz = (rand.Float64() - 0.5) * config.Velo * 2.0
-			//o.Size = 1
-			o.Mass = rand.Float64() * config.Mass
-			o.Id = i //int(rand.Int31()) //
-			o.Stat = 1
-			allMass += o.Mass
 		}
 	case 4: //线性 4轴
 		for i := 0; i < num; i++ {
@@ -250,12 +236,6 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 				}
 			default:
 			}
-
-			//o.Size = 1
-			o.Mass = rand.Float64() * config.Mass
-			o.Id = i // rand.Int()
-			o.Stat = 1
-			allMass += o.Mass
 		}
 	case 5: //线性 6轴
 		for i := 0; i < num; i++ {
@@ -307,12 +287,6 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 				}
 			default:
 			}
-
-			//o.Size = 1
-			o.Mass = rand.Float64() * config.Mass
-			o.Id = i // rand.Int()
-			o.Stat = 1
-			allMass += o.Mass
 		}
 	case 6: //线性 1轴
 		for i := 0; i < num; i++ {
@@ -340,24 +314,17 @@ func InitOrbs(num int, config *InitConfig) []Orb {
 				o.Vy = (1.0 + rand.Float64()) * config.Velo
 			}
 			o.Vz = (rand.Float64() - 0.5) * config.Velo * 2.0 / 256.0
-			//o.Size = 1
-			o.Mass = rand.Float64() * config.Mass
-			o.Id = i // rand.Int()
-			o.Stat = 1
-			allMass += o.Mass
 		}
 	default:
 	}
 
 	// 如果配置了大块头质量 0=中心 1=边缘 2=半径的中点 3=随机
 	if config.BigMass != 0.0 {
-		for i := 0; i < config.BigNum; i++ {
+		for i := 0; i < config.BigNum && config.BigNum <= len(oList); i++ {
 
-			eternalId := num - 1 - i
-			eternalOrb := &oList[eternalId]
+			eternalOrb := &oList[num-1-i]
 			allMass += config.BigMass - eternalOrb.Mass
 			eternalOrb.Mass = config.BigMass
-			eternalOrb.Id = eternalId //rand.Int()
 			eternalOrb.X, eternalOrb.Y, eternalOrb.Z = 0, 0, 0
 			eternalOrb.Vx, eternalOrb.Vy, eternalOrb.Vz = 0, 0, 0
 			switch config.BigDistStyle {
@@ -436,7 +403,6 @@ func UpdateOrbsOnce(oList []Orb, nStep int) int64 {
 			target.Vx = (targetMassOld*target.Vx + o.Mass*o.Vx) / target.Mass
 			target.Vy = (targetMassOld*target.Vy + o.Mass*o.Vy) / target.Mass
 			target.Vz = (targetMassOld*target.Vz + o.Mass*o.Vz) / target.Mass
-			//target.Size++
 			o.Mass = 0
 			//o.Stat = 2
 			//default:
@@ -449,7 +415,7 @@ func UpdateOrbsOnce(oList []Orb, nStep int) int64 {
 // 天体运动一次
 func (o *Orb) Update(oList []Orb, idx int) {
 	// 先把位置移动起来，再计算环境中的加速度，再更新速度，为了更好地解决并行计算数据同步问题
-	if o.Stat == 1 {
+	if o.Id >= 0 /*o.Stat == 1*/ {
 		aAll := o.CalcGravityAll(oList, idx)
 		o.X += o.Vx
 		o.Y += o.Vy
@@ -490,7 +456,7 @@ func (o *Orb) CalcGravityAll(oList []Orb, idx int) Acc {
 	for i := 0; i < len(oList); i++ {
 		//c <- 1
 		target := &oList[i]
-		if target.Stat != 1 || o.Stat != 1 || /*idx == i*/ target.Id == o.Id {
+		if /*target.Stat != 1 || o.Stat != 1*/ target.Id < 0 || o.Id < 0 || target.Id == o.Id {
 			continue
 		}
 
@@ -505,7 +471,7 @@ func (o *Orb) CalcGravityAll(oList []Orb, idx int) Acc {
 			// 碰撞机制 非弹性碰撞 动量守恒 m1v1+m2v2=(m1+m2)v
 			if o.Mass < target.Mass {
 				// 碰撞事件交给主goroutine处理对方的质量改变，这里发送信息，不做修改操作
-				o.Stat = 2 // 此处必须对自己标记，否则会出现被多个ta撞击的事件
+				o.Id = -o.Id //o.Stat = 2 // 此处必须对自己标记，否则会出现被多个ta撞击的事件
 				crashEventChan <- CrashEvent{idx, i}
 				//o.crashedBy = i // 不能取target.idx // 待思考为什么 协程间数据共享，不安全
 				// 由于并发数据分离，当前goroutine只允许操作当前orb,不允许操作别的orb，所以不允许操作ta的数据
@@ -551,7 +517,7 @@ func ClearOrbList(oList []Orb) []Orb {
 	//var alive int = len(oList)
 	for i := 0; i < len(oList); i++ {
 		allWC += oList[i].Mass
-		if oList[i].Stat != 1 {
+		if oList[i].Id < 0 {
 			oList = append(oList[:i], oList[i+1:]...)
 			i--
 			//alive--
@@ -568,9 +534,6 @@ func ShowMonitorInfo() {
 }
 func GetClearTimes() int64 {
 	return clearTimes
-}
-func GetCalcTimes() int {
-	return nCount
 }
 func GetCrashed() int {
 	return nCrashed

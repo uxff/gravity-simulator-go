@@ -66,7 +66,7 @@ func ToTinyOrbList(list []orbs.Orb) []TinyOrb {
 		o := &olist[i]
 		t := &list[i]
 		//o.Stat = int(t.Stat)
-		if t.Stat == 1 {
+		if t.Id > 0 {
 			o.X = float32(t.X)
 			o.Y = float32(t.Y)
 			o.Z = float32(t.Z)
@@ -82,7 +82,7 @@ func ToFloatList(list []orbs.Orb) [][4]float32 {
 	for i := 0; i < len(list); i++ {
 		o := &olist[i]
 		t := &list[i]
-		if t.Stat == 1 {
+		if t.Id > 0 {
 			o[0] = float32(t.X)
 			o[1] = float32(t.Y)
 			o[2] = float32(t.Z)
