@@ -4,6 +4,7 @@
 package orbs
 
 import (
+	"fmt"
 	"log"
 	"math"
 	"math/rand"
@@ -503,6 +504,16 @@ func (o *Orb) CalcGravity(target *Orb, dist float64) Acc {
 // 计算距离
 func (o *Orb) CalcDist(target *Orb) float64 {
 	return math.Sqrt((o.X-target.X)*(o.X-target.X) + (o.Y-target.Y)*(o.Y-target.Y) + (o.Z-target.Z)*(o.Z-target.Z))
+}
+
+func (o *Orb) MarshalJSON() (str []byte, err error) {
+	strs := fmt.Sprintf("[%g,%g,%g,%g,%g,%g,%g,%d]", o.X, o.Y, o.Z, o.Vx, o.Vy, o.Vz, o.Mass, o.Id)
+	return []byte(strs), nil
+}
+func (o *Orb) UnmarshalJSON(input []byte) error {
+	_, err := fmt.Sscanf(string(input), "[%f,%f,%f,%f,%f,%f,%f,%d]", &o.X, &o.Y, &o.Z, &o.Vx, &o.Vy, &o.Vz, &o.Mass, &o.Id)
+	//log.Println("when unmarshal(", string(input), ") n,err,o=", n, err, o)
+	return err
 }
 
 // 设置撞击 作废
