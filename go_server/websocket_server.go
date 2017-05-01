@@ -59,6 +59,7 @@ func echo(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+/*将json数据包缩小50%*/
 func ToTinyOrbList(list []orbs.Orb) []TinyOrb {
 	olist := make([]TinyOrb, len(list))
 	for i := 0; i < len(list); i++ {
@@ -70,6 +71,22 @@ func ToTinyOrbList(list []orbs.Orb) []TinyOrb {
 			o.Y = float32(t.Y)
 			o.Z = float32(t.Z)
 			o.M = float32(t.Mass)
+		}
+	}
+	return olist
+}
+
+/*展示用数据，包括:x,y,z,m,对应下标0,1,2,3. 此种格式缩小到ToTinyOrbList格式的40%*/
+func ToFloatList(list []orbs.Orb) [][4]float32 {
+	olist := make([][4]float32, len(list))
+	for i := 0; i < len(list); i++ {
+		o := &olist[i]
+		t := &list[i]
+		if t.Stat == 1 {
+			o[0] = float32(t.X)
+			o[1] = float32(t.Y)
+			o[2] = float32(t.Z)
+			o[3] = float32(t.Mass)
 		}
 	}
 	return olist
@@ -104,8 +121,9 @@ func handleOrbs(w http.ResponseWriter, r *http.Request) {
 			ret.Data["list"] = nil
 		} else {
 			list := saver.GetList(&mcKey) //getListFromMc(mc, &mcKey)
-			tinyList := ToTinyOrbList(list)
-			ret.Data["list"] = tinyList
+			//tinyList := ToTinyOrbList(list)
+			//ret.Data["list"] = tinyList
+			ret.Data["list"] = ToFloatList(list)
 		}
 
 		retStr, errJson := json.Marshal(ret)
@@ -118,14 +136,14 @@ func handleOrbs(w http.ResponseWriter, r *http.Request) {
 
 		err = c.WriteMessage(mt, retStr)
 		if err != nil {
-			log.Println("write:", err)
+			log.Println("write failed:", err)
 			break
 		}
 
 		//time.Sleep(time.Millisecond * 100)
 		//break
 	}
-	log.Println("closed:", c.LocalAddr().String())
+	log.Println("closed:", c.RemoteAddr().String())
 }
 
 //func home(w http.ResponseWriter, r *http.Request) {

@@ -72,16 +72,16 @@
                     //    orb.x = orb.y = orb.z = 0;
                     //}
 
-                    positions[ i*3 + 0 ] = orb.x*zoomBase;
-                    positions[ i*3 + 1 ] = orb.y*zoomBase;
-                    positions[ i*3 + 2 ] = orb.z*zoomBase;
+                    positions[ i*3 + 0 ] = orb[0]*zoomBase;
+                    positions[ i*3 + 1 ] = orb[1]*zoomBase;
+                    positions[ i*3 + 2 ] = orb[2]*zoomBase;
 
                     /* 经过测试 50W个orb 绘制显示fps在[15-45]范围内，基本良好 */
                     color.setHSL( Math.random(), 1.0, 0.5 );//color.setHSL( orb.id / 2147483647, 1.0, 0.5 );//color.setHSL( orb.m / 11, 1.0, 0.5 );//
                     colors[ i*3 + 0 ] = color.r;
                     colors[ i*3 + 1 ] = color.g;
                     colors[ i*3 + 2 ] = color.b;
-                    sizes[ i ] = Math.sqrt(Math.sqrt(orb.m)) * 100;//sizes[ i ] = 100;//
+                    sizes[ i ] = Math.sqrt(Math.sqrt(orb[3])) * 100;//sizes[ i ] = 100;//
                 }
 
                 geometry.addAttribute( 'position', new THREE.BufferAttribute( positions, 3 ) );
@@ -110,10 +110,10 @@
                 for (var i in list) {
                     var orb = list[i];
 
-                    positions[ i*3 + 0 ] = orb.x*zoomBase;
-                    positions[ i*3 + 1 ] = orb.y*zoomBase;
-                    positions[ i*3 + 2 ] = orb.z*zoomBase;
-                    //sizes[ i ] = Math.sqrt(Math.sqrt(orb.m)) * 100;//sizes[ i ] = 100;//
+                    positions[ i*3 + 0 ] = orb[0]*zoomBase;
+                    positions[ i*3 + 1 ] = orb[1]*zoomBase;
+                    positions[ i*3 + 2 ] = orb[2]*zoomBase;
+                    //sizes[ i ] = Math.sqrt(Math.sqrt(orb[3])) * 100;//sizes[ i ] = 100;//
                 }
 
                 //geometry.addAttribute( 'position', new THREE.BufferAttribute( positions, 3 ) );
