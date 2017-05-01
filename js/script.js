@@ -146,15 +146,15 @@ var lesson1 = {
         for (var i in list) {
             var orb = list[i];
             var orbColor = new THREE.Color();
-            color.setHSL( Math.random(), 1.0, 0.5 );
-            var orbSize = new THREE.SphereGeometry(Math.sqrt(Math.sqrt(orb.m)) * 10;
-            var sphere = new THREE.Mesh(orbSize, 12, 12), new THREE.MeshLambertMaterial({ color: orbColor }));
+            orbColor.setHSL( Math.random(), 1.0, 0.5 );
+            var orbSize = Math.sqrt(Math.sqrt(orb[3])) * 10;
+            var sphere = new THREE.Mesh(new THREE.SphereGeometry(orbSize, 12, 12), new THREE.MeshLambertMaterial({ color: orbColor }));
             //sphere.rotation.y = -Math.PI / 2;
-            sphere.position.x = orb.y;
-            sphere.position.y = orb.x;
-            sphere.position.z = orb.z;
+            sphere.position.x = orb[0];
+            sphere.position.y = orb[1];
+            sphere.position.z = orb[2];
             sphere.castShadow = sphere.receiveShadow = true;
-            //sphere.geometry.radius = 500;//Math.sqrt(Math.sqrt(orb.m)) * 100//50;// * orb.sz;// 此值对显示大小无效
+            //sphere.geometry.radius = 500;//Math.sqrt(Math.sqrt(orb[3])) * 100//50;// * orb.sz;// 此值对显示大小无效
             
             this.scene.add(sphere);
             this.orbList[i] = sphere;//.push(sphere);
@@ -172,9 +172,9 @@ var lesson1 = {
             var orb = list[i];
             var sphere = this.orbList[i];
             //console.log(sphere);
-            sphere.position.x = orb.y * zoomBase;
-            sphere.position.y = orb.x * zoomBase;
-            sphere.position.z = orb.z * zoomBase;
+            sphere.position.x = orb[0] * zoomBase;
+            sphere.position.y = orb[1] * zoomBase;
+            sphere.position.z = orb[2] * zoomBase;
             //sphere.geometry.radius = 50 * orb.sz;
         }
     }
