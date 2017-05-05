@@ -51,7 +51,7 @@
                 */
                 var uniforms = {
                     color:     { value: new THREE.Color( 0xffffff ) },
-                    texture:   { value: new THREE.TextureLoader().load( "textures/ball.png" ) }
+                    texture:   { value: new THREE.TextureLoader().load( "textures/spark1.png" ) }
                 };
 
                 var shaderMaterial = new THREE.ShaderMaterial( {
