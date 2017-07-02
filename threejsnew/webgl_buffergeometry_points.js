@@ -77,8 +77,8 @@
                     positions[ i*3 + 1 ] = orb[1]*zoomBase;
                     positions[ i*3 + 2 ] = orb[2]*zoomBase;
 
-                    /* 经过测试 50W个orb 绘制显示fps在[15-45]范围内，基本良好 */
-                    color.setHSL( orb[3]*11.5, 1.0, 0.5 );//color.setHSL( Math.random(), 1.0, 0.5 );//color.setHSL( orb.id / 2147483647, 1.0, 0.5 );//
+                    /* 经过测试 100W个orb 绘制显示fps在[15-45]范围内，基本良好 */
+                    color.setHSL( i*13.13, 1.0, 0.5 );//color.setHSL( Math.random(), 1.0, 0.5 );//color.setHSL( orb.id / 2147483647, 1.0, 0.5 );//
                     colors[ i*3 + 0 ] = color.r;
                     colors[ i*3 + 1 ] = color.g;
                     colors[ i*3 + 2 ] = color.b;
@@ -122,7 +122,7 @@
                 //geometry.addAttribute( 'color', new THREE.BufferAttribute( colors, 3 ) );
                 geometry.attributes.position.needsUpdate = true;
                 geometry.attributes.customColor.needsUpdate = true;
-                geometry.attributes.size.needsUpdate = true;
+                geometry.attributes.size.needsUpdate = false;
 
                 geometry.computeBoundingSphere();
 
