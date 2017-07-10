@@ -4,9 +4,9 @@
 
 效果图：
 
-<img src="https://github.com/uxff/gravity_sim/raw/master/image/gravity_sim_20170430204800.png">
-<img src="https://github.com/uxff/gravity_sim/raw/master/image/gravity_sim_20170430213314.png">
-<img src="https://github.com/uxff/gravity_sim/raw/master/image/gravity_sim_20170430210511.png">
+<img src="https://github.com/uxff/gravity_sim_go/raw/master/image/gravity_sim_20170430204800.jpg">
+<img src="https://github.com/uxff/gravity_sim_go/raw/master/image/gravity_sim_20170430213314.jpg">
+<img src="https://github.com/uxff/gravity_sim_go/raw/master/image/gravity_sim_20170430210511.jpg">
 
 
 ## 思路：
