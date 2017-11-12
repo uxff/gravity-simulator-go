@@ -1,3 +1,6 @@
+/*
+	usage: ./graphsim.exe -w 200 -h 200 -hill 10 -hill-wide 20 -flow 100 -zoom 5
+*/
 package main
 
 import (
@@ -78,9 +81,10 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 		return false
 	}
 	var curX, curY int = pos % w.width, pos / w.height
+	// 水源流向关系
 	var curDot *WaterDot = &w.data[pos]
 
-	// 过量退出，否则栈溢出
+	// 流量过量则退出，否则栈溢出
 	if curDot.q > 255 {
 		// 理应断开与上下游关系，产生积水
 		if curDot.hasNext {
@@ -148,7 +152,7 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 		} else if lowest > int(m.data[pos])+curDot.h {
 			curDot.hasNext = false
 			curDot.dir += math.Pi
-			log.Println("desire to go out, continue, curDot,m.h,pos=", curDot, int(m.data[pos]), pos, ",lowest,lowestVal", lowest, lowestVal)
+			log.Println("desire to go out, continue to try, curDot,m.h,pos=", curDot, int(m.data[pos]), pos, ",lowest,lowestVal", lowest, lowestVal)
 			//break
 			continue
 		}
@@ -256,10 +260,14 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 		// 切断curDot跟下游的关系 本来就是断的
 		//curDot.hasNext = false
 		// 切断curDot跟上游的关系
+		curDot.input = make([]int, 0)
 		for _, itsInputIdx := range curDot.input {
 			w.data[itsInputIdx].hasNext = false
 		}
-		curDot.input = make([]int, 0)
+		// 反流 往上反馈此路不通 让上路重新选择
+		for _, itsInputIdx := range curDot.input {
+			w.InjectWater(itsInputIdx, m)
+		}
 	}
 	return false
 }
@@ -563,30 +571,54 @@ func main() {
 	//lineTo(img, 100, 200, 200, 200, color.RGBA{0, 0, 0xFF, 0xFF})
 
 	// 绘制WaterMap
-	for di, dot := range w.data {
+	tmpLakeColor := color.RGBA{0, 0xFF, 0xFF, 0xFF}
+	for _, dot := range w.data {
 		// 绘制积水
 		if dot.h > 0 {
-			tmpColor := color.RGBA{0, 0xFF, 0xFF, 0xFF}
-			lineTo(img, int(dot.x)**zoom+*zoom/2-1, int(dot.y)**zoom+*zoom/2, int(dot.x)**zoom+*zoom/2+1, int(dot.y)**zoom+*zoom/2, tmpColor, tmpColor, 1.0)
+			//lineTo(img, int(dot.x)**zoom+*zoom/2-1, int(dot.y)**zoom+*zoom/2, int(dot.x)**zoom+*zoom/2+1, int(dot.y)**zoom+*zoom/2, tmpLakeColor, tmpLakeColor, 1.0)
+			img.Set(int(dot.x)**zoom+*zoom/2, int(dot.y)**zoom+*zoom/2, tmpLakeColor)
+			img.Set(int(dot.x)**zoom+*zoom/2+1, int(dot.y)**zoom+*zoom/2+1, tmpLakeColor)
+			img.Set(int(dot.x)**zoom+*zoom/2+1, int(dot.y)**zoom+*zoom/2, tmpLakeColor)
+			img.Set(int(dot.x)**zoom+*zoom/2+1, int(dot.y)**zoom+*zoom/2-1, tmpLakeColor)
+			img.Set(int(dot.x)**zoom+*zoom/2, int(dot.y)**zoom+*zoom/2-1, tmpLakeColor)
+			img.Set(int(dot.x)**zoom+*zoom/2-1, int(dot.y)**zoom+*zoom/2-1, tmpLakeColor)
+			img.Set(int(dot.x)**zoom+*zoom/2-1, int(dot.y)**zoom+*zoom/2, tmpLakeColor)
+			img.Set(int(dot.x)**zoom+*zoom/2-1, int(dot.y)**zoom+*zoom/2+1, tmpLakeColor)
+			img.Set(int(dot.x)**zoom+*zoom/2, int(dot.y)**zoom+*zoom/2+1, tmpLakeColor)
 		}
-		// 绘制流动
+	}
+
+	// 绘制流动
+	for di, dot := range w.data {
+		// 如果是源头 则绘制白色
 		if dot.hasNext {
+			// 计算相对比例尺的高度
 			tmpLevel := float32(m.data[di]) + float32(dot.h)
 			tmpLevel = float32(cslen) * (tmpLevel / maxColor)
+			// 防止越界
 			if int(tmpLevel) >= len(cs) {
 				tmpLevel = float32(len(cs) - 1)
 			}
 			if tmpLevel < 0 {
 				tmpLevel = 0
 			}
+			// 下一点太远 放弃
 			nextX, nextY := dot.nextIdx%w.width, dot.nextIdx/w.height
 			if (nextX-int(dot.x))*(nextX-int(dot.x))+(nextY-int(dot.y))*(nextY-int(dot.y)) > 4 {
 				//log.Println("the next is too far:", dot)
 				continue
 			}
+
+			// 绘制流动方向 考虑缩放
 			tmpColor := cs[int(tmpLevel)]
 			lineTo(img, int(dot.x)**zoom+*zoom/2, int(dot.y)**zoom+*zoom/2, (dot.nextIdx%w.width)**zoom+*zoom/2, (dot.nextIdx/w.width)**zoom+*zoom/2, color.RGBA{0, 0, 0xFF, 0xFF}, tmpColor, *riverArrowScale)
 			//log.Println("hasNext:", dot, w.data[dot.nextIdx])
+
+			// 如果是源头 则绘制白色
+			if len(dot.input) == 0 {
+				//tmpColor = color.White
+				img.Set(int(dot.x)**zoom+*zoom/2, int(dot.y)**zoom+*zoom/2, color.White)
+			}
 		}
 	}
 
