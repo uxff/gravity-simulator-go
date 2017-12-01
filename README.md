@@ -19,6 +19,8 @@ calc_server -> 计算数据保存到file/mc/redis
 ie各个版本/360急速/360安全浏览器无法查看。
 chrome下支持100万粒子查看,并保持50+fps的流畅度,内存占用0.9-1.8G浮动。
 
+为了达到良好体验，浏览器端操作系统最好4G以上内存，64位操作系统，使用redis通信，使用64位chrome。
+
 ## 使用方法：
 
 ```
@@ -39,6 +41,8 @@ $ ./websocket_server -addr 192.168.12.150:8081
 
 ```
 使用 calc_server -h 和 websocket_server -h 查看对应的服务端参数和用法。
+
+
 ## calc_server 参数说明：
 ```
   -bigmass float
