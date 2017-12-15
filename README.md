@@ -60,16 +60,16 @@ $ ./websocket_server -addr 192.168.12.150:8081
     	config of number of big mass orbs, generally center has 1 (default 1)
         中心大质量天体数量 通常为1个
   -bigstyle int
-    	config of big mass orb distribute style: 0=center 1=outer edge 2=middle of one radius 3=random
+    	config of big mass orb distribute style: 0=center,1=outer edge,2=middle of one radius,3=random
         中心大质量天体分布方式 0=中央 1=外边缘 2=半径的中点 3=随机
   -calc-times int
     	how many times calc (default 100)
         计算次数
   -config-arrange int
-    	init style of orbs arrangement 0=line,1=cube,2=disc,3=sphere (default 3)
+    	init style of orbs arrangement: 0=line,1=cube,2=disc,3=sphere (default 3)
         初始化时排列方式 0=线性(在线周围会有浮动) 1=立方体 2=盘状 3=球形
   -config-assemble int
-    	init style of orbs aggregation 0=avg,1=ladder,2=variance,3=4th power (default 2)
+    	init style of orbs aggregation: 0=avg,1=ladder,2=variance,3=4th power (default 2)
         初始化聚集方式 0=平均分布 1=梯形分布 2=平方差 3=4次方差
   -config-cpu int
     	how many cpu u want use, 0=all
@@ -116,12 +116,18 @@ $ ./websocket_server -addr 192.168.12.150:8081
 ```
 
 ## 模拟示例
-- 模拟线状分布的集合
-- 模拟盘状分布的集合
-- 模拟球状分布的集合
-- 模拟中心双黑洞旋转对盘的影响
+- 线状分布，靠中点聚拢分布
+> $ ./calc_server --savekey thelist2 --init-orbs 1000 --config-arrange 0 --config-assemble 2 --config-wide 100000 --calc-times 0
+- 盘状分布，均衡分布
+> $ ./calc_server --savekey thelist3 --init-orbs 1000 --config-arrange 2 --config-assemble 0 --config-wide 100000 --calc-times 0
+- 球状分布，4次方差中心聚集
+> $ ./calc_server --savekey thelist4 --init-orbs 1000 --config-arrange 3 --config-assemble 3 --config-wide 100000 --calc-times 0
+- 盘状双黑洞
+> $ ./calc_server --savekey thelist5 --init-orbs 1000 --bignum 2 --bigstyle 2 --config-arrange 0 --config-assemble 2 --config-wide 100000 --calc-times 0
 - 模拟螺旋盘状分布的集合
+> ...
 - 模拟x-y轴螺旋盘装再+z轴旋转
+> ...
 
 ** 感想 **
 
