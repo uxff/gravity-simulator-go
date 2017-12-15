@@ -29,21 +29,26 @@ chrome下支持100万粒子查看,并保持50+fps的流畅度,内存占用0.9-1.
 
 为了达到良好体验，浏览器端操作系统最好4G以上内存，64位操作系统，使用redis通信，使用64位chrome。
 
-## 使用方法：
-
+## 编译：
+Mac/Linux/Windows
 ```
 #编译计算服务器
 $ go build go_server/calc_server.go
+#编译通信服务器
+$ go build go_server/websocket_server.go
+```
+
+## 使用方法：
+
+```
 #step 1.初始化数据
 #这里初始化1000个，设置初始速度，初始质量，中心恒星质量
 $ ./calc_server -init-orbs 1000 -config-velo 0.05 -config-mass 100 -bigmass 18000
 #step 2.执行演化10000次 可能会时间比较长 最后开新窗口执行下面
 $ ./calc_server -calc-times 10000
-#编辑通信服务器
-$ go build go_server/websocket_server.go
 #step 3.运行通信服务器
 $ ./websocket_server -addr 192.168.12.150:8081
-#step 4.使用chrome或firefox打开http://192.168.12.150:8081/index.html查看运行情况(需要浏览器支持WebGL和websocket)
+#step 4.使用chrome或firefox打开websocket_server对应的地址http://192.168.12.150:8081/index.html查看运行情况(需要浏览器支持WebGL和websocket)
 #如果step 2步执行完毕，会自动保存数据到memcache，mc默认使用127.0.0.1:11211。
 #继续执行step 2步，回到浏览器查看效果。
 
