@@ -102,6 +102,15 @@ func handleOrbs(w http.ResponseWriter, r *http.Request) {
 
 	log.Println("got a client:", r.RemoteAddr, r.URL)
 
+	q := r.URL.Query()
+	savePath := q.Get("savepath")
+
+	if len(savePath) > 0 {
+		saver.SetLoadpath(&savePath)
+		saver.SetSavepath(&savePath)
+		log.Printf("set savepath:%v", savePath)
+	}
+
 	for {
 		mt, message, err := c.ReadMessage()
 		if err != nil {
@@ -114,13 +123,13 @@ func handleOrbs(w http.ResponseWriter, r *http.Request) {
 		ret := JsonRet{Code: 1, Msg: "ok", Data: make(map[string]interface{})}
 		//v := url.Values{}
 		v, _ := url.ParseQuery(string(message))
-		mcKey := v.Get("k")
+		reqKey := v.Get("k")
 
-		if len(mcKey) == 0 {
+		if len(reqKey) == 0 {
 			log.Println("illegal message ignored. message=", string(message))
 			ret.Data["list"] = nil
 		} else {
-			list := saver.GetList(&mcKey) //getListFromMc(mc, &mcKey)
+			list := saver.GetList(&reqKey) //getListFromMc(mc, &reqKey)
 			//tinyList := ToTinyOrbList(list)
 			//ret.Data["list"] = tinyList
 			ret.Data["list"] = ToFloatList(list)
@@ -155,6 +164,7 @@ func main() {
 	flag.Parse()
 
 	saver.SetSavepath(savePath)
+	saver.SetLoadpath(savePath)
 
 	log.SetFlags(log.Lshortfile | log.LstdFlags)
 
