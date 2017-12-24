@@ -129,10 +129,15 @@ $ ./websocket_server -addr 192.168.12.150:8081
 > $ ./calc_server --savekey thelist4 --init-orbs 1000 --config-arrange 3 --config-assemble 3 --config-wide 100000 --calc-times 0
 - 盘状双黑洞
 > $ ./calc_server --savekey thelist5 --init-orbs 1000 --bignum 2 --bigstyle 2 --config-arrange 0 --config-assemble 2 --config-wide 100000 --calc-times 0
-- 模拟螺旋盘状分布的集合
+- 螺旋盘状分布
+> $ ./calc_server --savekey thelist5 --init-orbs 1000 --config-arrange 0 --config-assemble 1 --config-wide 100000 --calc-times 100000
+- x-y轴螺旋盘状再+z轴旋转
 > ...
-- 模拟x-y轴螺旋盘装再+z轴旋转
-> ...
+- 批量操作：y轴加速2倍，质量增加3倍，沿x轴左移4000单位
+> $ ./calc_server --savekey thelist6 --calc-times 0 --moveexp 'vx=\*2&m=\*3&x=-4000'
+- 将thelist2和thelist3合并，保存到thelist3中
+> $ ./calc_server --loadkey thelist2 --savekey thelist3 --domerge
+
 
 ** 感想 **
 
