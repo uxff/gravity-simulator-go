@@ -74,6 +74,7 @@ func (this *FlowList) Init(x int, y int, w *WaterMap, maxlen int) {
 	向WaterMap中的某个坐标注水
 	水尝试找一个流动方向
 	注水，选择方向，流动耦合
+    todo: 思路：多次计算，找出最合适的出口
 */
 func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 	//log.Println("START INJECT: pos=", pos)
