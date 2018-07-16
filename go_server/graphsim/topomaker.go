@@ -67,10 +67,25 @@ func (this *FlowList) Init(x int, y int, w *WaterMap, maxlen int) {
 	//w.data[x+y*w.width] = *this.lastDot
 }
 
+// 先处理场向量
+// 再注水流动
+
 // 预先处理每个点的场向量
 // 假设每个点都有一个场，计算出这个场的方向
-func (w *WaterMap) Stir() {
+// Topomap is basic topomap
+// WaterMap is empty fields of all, to be inited
+func (w *WaterMap) Stir(m *Topomap) {
+	for idx, curDot := range w.data {
+		var xPower, yPower float32
+		_, lowestPos := curDot.getLowestNeighbors(w, m)
+		for _, neiPos := range lowestPos {
+			xPower += float32(neiPos.x) - curDot.x
+			yPower += float32(neiPos.y) - curDot.y
+		}
 
+		w.data[idx].dir = math.Atan2(float64(yPower), float64(xPower))
+
+	}
 }
 
 // 随机洒水法：
@@ -78,7 +93,7 @@ func (w *WaterMap) Stir() {
 	随机在地图中选择点，并滴入一滴水，记录水位+1，尝试计算流出方向(判断旁边的水流方向)
 	如果没有流出方向，水位+1；如果有流出方向，按方向滴入下一位置,本地水位-1
 	向WaterMap中的某个坐标注水
-	水尝试找一个流动方向
+	水尝试找一个流动方向 随机roll出一个方向
 	注水，选择方向，流动耦合
     todo: 思路：多次计算，找出最合适的出口
 */
@@ -408,6 +423,38 @@ func (d *WaterDot) getLowestNeighbor(w *WaterMap, m *Topomap) (lowest int, lowes
 	return lowest, highMap[lowest][rand.Int()%len(highMap[lowest])]
 }
 
+/*获取周围最低的点 最低点集合数组中随机取一个 返回安全的坐标，不在地图外*/
+func (d *WaterDot) getLowestNeighbors(w *WaterMap, m *Topomap) (lowest int, lowestPos []struct{ x, y int }) {
+	arrNei := d.getNeighbors(w)
+	//log.Println("d,arrNei=", d, arrNei)
+	// 原理： highMap[high] = []struct{int,int}
+	highMap := make(map[int][]struct{ x, y int }, 8)
+	for _, nei := range arrNei {
+		if nei.x < 0 || nei.x > w.width-1 || nei.y < 0 || nei.y > w.height-1 {
+			// 超出地图边界的点
+			continue
+		}
+		high := int(m.data[nei.x+nei.y*w.width]) + d.h
+		if len(highMap[int(high)]) == 0 {
+			highMap[high] = []struct{ x, y int }{{nei.x, nei.y}} //make([]struct{ x, y int }, 1)
+			//highMap[int(m.data[nei.x+nei.y*w.width])][0].x, highMap[int(m.data[nei.x+nei.y*w.width])][0].y = nei.x, nei.y
+		} else {
+			highMap[high] = append(highMap[high], struct{ x, y int }{nei.x, nei.y})
+		}
+	}
+	lowest = 1000
+	for k, _ := range highMap {
+		if k < lowest {
+			lowest = k
+		}
+	}
+	//log.Println("lowest,highMap,count(highMap),d=", lowest, highMap, len(highMap), *d)
+	if len(highMap[lowest]) == 0 {
+		return lowest, nil
+	}
+	return lowest, highMap[lowest]
+}
+
 func main() {
 	rand.Seed(int64(time.Now().UnixNano()))
 
@@ -500,7 +547,7 @@ func main() {
 			// 收集rings产生的attitude
 			for _, r := range rings {
 				distM := (x-r.x)*(x-r.x) + (y-r.y)*(y-r.y)
-				//rn := float64(r.tiltLen)*math.Sin(r.tiltDir-math.Atan2(float64(y), float64(y))) + float64(r.r)	// 尝试倾斜地图中的圆环 尝试失败
+				//rn := float64(r.tiltLen)*math.Sin(r.tiltDir-math.Atan2(float64(y), float64(x))) + float64(r.r)	// 尝试倾斜地图中的圆环 尝试失败
 				rn := (r.r)
 				if distM <= int(rn*rn) {
 					// 产生的ring中间隆起
