@@ -27,6 +27,7 @@ type WaterDot struct {
 	input   []int // 流入坐标
 	nextIdx int
 	hasNext bool // 有下一个方向
+	hasDir  bool
 }
 type FlowList struct {
 	List    []int
@@ -83,7 +84,11 @@ func (w *WaterMap) Stir(m *Topomap) {
 			yPower += float32(neiPos.y) - curDot.y
 		}
 
-		w.data[idx].dir = math.Atan2(float64(yPower), float64(xPower))
+		if xPower != 0.0 || yPower != 0.0 {
+			w.data[idx].hasDir = true
+			w.data[idx].dir = math.Atan2(float64(yPower), float64(xPower))
+			//w.data[idx].x, w.data[idx].y = math.Cos(w.data[idx].dir), math.Sin(w.data[idx].dir)
+		}
 
 	}
 }
