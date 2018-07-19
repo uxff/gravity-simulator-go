@@ -19,15 +19,15 @@ import (
 )
 
 type WaterDot struct {
-	x       float32
-	y       float32
-	dir     float64
-	h       int   // 积水高度，产生积水不参与流动，流动停止
-	q       int   // 流量 0=无 历史流量
-	input   []int // 流入坐标
-	nextIdx int
-	hasNext bool // 有下一个方向
-	hasDir  bool
+	x        float32
+	y        float32
+	dir      float64
+	h        int   // 积水高度，产生积水不参与流动，流动停止
+	q        int   // 流量 0=无 历史流量
+	input    []int // 流入坐标
+	nextIdx  int
+	hasNext  bool // 有下一个方向
+	dirPower float32
 }
 type FlowList struct {
 	List    []int
@@ -75,7 +75,8 @@ func (this *FlowList) Init(x int, y int, w *WaterMap, maxlen int) {
 // 假设每个点都有一个场，计算出这个场的方向
 // Topomap is basic topomap
 // WaterMap is empty fields of all, to be inited
-func (w *WaterMap) AssignVector(m *Topomap) {
+// @param int ring 表示计算到几环 默认2环
+func (w *WaterMap) AssignVector(m *Topomap, ring int) {
 	for idx, curDot := range w.data {
 		var xPower, yPower float32
 		_, lowestPos := curDot.getLowestNeighbors(w, m)
@@ -85,7 +86,7 @@ func (w *WaterMap) AssignVector(m *Topomap) {
 		}
 
 		if xPower != 0.0 || yPower != 0.0 {
-			w.data[idx].hasDir = true
+			w.data[idx].dirPower = w.data[idx].dirPower + 1.0
 			w.data[idx].dir = math.Atan2(float64(yPower), float64(xPower))
 			//w.data[idx].x, w.data[idx].y = math.Cos(w.data[idx].dir), math.Sin(w.data[idx].dir)
 		}
