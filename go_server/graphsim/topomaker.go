@@ -75,7 +75,7 @@ func (this *FlowList) Init(x int, y int, w *WaterMap, maxlen int) {
 // 假设每个点都有一个场，计算出这个场的方向
 // Topomap is basic topomap
 // WaterMap is empty fields of all, to be inited
-func (w *WaterMap) Stir(m *Topomap) {
+func (w *WaterMap) AssignVector(m *Topomap) {
 	for idx, curDot := range w.data {
 		var xPower, yPower float32
 		_, lowestPos := curDot.getLowestNeighbors(w, m)
@@ -382,7 +382,7 @@ func (d *WaterDot) giveInputXY(inputX, inputY float32) {
 	d.x, d.y = inputX, inputY
 }
 
-// 此函数固定返回8个边界点，可能包含超出地图边界的点
+// 此函数固定返回本坐标周边2环8个边界点，可能包含超出地图边界的点
 func (d *WaterDot) getNeighbors(w *WaterMap) []struct{ x, y int } {
 	pos := make([]struct{ x, y int }, 8)
 	pos[0].x, pos[0].y = int(d.x+1), int(d.y)
@@ -393,6 +393,29 @@ func (d *WaterDot) getNeighbors(w *WaterMap) []struct{ x, y int } {
 	pos[5].x, pos[5].y = int(d.x-1), int(d.y+1)
 	pos[6].x, pos[6].y = int(d.x), int(d.y+1)
 	pos[7].x, pos[7].y = int(d.x+1), int(d.y+1)
+	return pos
+}
+
+// 此函数固定返回本点周边3环12个边界点，可能包含超出地图边界的点
+func (d *WaterDot) get3rdNeighbors(w *WaterMap) []struct{ x, y int } {
+	pos := make([]struct{ x, y int }, 12)
+	// right
+	pos[0].x, pos[0].y = int(d.x+2), int(d.y)
+	pos[1].x, pos[1].y = int(d.x+2), int(d.y-1)
+	// top
+	pos[2].x, pos[2].y = int(d.x+1), int(d.y-2)
+	pos[3].x, pos[3].y = int(d.x), int(d.y-2)
+	pos[4].x, pos[4].y = int(d.x-1), int(d.y-2)
+	// left
+	pos[5].x, pos[5].y = int(d.x-2), int(d.y-1)
+	pos[6].x, pos[6].y = int(d.x-2), int(d.y)
+	pos[7].x, pos[7].y = int(d.x-2), int(d.y+1)
+	// bottom
+	pos[8].x, pos[8].y = int(d.x-1), int(d.y+2)
+	pos[9].x, pos[9].y = int(d.x), int(d.y+2)
+	pos[10].x, pos[10].y = int(d.x+1), int(d.y+2)
+	// right
+	pos[11].x, pos[11].y = int(d.x+2), int(d.y+1)
 	return pos
 }
 
