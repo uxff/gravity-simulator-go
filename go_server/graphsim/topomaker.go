@@ -1,5 +1,6 @@
 /*
 	usage: ./topomaker -w 200 -h 200 -hill 10 -hill-wide 20 -flow 100 -zoom 5
+    todo: table lize with http server
 */
 package main
 
@@ -688,7 +689,7 @@ func DrawToImg(img *image.RGBA, m *Topomap, w *WaterMap, maxColor float32, zoom 
 	// 绘制流动
 	for di, dot := range w.data {
 		// 如果是源头 则绘制白色
-		if dot.hasNext {
+		if dot.dirPower > 0.0 {
 			// 计算相对比例尺的高度
 			tmpLevel := float32(m.data[di]) + float32(dot.h)
 			tmpLevel = float32(cslen) * (tmpLevel / maxColor)
@@ -700,15 +701,15 @@ func DrawToImg(img *image.RGBA, m *Topomap, w *WaterMap, maxColor float32, zoom 
 				tmpLevel = 0
 			}
 			// 下一点太远 放弃
-			nextX, nextY := dot.nextIdx%w.width, dot.nextIdx/w.height
-			if (nextX-int(dot.x))*(nextX-int(dot.x))+(nextY-int(dot.y))*(nextY-int(dot.y)) > 4 {
-				//log.Println("the next is too far:", dot)
-				continue
-			}
+			nextX, nextY := dot.x+dot.xPower, dot.y+dot.yPower
+			//if (nextX-int(dot.x))*(nextX-int(dot.x))+(nextY-int(dot.y))*(nextY-int(dot.y)) > 4 {
+			//log.Println("the next is too far:", dot)
+			//continue
+			//}
 
 			// 绘制流动方向 考虑缩放
 			tmpColor := cs[int(tmpLevel)]
-			lineTo(img, int(dot.x)**zoom+*zoom/2, int(dot.y)**zoom+*zoom/2, (dot.nextIdx%w.width)**zoom+*zoom/2, (dot.nextIdx/w.width)**zoom+*zoom/2, color.RGBA{0, 0, 0xFF, 0xFF}, tmpColor, *riverArrowScale)
+			lineTo(img, int(dot.x)**zoom+*zoom/2, int(dot.y)**zoom+*zoom/2, int(nextX)**zoom+*zoom/2, int(nextY)**zoom+*zoom/2, color.RGBA{0, 0, 0xFF, 0xFF}, tmpColor, *riverArrowScale)
 			//log.Println("hasNext:", dot, w.data[dot.nextIdx])
 
 			// 如果是源头 则绘制白色
