@@ -21,6 +21,8 @@ import (
 type WaterDot struct {
 	x        float32
 	y        float32
+	xPower   float32
+	yPower   float32
 	dir      float64
 	h        int   // 积水高度，产生积水不参与流动，流动停止
 	q        int   // 流量 0=无 历史流量
@@ -78,17 +80,34 @@ func (this *FlowList) Init(x int, y int, w *WaterMap, maxlen int) {
 // @param int ring 表示计算到几环 默认2环
 func (w *WaterMap) AssignVector(m *Topomap, ring int) {
 	for idx, curDot := range w.data {
-		var xPower, yPower float32
-		_, lowestPos := curDot.getLowestNeighbors(w, m)
+		//var xPower, yPower float32
+		// 2nd ring
+		_, lowestPos := curDot.getLowestNeighbors(curDot.getNeighbors(w), m)
 		for _, neiPos := range lowestPos {
-			xPower += float32(neiPos.x) - curDot.x
-			yPower += float32(neiPos.y) - curDot.y
+			w.data[idx].xPower += float32(neiPos.x) - curDot.x
+			w.data[idx].yPower += float32(neiPos.y) - curDot.y
 		}
 
-		if xPower != 0.0 || yPower != 0.0 {
+		if w.data[idx].xPower != 0.0 || w.data[idx].yPower != 0.0 {
 			w.data[idx].dirPower = w.data[idx].dirPower + 1.0
-			w.data[idx].dir = math.Atan2(float64(yPower), float64(xPower))
+			w.data[idx].dir = math.Atan2(float64(w.data[idx].yPower), float64(w.data[idx].xPower))
 			//w.data[idx].x, w.data[idx].y = math.Cos(w.data[idx].dir), math.Sin(w.data[idx].dir)
+		}
+
+		// 3rd ring, please do not use
+		if ring >= 3 {
+
+			_, lowestPos := curDot.getLowestNeighbors(curDot.get3rdNeighbors(w), m)
+			for _, neiPos := range lowestPos {
+				w.data[idx].xPower += float32(neiPos.x) - curDot.x
+				w.data[idx].yPower += float32(neiPos.y) - curDot.y
+			}
+
+			if w.data[idx].xPower != 0.0 || w.data[idx].yPower != 0.0 {
+				w.data[idx].dirPower = w.data[idx].dirPower + 0.5
+				w.data[idx].dir = math.Atan2(float64(w.data[idx].yPower), float64(w.data[idx].xPower))
+				//w.data[idx].x, w.data[idx].y = math.Cos(w.data[idx].dir), math.Sin(w.data[idx].dir)
+			}
 		}
 
 	}
@@ -96,7 +115,7 @@ func (w *WaterMap) AssignVector(m *Topomap, ring int) {
 
 // 随机洒水法：
 /*
-	随机在地图中选择点，并滴入一滴水，记录水位+1，尝试计算流出方向(判断旁边的水流方向)
+	随机在地图中选择点，并滴入一滴水，尝试计算流出方向(判断旁边的水流方向)
 	如果没有流出方向，水位+1；如果有流出方向，按方向滴入下一位置,本地水位-1
 	向WaterMap中的某个坐标注水
 	水尝试找一个流动方向 随机roll出一个方向
@@ -169,7 +188,7 @@ func (w *WaterMap) InjectWater(pos int, m *Topomap) bool {
 	// 选择可继续流出的方向
 	for i := 0; i < 20; i++ {
 		// 查找较低的坑 优先流向低处
-		lowest, lowestVal := curDot.getLowestNeighbor(w, m)
+		lowest, lowestVal := curDot.getLowestNeighbor(curDot.getNeighbors(w), m)
 		if lowest < int(m.data[pos]) {
 			// 低了按照此方向走
 			tx, ty = lowestVal.x, lowestVal.y
@@ -421,17 +440,17 @@ func (d *WaterDot) get3rdNeighbors(w *WaterMap) []struct{ x, y int } {
 }
 
 /*获取周围最低的点 最低点集合数组中随机取一个 返回安全的坐标，不在地图外*/
-func (d *WaterDot) getLowestNeighbor(w *WaterMap, m *Topomap) (lowest int, lowestVal struct{ x, y int }) {
-	arrNei := d.getNeighbors(w)
+func (d *WaterDot) getLowestNeighbor(arrNei []struct{ x, y int }, m *Topomap) (lowestLevel int, lowestVal struct{ x, y int }) {
+	//	arrNei := d.getNeighbors(w)
 	//log.Println("d,arrNei=", d, arrNei)
 	// 原理： highMap[high] = []struct{int,int}
 	highMap := make(map[int][]struct{ x, y int }, 8)
 	for _, nei := range arrNei {
-		if nei.x < 0 || nei.x > w.width-1 || nei.y < 0 || nei.y > w.height-1 {
+		if nei.x < 0 || nei.x > m.width-1 || nei.y < 0 || nei.y > m.height-1 {
 			// 超出地图边界的点
 			continue
 		}
-		high := int(m.data[nei.x+nei.y*w.width]) + d.h
+		high := int(m.data[nei.x+nei.y*m.width]) + d.h
 		if len(highMap[int(high)]) == 0 {
 			highMap[high] = []struct{ x, y int }{{nei.x, nei.y}} //make([]struct{ x, y int }, 1)
 			//highMap[int(m.data[nei.x+nei.y*w.width])][0].x, highMap[int(m.data[nei.x+nei.y*w.width])][0].y = nei.x, nei.y
@@ -439,31 +458,31 @@ func (d *WaterDot) getLowestNeighbor(w *WaterMap, m *Topomap) (lowest int, lowes
 			highMap[high] = append(highMap[high], struct{ x, y int }{nei.x, nei.y})
 		}
 	}
-	lowest = 1000
+	lowestLevel = 1000
 	for k, _ := range highMap {
-		if k < lowest {
-			lowest = k
+		if k < lowestLevel {
+			lowestLevel = k
 		}
 	}
 	//log.Println("lowest,highMap,count(highMap),d=", lowest, highMap, len(highMap), *d)
-	if len(highMap[lowest]) == 0 {
-		return lowest, lowestVal
+	if len(highMap[lowestLevel]) == 0 {
+		return lowestLevel, lowestVal
 	}
-	return lowest, highMap[lowest][rand.Int()%len(highMap[lowest])]
+	return lowestLevel, highMap[lowestLevel][rand.Int()%len(highMap[lowestLevel])]
 }
 
 /*获取周围最低的点 最低点集合数组中随机取一个 返回安全的坐标，不在地图外*/
-func (d *WaterDot) getLowestNeighbors(w *WaterMap, m *Topomap) (lowest int, lowestPos []struct{ x, y int }) {
-	arrNei := d.getNeighbors(w)
+func (d *WaterDot) getLowestNeighbors(arrNei []struct{ x, y int }, m *Topomap) (lowestLevel int, lowestPos []struct{ x, y int }) {
+	//arrNei := d.getNeighbors(w)
 	//log.Println("d,arrNei=", d, arrNei)
 	// 原理： highMap[high] = []struct{int,int}
 	highMap := make(map[int][]struct{ x, y int }, 8)
 	for _, nei := range arrNei {
-		if nei.x < 0 || nei.x > w.width-1 || nei.y < 0 || nei.y > w.height-1 {
+		if nei.x < 0 || nei.x > m.width-1 || nei.y < 0 || nei.y > m.height-1 {
 			// 超出地图边界的点
 			continue
 		}
-		high := int(m.data[nei.x+nei.y*w.width]) + d.h
+		high := int(m.data[nei.x+nei.y*m.width]) + d.h
 		if len(highMap[int(high)]) == 0 {
 			highMap[high] = []struct{ x, y int }{{nei.x, nei.y}} //make([]struct{ x, y int }, 1)
 			//highMap[int(m.data[nei.x+nei.y*w.width])][0].x, highMap[int(m.data[nei.x+nei.y*w.width])][0].y = nei.x, nei.y
@@ -471,17 +490,17 @@ func (d *WaterDot) getLowestNeighbors(w *WaterMap, m *Topomap) (lowest int, lowe
 			highMap[high] = append(highMap[high], struct{ x, y int }{nei.x, nei.y})
 		}
 	}
-	lowest = 1000
+	lowestLevel = 1000
 	for k, _ := range highMap {
-		if k < lowest {
-			lowest = k
+		if k < lowestLevel {
+			lowestLevel = k
 		}
 	}
 	//log.Println("lowest,highMap,count(highMap),d=", lowest, highMap, len(highMap), *d)
-	if len(highMap[lowest]) == 0 {
-		return lowest, nil
+	if len(highMap[lowestLevel]) == 0 {
+		return lowestLevel, nil
 	}
-	return lowest, highMap[lowest]
+	return lowestLevel, highMap[lowestLevel]
 }
 
 func main() {
@@ -594,14 +613,16 @@ func main() {
 	}
 	maxColor *= 2
 
+	w.AssignVector(&m, 1)
+
 	// 随机洒水
-	for i := 0; i < *times; i++ {
-		idx := rand.Int() % len(w.data)
-		//x, y := idx%w.width, idx/w.width
-		//w.data[idx].x, w.data[idx].y = float32(x)+0.5, float32(y)+0.5
-		w.data[idx].hasNext = false
-		w.InjectWater(idx, &m)
-	}
+	//	for i := 0; i < *times; i++ {
+	//		idx := rand.Int() % len(w.data)
+	//		//x, y := idx%w.width, idx/w.width
+	//		//w.data[idx].x, w.data[idx].y = float32(x)+0.5, float32(y)+0.5
+	//		w.data[idx].hasNext = false
+	//		w.InjectWater(idx, &m)
+	//	}
 
 	img := image.NewRGBA(image.Rect(0, 0, width**zoom, height**zoom))
 
