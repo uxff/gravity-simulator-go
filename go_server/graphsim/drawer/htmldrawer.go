@@ -10,7 +10,6 @@ var routeHome = "/"
 
 var htmlTpl = `
 <table >
-
 <tr>
 <td></td>
 </tr>

@@ -9,7 +9,7 @@ import (
 	"image"
 	"image/color"
 	"net/http"
-	"text/template"
+	"html/template"
 	//"image/draw"
 	"flag"
 	//"image/jpeg"
@@ -20,7 +20,7 @@ import (
 	"os"
 	"time"
 
-	"drawer"
+	drawer "./drawer"
 )
 
 type WaterDot struct {
@@ -633,6 +633,10 @@ func main() {
 
 	DrawToImg(img, &m, &w, maxColor, zoom, riverArrowScale)
 
+	go drawer.StartHtmlDrawer(":33399")
+	DrawToHtml(&w, &m)
+	log.Printf("drow to html ok, open localhost:33339 and see")
+
 	// 输出图片文件
 	//jpeg.Encode(picFile, img, nil)
 	if err := png.Encode(picFile2, img); err != nil {
@@ -745,8 +749,8 @@ func DrawToConsole(m *Topomap) {
 }
 
 func DrawToHtml(w *WaterMap, m *Topomap) {
-	drawer.SetHomeDrawHandler(func(t *template.Template, w http.ResponseWriter) {
-		err := t.Execute(w, struct {
+	drawer.SetHomeDrawHandler(func(t *template.Template, rw http.ResponseWriter) {
+		err := t.Execute(rw, struct {
 			M *Topomap
 			W *WaterMap
 		}{
@@ -758,4 +762,5 @@ func DrawToHtml(w *WaterMap, m *Topomap) {
 			log.Printf("error of execute err:%v", err)
 		}
 	})
+	log.Printf("draw to html ok")
 }
