@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"net/http"
+	"text/template"
 	//"image/draw"
 	"flag"
 	//"image/jpeg"
@@ -17,6 +19,8 @@ import (
 	"math/rand"
 	"os"
 	"time"
+
+	"drawer"
 )
 
 type WaterDot struct {
@@ -738,4 +742,20 @@ func DrawToConsole(m *Topomap) {
 			fmt.Printf("\n")
 		}
 	}
+}
+
+func DrawToHtml(w *WaterMap, m *Topomap) {
+	drawer.SetHomeDrawHandler(func(t *template.Template, w http.ResponseWriter) {
+		err := t.Execute(w, struct {
+			M *Topomap
+			W *WaterMap
+		}{
+			M: m,
+			W: w,
+		})
+
+		if err != nil {
+			log.Printf("error of execute err:%v", err)
+		}
+	})
 }
