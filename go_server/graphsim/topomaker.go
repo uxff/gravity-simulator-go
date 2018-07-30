@@ -9,7 +9,6 @@ import (
 	"image"
 	"image/color"
 	"net/http"
-	"html/template"
 	//"image/draw"
 	"flag"
 	//"image/jpeg"
@@ -635,7 +634,7 @@ func main() {
 
 	go drawer.StartHtmlDrawer(":33399")
 	DrawToHtml(&w, &m)
-	log.Printf("drow to html ok, open localhost:33339 and see")
+	log.Printf("drow to html ok, open localhost:33339 and view")
 
 	// 输出图片文件
 	//jpeg.Encode(picFile, img, nil)
@@ -647,6 +646,7 @@ func main() {
 		DrawToConsole(&m)
 	}
 	log.Println("done w,h=", width, height, "maxColor=", maxColor, "nHills=", *nHills, "flowlen=", river.length, "ridgelen=", ridge.length)
+	select {}
 }
 
 func DrawToImg(img *image.RGBA, m *Topomap, w *WaterMap, maxColor float32, zoom *int, riverArrowScale *float64) {
@@ -749,18 +749,22 @@ func DrawToConsole(m *Topomap) {
 }
 
 func DrawToHtml(w *WaterMap, m *Topomap) {
-	drawer.SetHomeDrawHandler(func(t *template.Template, rw http.ResponseWriter) {
-		err := t.Execute(rw, struct {
-			M *Topomap
-			W *WaterMap
-		}{
-			M: m,
-			W: w,
-		})
 
-		if err != nil {
-			log.Printf("error of execute err:%v", err)
+	footerHtml := "<table>"
+	for wi := 0; wi < w.width; wi++ {
+		footerHtml += "<tr>"
+		for hi := 0; hi < w.height; hi++ {
+			idx := hi*w.height + wi
+			tdot := &w.data[hi*w.height+wi]
+			footerHtml += fmt.Sprintf(`<td title="dir=%f hasdir=%v xpower=%f ypower=%f h=%d" style="width:1px;height:1px;background:rgb(0,%d,0)">&nbsp;&nbsp;</td>`,
+				tdot.dir, tdot.dirPower, tdot.xPower, tdot.yPower, m.data[idx], m.data[idx]*10)
 		}
+		footerHtml += "</tr>"
+	}
+	footerHtml += "</table>"
+
+	drawer.SetHomeDrawHandler(func(rw http.ResponseWriter) {
+		rw.Write([]byte(footerHtml))
 	})
 	log.Printf("draw to html ok")
 }
