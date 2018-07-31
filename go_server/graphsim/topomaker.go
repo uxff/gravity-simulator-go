@@ -84,18 +84,19 @@ func (this *FlowList) Init(x int, y int, w *WaterMap, maxlen int) {
 // @param int ring 表示计算到几环 默认2环
 func (w *WaterMap) AssignVector(m *Topomap, ring int) {
 	for idx, curDot := range w.data {
-		//var xPower, yPower float32
+		// xPoser, yPower 单位为1
+		var xPower, yPower int
 		// 2nd ring
 		_, lowestPos := curDot.getLowestNeighbors(curDot.getNeighbors(w), m)
 		for _, neiPos := range lowestPos {
-			w.data[idx].xPower += float32(neiPos.x) - curDot.x
-			w.data[idx].yPower += float32(neiPos.y) - curDot.y
+			xPower += neiPos.x - int(idx%w.width)
+			yPower += neiPos.y - int(idx/w.width)
 		}
 
-		if w.data[idx].xPower != 0.0 || w.data[idx].yPower != 0.0 {
+		if xPower != 0 || yPower != 0 {
 			w.data[idx].dirPower = w.data[idx].dirPower + 1.0
-			w.data[idx].dir = math.Atan2(float64(w.data[idx].yPower), float64(w.data[idx].xPower))
-			//w.data[idx].x, w.data[idx].y = math.Cos(w.data[idx].dir), math.Sin(w.data[idx].dir)
+			w.data[idx].dir = math.Atan2(float64(yPower), float64(xPower))
+			w.data[idx].xPower, w.data[idx].yPower = float32(math.Cos(w.data[idx].dir)), float32(math.Sin(w.data[idx].dir))
 		}
 
 		// 3rd ring, please do not use
@@ -637,10 +638,12 @@ func main() {
 	log.Printf("drow to html ok, open localhost:33339 and view")
 
 	// 输出图片文件
-	//jpeg.Encode(picFile, img, nil)
-	if err := png.Encode(picFile2, img); err != nil {
-		log.Println("png.Encode error:", err)
-	}
+	go func() {
+		//jpeg.Encode(picFile, img, nil)
+		if err := png.Encode(picFile2, img); err != nil {
+			log.Println("png.Encode error:", err)
+		}
+	}()
 
 	if *bShowMap {
 		DrawToConsole(&m)
@@ -709,7 +712,7 @@ func DrawToImg(img *image.RGBA, m *Topomap, w *WaterMap, maxColor float32, zoom 
 				tmpLevel = 0
 			}
 			// 下一点太远 放弃
-			nextX, nextY := dot.x+dot.xPower, dot.y+dot.yPower
+			//nextX, nextY := dot.x+dot.xPower, dot.y+dot.yPower
 			//if (nextX-int(dot.x))*(nextX-int(dot.x))+(nextY-int(dot.y))*(nextY-int(dot.y)) > 4 {
 			//log.Println("the next is too far:", dot)
 			//continue
@@ -717,7 +720,9 @@ func DrawToImg(img *image.RGBA, m *Topomap, w *WaterMap, maxColor float32, zoom 
 
 			// 绘制流动方向 考虑缩放
 			tmpColor := cs[int(tmpLevel)]
-			lineTo(img, int(dot.x)**zoom+*zoom/2, int(dot.y)**zoom+*zoom/2, int(nextX)**zoom+*zoom/2, int(nextY)**zoom+*zoom/2, color.RGBA{0, 0, 0xFF, 0xFF}, tmpColor, *riverArrowScale)
+			if dot.xPower != 0 || dot.yPower != 0 {
+				lineTo(img, int(dot.x)**zoom+*zoom/2, int(dot.y)**zoom+*zoom/2, int(dot.x)**zoom+*zoom/2+int(float32(*zoom)*dot.xPower), int(dot.y)**zoom+*zoom/2+int(float32(*zoom)*dot.yPower), color.RGBA{0, 0, 0xFF, 0xFF}, tmpColor, *riverArrowScale)
+			}
 			//log.Println("hasNext:", dot, w.data[dot.nextIdx])
 
 			// 如果是源头 则绘制白色
