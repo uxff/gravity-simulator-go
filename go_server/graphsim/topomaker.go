@@ -89,30 +89,23 @@ func (w *WaterMap) AssignVector(m *Topomap, ring int) {
 		// 2nd ring
 		_, lowestPos := curDot.getLowestNeighbors(curDot.getNeighbors(w), m)
 		for _, neiPos := range lowestPos {
-			xPower += neiPos.x - int(idx%w.width)
-			yPower += neiPos.y - int(idx/w.width)
-		}
-
-		if xPower != 0 || yPower != 0 {
-			w.data[idx].dirPower = w.data[idx].dirPower + 1.0
-			w.data[idx].dir = math.Atan2(float64(yPower), float64(xPower))
-			w.data[idx].xPower, w.data[idx].yPower = float32(math.Cos(w.data[idx].dir)), float32(math.Sin(w.data[idx].dir))
+			xPower += 4 * (neiPos.x - int(idx%w.width))
+			yPower += 4 * (neiPos.y - int(idx/w.width))
 		}
 
 		// 3rd ring, please do not use
 		if ring >= 3 {
-
 			_, lowestPos := curDot.getLowestNeighbors(curDot.get3rdNeighbors(w), m)
 			for _, neiPos := range lowestPos {
-				w.data[idx].xPower += float32(neiPos.x) - curDot.x
-				w.data[idx].yPower += float32(neiPos.y) - curDot.y
+				xPower += neiPos.x - int(idx%w.width)
+				yPower += neiPos.y - int(idx/w.width)
 			}
+		}
 
-			if w.data[idx].xPower != 0.0 || w.data[idx].yPower != 0.0 {
-				w.data[idx].dirPower = w.data[idx].dirPower + 0.5
-				w.data[idx].dir = math.Atan2(float64(w.data[idx].yPower), float64(w.data[idx].xPower))
-				//w.data[idx].x, w.data[idx].y = math.Cos(w.data[idx].dir), math.Sin(w.data[idx].dir)
-			}
+		if xPower != 0 || yPower != 0 {
+			w.data[idx].dirPower = w.data[idx].dirPower + 1.0 //应该是邻居落差
+			w.data[idx].dir = math.Atan2(float64(yPower), float64(xPower))
+			w.data[idx].xPower, w.data[idx].yPower = float32(math.Cos(w.data[idx].dir)), float32(math.Sin(w.data[idx].dir))
 		}
 
 	}
@@ -618,7 +611,7 @@ func main() {
 	}
 	maxColor *= 2
 
-	w.AssignVector(&m, 1)
+	w.AssignVector(&m, 3)
 
 	// 随机洒水
 	//	for i := 0; i < *times; i++ {
