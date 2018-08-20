@@ -6,3 +6,4 @@ Make a random continent, give it some moutains, then put rain/water on it, simul
 
 Now, simulating is not successful.
 
+todo: use updater

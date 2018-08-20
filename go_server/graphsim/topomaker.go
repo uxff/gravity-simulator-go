@@ -22,18 +22,25 @@ import (
 	drawer "./drawer"
 )
 
+// 使用水滴滚动
+type Droplet struct {
+	x float32
+	y float32
+}
+
+// 将变成固定不移动
 type WaterDot struct {
 	x        float32
 	y        float32
-	xPower   float32
-	yPower   float32
+	xPower   float32 // v2
+	yPower   float32 // v2
 	dir      float64
 	h        int   // 积水高度，产生积水不参与流动，流动停止
 	q        int   // 流量 0=无 历史流量
 	input    []int // 流入坐标
 	nextIdx  int
-	hasNext  bool // 有下一个方向
-	dirPower float32
+	hasNext  bool    // 有下一个方向
+	dirPower float32 // v2
 }
 type FlowList struct {
 	List    []int
@@ -93,9 +100,9 @@ func (w *WaterMap) AssignVector(m *Topomap, ring int) {
 			yPower += 4 * (neiPos.y - int(idx/w.width))
 		}
 
-		// 3rd ring, please do not use
+		// 3rd ring. done
 		if ring >= 3 {
-			_, lowestPos := curDot.getLowestNeighbors(curDot.get3rdNeighbors(w), m)
+			_, lowestPos = curDot.getLowestNeighbors(curDot.get3rdNeighbors(w), m)
 			for _, neiPos := range lowestPos {
 				xPower += neiPos.x - int(idx%w.width)
 				yPower += neiPos.y - int(idx/w.width)
