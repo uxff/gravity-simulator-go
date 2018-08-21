@@ -30,7 +30,7 @@ type Droplet struct {
 
 // 将变成固定不移动
 type WaterDot struct {
-	x        float32
+	x        float32 // 将不变化 =Topomap[x,y] +(0.5, 0.5)
 	y        float32
 	xPower   float32 // v2
 	yPower   float32 // v2
@@ -511,7 +511,7 @@ func (d *WaterDot) getLowestNeighbors(arrNei []struct{ x, y int }, m *Topomap) (
 func main() {
 	rand.Seed(int64(time.Now().UnixNano()))
 
-	var times = flag.Int("flow", 5, "flow move times")
+	//var times = flag.Int("flow", 5, "flow move times")
 	var width, height int = 500, 500
 	flag.IntVar(&width, "w", width, "width of map")
 	flag.IntVar(&height, "h", width, "height of map")
@@ -530,14 +530,15 @@ func main() {
 
 	var m Topomap
 	var w WaterMap
-	var river, ridge FlowList
+	var ridge FlowList
+	//var river FlowList
 
 	// 初始化 watermap topomap
 	w.Init(width, height)
 	m.Init(width, height)
 
 	// 初始化 非流动
-	river.Init(width/2, height/2, &w, *times+1)
+	//river.Init(width/2, height/2, &w, *times+1)
 	ridge.Init(width/2, height/2, &w, *nRidge)
 	ridge.step = float64(*ridgeStep)
 
@@ -648,7 +649,7 @@ func main() {
 	if *bShowMap {
 		DrawToConsole(&m)
 	}
-	log.Println("done w,h=", width, height, "maxColor=", maxColor, "nHills=", *nHills, "flowlen=", river.length, "ridgelen=", ridge.length)
+	log.Println("done w,h=", width, height, "maxColor=", maxColor, "nHills=", *nHills, "flowlen=0", "ridgelen=", ridge.length)
 	select {}
 }
 
