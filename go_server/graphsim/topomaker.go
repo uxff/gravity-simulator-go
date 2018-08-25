@@ -35,9 +35,9 @@ type WaterDot struct {
 	xPower   float32 // v2
 	yPower   float32 // v2
 	dir      float64
-	h        int   // 积水高度，产生积水不参与流动，流动停止
-	q        int   // 流量 0=无 历史流量
-	input    []int // 流入坐标
+	h        int   // 积水高度，产生积水不参与流动，流动停止 // v2将由水滴实体代替该变量
+	q        int   // 流量 0=无 历史流量    //
+	input    []int // 流入坐标    // v2将取消该变量
 	nextIdx  int
 	hasNext  bool    // 有下一个方向
 	dirPower float32 // v2
@@ -100,7 +100,7 @@ func (w *WaterMap) AssignVector(m *Topomap, ring int) {
 			yPower += 4 * (neiPos.y - int(idx/w.width))
 		}
 
-		// 3rd ring. done
+		// 3rd ring. done 三环的影响力是二环的1/4
 		if ring >= 3 {
 			_, lowestPos = curDot.getLowestNeighbors(curDot.get3rdNeighbors(w), m)
 			for _, neiPos := range lowestPos {
@@ -108,6 +108,10 @@ func (w *WaterMap) AssignVector(m *Topomap, ring int) {
 				yPower += neiPos.y - int(idx/w.width)
 			}
 		}
+
+		// 四环 四环影响力是二环的1/16
+		// if ring >= 4 {
+		//}
 
 		if xPower != 0 || yPower != 0 {
 			w.data[idx].dirPower = w.data[idx].dirPower + 1.0 //应该是邻居落差
@@ -118,6 +122,14 @@ func (w *WaterMap) AssignVector(m *Topomap, ring int) {
 	}
 }
 
+func UpdateTopo() {
+
+}
+func UpdateDroplet() {
+
+}
+
+// v2 将使用新洒水法
 // 随机洒水法：
 /*
 	随机在地图中选择点，并滴入一滴水，尝试计算流出方向(判断旁边的水流方向)
