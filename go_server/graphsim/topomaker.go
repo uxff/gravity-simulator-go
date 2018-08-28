@@ -1,5 +1,5 @@
 /*
-	usage: ./topomaker -w 200 -h 200 -hill 10 -hill-wide 20 -flow 100 -zoom 5
+	usage: ./topomaker -w 200 -h 200 -hill 10 -hill-wide 20 -hill 100 -zoom 5
     todo: table lize with http server
 */
 package main
@@ -154,10 +154,16 @@ func (w *WaterMap) UpdateVector(m *Topomap, ring int, powerRate float32) {
 	}
 }
 
-func UpdateTopo() {
+func UpdateDroplets(times int, drops []*Droplet, m *Topomap, w *WaterMap) {
+	for i := 1; i <= times; i++ {
+		for _, d := range drops {
+			go d.Move(m, w)
+		}
 
-}
-func UpdateDroplet() {
+		if i%100 == 0 {
+			w.UpdateVector(m, 2, 0.1)
+		}
+	}
 
 }
 
@@ -168,7 +174,6 @@ func MakeDroplet(w *WaterMap) *Droplet {
 		y: float32(idx/w.width) + 0.5,
 	}
 
-	// w
 	mu := sync.Mutex{}
 	mu.Lock()
 	defer mu.Unlock()
@@ -186,7 +191,7 @@ func (d *Droplet) Move(m *Topomap, w *WaterMap) {
 	d.y += w.data[oldIdx].yPower
 
 	// 越界判断
-	if int(d.x) < 0 || int(d.x) > w.width || int(d.y) < 0 || int(d.y) > int(w.height) {
+	if int(d.x) < 0 || int(d.x) > w.width-1 || int(d.y) < 0 || int(d.y) > w.height-1 {
 		// stay origin place
 		log.Printf("droplet move out of bound. stop move.")
 		return
@@ -196,6 +201,11 @@ func (d *Droplet) Move(m *Topomap, w *WaterMap) {
 	// 无力场，待在原地
 	if newIdx == oldIdx {
 		log.Printf("no field power. stay here.")
+		return
+	}
+
+	if newIdx > w.width*w.height {
+		log.Printf("out of data range, ignore")
 		return
 	}
 
@@ -307,39 +317,6 @@ func (d *WaterDot) get3rdNeighbors(w *WaterMap) []struct{ x, y int } {
 	// right
 	pos[11].x, pos[11].y = int(d.x+2), int(d.y+1)
 	return pos
-}
-
-/*获取周围最低的点 最低点集合数组中随机取一个 返回安全的坐标，不在地图外*/
-func (d *WaterDot) getLowestNeighbor(arrNei []struct{ x, y int }, m *Topomap) (lowestLevel int, lowestVal struct{ x, y int }) {
-	//	arrNei := d.getNeighbors(w)
-	//log.Println("d,arrNei=", d, arrNei)
-	// 原理： highMap[high] = []struct{int,int}
-	highMap := make(map[int][]struct{ x, y int }, 8)
-	for _, nei := range arrNei {
-		if nei.x < 0 || nei.x > m.width-1 || nei.y < 0 || nei.y > m.height-1 {
-			// 超出地图边界的点
-			continue
-		}
-		high := int(m.data[nei.x+nei.y*m.width]) + d.h
-		if len(highMap[int(high)]) == 0 {
-			highMap[high] = []struct{ x, y int }{{nei.x, nei.y}} //make([]struct{ x, y int }, 1)
-			//highMap[int(m.data[nei.x+nei.y*w.width])][0].x, highMap[int(m.data[nei.x+nei.y*w.width])][0].y = nei.x, nei.y
-		} else {
-			highMap[high] = append(highMap[high], struct{ x, y int }{nei.x, nei.y})
-		}
-	}
-	lowestLevel = 1000
-	for k, _ := range highMap {
-		if k < lowestLevel {
-			lowestLevel = k
-		}
-	}
-	//log.Println("lowest,highMap,count(highMap),d=", lowest, highMap, len(highMap), *d)
-	if len(highMap[lowestLevel]) == 0 {
-		log.Printf("how is can be zero?")
-		return lowestLevel, lowestVal
-	}
-	return lowestLevel, highMap[lowestLevel][rand.Int()%len(highMap[lowestLevel])]
 }
 
 /*获取周围最低的点 最低点集合数组中随机取一个 返回安全的坐标，不在地图外*/
@@ -528,11 +505,17 @@ func main() {
 	//		w.data[idx].hasNext = false
 	//		w.InjectWater(idx, &m)
 	//	}
+	drops := make([]*Droplet, 100)
+	for di := 0; di < 100; di++ {
+		drops[di] = MakeDroplet(&w)
+	}
 
+	UpdateDroplets(10000, drops, &m, &w)
+
+	// then draw
 	img := image.NewRGBA(image.Rect(0, 0, width**zoom, height**zoom))
 
 	DrawToImg(img, &m, &w, maxColor, zoom, riverArrowScale)
-
 	go drawer.StartHtmlDrawer(":33399")
 	DrawToHtml(&w, &m)
 	log.Printf("drow to html ok, open localhost:33339 and view")
