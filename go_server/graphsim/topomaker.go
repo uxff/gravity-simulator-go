@@ -84,12 +84,13 @@ func (this *FlowList) Init(x int, y int, w *WaterMap, maxlen int) {
 
 // 预先处理每个点的场向量  只计算地势的影响，不考虑流量的影响
 // 假设每个点都有一个场，计算出这个场的方向
+// 启动只执行1次
 // Topomap is basic topomap
 // WaterMap is empty fields of all, to be inited
 // @param int ring 表示计算到几环 默认2环
 func (w *WaterMap) AssignVector(m *Topomap, ring int) {
 	for idx, curDot := range w.data {
-		// xPoser, yPower 单位为1
+		// xPower, yPower 单位为1
 		var xPower, yPower int
 		// 2nd ring
 		_, lowestPos := curDot.getLowestNeighbors(curDot.getNeighbors(w), m)
@@ -117,6 +118,42 @@ func (w *WaterMap) AssignVector(m *Topomap, ring int) {
 	}
 }
 
+// 按照周围流量更新场向量
+// 周期性执行
+// power 一般指定0.1
+func (w *WaterMap) UpdateVector(m *Topomap, ring int, powerRate float32) {
+	for idx, curDot := range w.data {
+		// todo: use go
+		// xPower, yPower 单位为1
+		var xPower, yPower int
+		// 2nd ring
+		_, mostQuanPos := curDot.getPostQuanNeighbors(curDot.getNeighbors(w), w)
+		for _, neiPos := range mostQuanPos {
+			xPower += 4 * (neiPos.x - int(idx%w.width))
+			yPower += 4 * (neiPos.y - int(idx/w.width))
+		}
+
+		// 3rd ring. done 三环的影响力是二环的1/4
+		if ring >= 3 {
+			_, mostQuanPos = curDot.getPostQuanNeighbors(curDot.get3rdNeighbors(w), w)
+			for _, neiPos := range mostQuanPos {
+				xPower += neiPos.x - int(idx%w.width)
+				yPower += neiPos.y - int(idx/w.width)
+			}
+		}
+
+		// 四环 四环影响力是二环的1/16
+
+		if xPower != 0 || yPower != 0 {
+			//w.data[idx].dirPower = w.data[idx].dirPower + 1.0 //应该是邻居落差 // 无用
+			//w.data[idx].dir = math.Atan2(float64(yPower), float64(xPower))
+			//w.data[idx].xPower, w.data[idx].yPower = float32(math.Cos(w.data[idx].dir)), float32(math.Sin(w.data[idx].dir))
+			w.data[idx].xPower, w.data[idx].yPower = w.data[idx].xPower+float32(xPower)*powerRate, w.data[idx].yPower+float32(yPower)*powerRate
+			w.data[idx].dir = math.Atan2(float64(w.data[idx].yPower), float64(w.data[idx].xPower))
+		}
+	}
+}
+
 func UpdateTopo() {
 
 }
@@ -137,7 +174,7 @@ func MakeDroplet(w *WaterMap) *Droplet {
 	defer mu.Unlock()
 
 	w.data[idx].h++
-	w.data[idx].q++
+	//w.data[idx].q++ //初次不算流量
 
 	return d
 }
@@ -168,7 +205,7 @@ func (d *Droplet) Move(m *Topomap, w *WaterMap) {
 
 	w.data[oldIdx].h--
 	w.data[newIdx].h++
-	w.data[newIdx].q++
+	w.data[oldIdx].q++ // 流出，才算流量
 }
 
 func (this *Topomap) Init(width int, height int) {
@@ -299,6 +336,7 @@ func (d *WaterDot) getLowestNeighbor(arrNei []struct{ x, y int }, m *Topomap) (l
 	}
 	//log.Println("lowest,highMap,count(highMap),d=", lowest, highMap, len(highMap), *d)
 	if len(highMap[lowestLevel]) == 0 {
+		log.Printf("how is can be zero?")
 		return lowestLevel, lowestVal
 	}
 	return lowestLevel, highMap[lowestLevel][rand.Int()%len(highMap[lowestLevel])]
@@ -315,6 +353,7 @@ func (d *WaterDot) getLowestNeighbors(arrNei []struct{ x, y int }, m *Topomap) (
 			// 超出地图边界的点
 			continue
 		}
+		// 邻居的高度 todo: 有BUG 此处不能加本地的水位 要加邻居的水位
 		high := int(m.data[nei.x+nei.y*m.width]) + d.h
 		if len(highMap[int(high)]) == 0 {
 			highMap[high] = []struct{ x, y int }{{nei.x, nei.y}} //make([]struct{ x, y int }, 1)
@@ -331,9 +370,41 @@ func (d *WaterDot) getLowestNeighbors(arrNei []struct{ x, y int }, m *Topomap) (
 	}
 	//log.Println("lowest,highMap,count(highMap),d=", lowest, highMap, len(highMap), *d)
 	if len(highMap[lowestLevel]) == 0 {
+		log.Printf("how is can be zero?")
 		return lowestLevel, nil
 	}
 	return lowestLevel, highMap[lowestLevel]
+}
+
+/*获取周围流量最大的点 流量最大的点集合数组中随机取一个 返回安全的坐标，不在地图外*/
+func (d *WaterDot) getPostQuanNeighbors(arrNei []struct{ x, y int }, w *WaterMap) (mostQuanLevel int, poses []struct{ x, y int }) {
+	// 原理： highMap[quantity] = []struct{int,int}
+	highMap := make(map[int][]struct{ x, y int }, 8)
+	for _, nei := range arrNei {
+		if nei.x < 0 || nei.x > w.width-1 || nei.y < 0 || nei.y > w.height-1 {
+			// 超出地图边界的点
+			continue
+		}
+		high := int(w.data[nei.x+nei.y*w.width].q)
+		if len(highMap[int(high)]) == 0 {
+			highMap[high] = []struct{ x, y int }{{nei.x, nei.y}} //make([]struct{ x, y int }, 1)
+			//highMap[int(m.data[nei.x+nei.y*w.width])][0].x, highMap[int(m.data[nei.x+nei.y*w.width])][0].y = nei.x, nei.y
+		} else {
+			highMap[high] = append(highMap[high], struct{ x, y int }{nei.x, nei.y})
+		}
+	}
+	mostQuanLevel = 0
+	for k, _ := range highMap {
+		if k > mostQuanLevel {
+			mostQuanLevel = k
+		}
+	}
+	//log.Println("lowest,highMap,count(highMap),d=", lowest, highMap, len(highMap), *d)
+	if len(highMap[mostQuanLevel]) == 0 {
+		log.Printf("how is can be zero?")
+		return mostQuanLevel, nil
+	}
+	return mostQuanLevel, highMap[mostQuanLevel]
 }
 
 func main() {
