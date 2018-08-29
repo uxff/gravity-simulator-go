@@ -413,6 +413,7 @@ func main() {
 	var dropNum = flag.Int("dropnum", 100, "number of drops")
 	var times = flag.Int("times", 1000, "update times")
 	var zoom = flag.Int("zoom", 1, "zoom of out put")
+	var addr = flag.Int("addr", 1, "addr of http server to listen and to show img on html")
 	var riverArrowScale = flag.Float64("river-arrow-scale", 0.8, "river arrow scale")
 
 	flag.Parse()
@@ -525,26 +526,28 @@ func main() {
 	img := image.NewRGBA(image.Rect(0, 0, width**zoom, height**zoom))
 
 	DrawToImg(img, &m, &w, maxColor, zoom, riverArrowScale)
-	go drawer.StartHtmlDrawer(":33399")
-	DrawToHtml(&w, &m)
+
+	if *addr != "" {
+		go drawer.StartHtmlDrawer(":33399")
+		go DrawToHtml(&w, &m)
+	}
 	log.Printf("drow to html ok, open localhost:33339 and view")
 
 	// 输出图片文件
-	go func() {
-		//picFile, _ := os.Create(*outname + ".jpg")
-		filename := fmt.Sprintf("%s-%s", *outname, time.Now().Format("20060102150405"))
-		picFile2, _ := os.Create(*outdir + "/" + filename + ".png")
-		//jpeg.Encode(picFile, img, nil)
-		if err := png.Encode(picFile2, img); err != nil {
-			log.Println("png.Encode error:", err)
-		}
-		picFile2.Close()
-	}()
+	//picFile, _ := os.Create(*outname + ".jpg")
+	filename := fmt.Sprintf("%s-%s", *outname, time.Now().Format("20060102150405"))
+	picFile2, _ := os.Create(*outdir + "/" + filename + ".png")
+	//jpeg.Encode(picFile, img, nil)
+	if err := png.Encode(picFile2, img); err != nil {
+		log.Println("png.Encode error:", err)
+	}
+	picFile2.Close()
 
 	if *bShowMap {
 		DrawToConsole(&m)
 	}
 	log.Println("done w,h=", width, height, "maxColor=", maxColor, "nHills=", *nHills, "flowlen=0", "ridgelen=", ridge.length)
+
 	select {}
 }
 
