@@ -1,5 +1,5 @@
 /*
-	usage: ./topomaker -w 200 -h 200 -hill 10 -hill-wide 20 -hill 100 -zoom 5
+	usage: ./topomaker -w 200 -h 200 -hill 10 -hill-wide 20 -hill 100 -times 1000 -dropnum 100 -zoom 5
     todo: table lize with http server
 */
 package main
@@ -399,6 +399,8 @@ func main() {
 	var nRidge = flag.Int("ridge", 100, "ridge times for making ridge")
 	var ridgeWide = flag.Int("ridge-wide", 50, "ridge wide for making ridge")
 	var ridgeStep = flag.Int("ridge-step", 8, "ridge step for making ridge")
+	var dropNum = flag.Int("dropnum", 100, "number of drops")
+	var times = flag.Int("times", 1000, "update times")
 	var zoom = flag.Int("zoom", 1, "zoom of out put")
 	var riverArrowScale = flag.Float64("river-arrow-scale", 0.8, "river arrow scale")
 
@@ -425,11 +427,6 @@ func main() {
 			//return
 		}
 	}
-
-	//picFile, _ := os.Create(*outname + ".jpg")
-	filename := fmt.Sprintf("%s-%s", *outname, time.Now().Format("20060102150405"))
-	picFile2, _ := os.Create(*outdir + "/" + filename + ".png")
-	defer picFile2.Close()
 
 	// 随机n个圆圈 累加抬高
 	rings := make([]Ring, *nHills)
@@ -505,12 +502,12 @@ func main() {
 	//		w.data[idx].hasNext = false
 	//		w.InjectWater(idx, &m)
 	//	}
-	drops := make([]*Droplet, 100)
-	for di := 0; di < 100; di++ {
+	drops := make([]*Droplet, *dropNum)
+	for di := 0; di < *dropNum; di++ {
 		drops[di] = MakeDroplet(&w)
 	}
 
-	UpdateDroplets(10000, drops, &m, &w)
+	UpdateDroplets(*times, drops, &m, &w)
 
 	// then draw
 	img := image.NewRGBA(image.Rect(0, 0, width**zoom, height**zoom))
@@ -522,10 +519,14 @@ func main() {
 
 	// 输出图片文件
 	go func() {
+		//picFile, _ := os.Create(*outname + ".jpg")
+		filename := fmt.Sprintf("%s-%s", *outname, time.Now().Format("20060102150405"))
+		picFile2, _ := os.Create(*outdir + "/" + filename + ".png")
 		//jpeg.Encode(picFile, img, nil)
 		if err := png.Encode(picFile2, img); err != nil {
 			log.Println("png.Encode error:", err)
 		}
+		picFile2.Close()
 	}()
 
 	if *bShowMap {
