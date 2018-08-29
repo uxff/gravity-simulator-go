@@ -156,11 +156,17 @@ func (w *WaterMap) UpdateVector(m *Topomap, ring int, powerRate float32) {
 
 func UpdateDroplets(times int, drops []*Droplet, m *Topomap, w *WaterMap) {
 	for i := 1; i <= times; i++ {
+		wg := sync.WaitGroup{}
 		for _, d := range drops {
-			go d.Move(m, w)
+			wg.Add(1)
+			go func() {
+				d.Move(m, w)
+				wg.Done()
+			}()
 		}
 
 		if i%100 == 0 {
+			wg.Wait()
 			w.UpdateVector(m, 2, 0.1)
 		}
 	}
@@ -185,8 +191,17 @@ func MakeDroplet(w *WaterMap) *Droplet {
 }
 
 func (d *Droplet) Move(m *Topomap, w *WaterMap) {
+	mu := sync.Mutex{}
+	mu.Lock()
+	defer mu.Unlock()
+
 	// 是否有场
 	oldIdx := int(d.x) + int(d.y)*w.width
+	if oldIdx >= len(w.data) {
+		log.Printf("move out of data. stop it.")
+		return
+	}
+
 	d.x += w.data[oldIdx].xPower
 	d.y += w.data[oldIdx].yPower
 
@@ -200,7 +215,7 @@ func (d *Droplet) Move(m *Topomap, w *WaterMap) {
 	newIdx := int(d.x) + int(d.y)*w.width
 	// 无力场，待在原地
 	if newIdx == oldIdx {
-		log.Printf("no field power. stay here.")
+		//log.Printf("no field power. stay here.")
 		return
 	}
 
@@ -208,10 +223,6 @@ func (d *Droplet) Move(m *Topomap, w *WaterMap) {
 		log.Printf("out of data range, ignore")
 		return
 	}
-
-	mu := sync.Mutex{}
-	mu.Lock()
-	defer mu.Unlock()
 
 	w.data[oldIdx].h--
 	w.data[newIdx].h++
@@ -508,6 +519,7 @@ func main() {
 	}
 
 	UpdateDroplets(*times, drops, &m, &w)
+	log.Printf("update done. times=%d num drops=%d", *times, *dropNum)
 
 	// then draw
 	img := image.NewRGBA(image.Rect(0, 0, width**zoom, height**zoom))
