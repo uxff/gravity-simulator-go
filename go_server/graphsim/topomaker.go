@@ -1,5 +1,5 @@
 /*
-	usage: ./topomaker -w 200 -h 200 -hill 10 -hill-wide 20 -hill 100 -times 1000 -dropnum 100 -zoom 5
+	usage: ./topomaker -w 200 -h 200 -hill 10 -hill-wide 20 -times 1000 -dropnum 100 -zoom 5
     todo: table lize with http server
 */
 package main
@@ -159,7 +159,7 @@ func UpdateDroplets(times int, drops []*Droplet, m *Topomap, w *WaterMap) {
 		wg := sync.WaitGroup{}
 		for _, d := range drops {
 			wg.Add(1)
-			go func() {
+			func() {
 				d.Move(m, w)
 				wg.Done()
 			}()
@@ -197,10 +197,10 @@ func (d *Droplet) Move(m *Topomap, w *WaterMap) {
 
 	// 是否有场
 	oldIdx := int(d.x) + int(d.y)*w.width
-	//	if oldIdx >= len(w.data) {
-	//		log.Printf("move out of data. stop it.")
-	//		return
-	//	}
+	if oldIdx >= len(w.data) {
+		log.Printf("oldIdx(%d) out of data. stop it.", oldIdx)
+		return
+	}
 
 	d.x += w.data[oldIdx].xPower
 	d.y += w.data[oldIdx].yPower
@@ -530,8 +530,8 @@ func main() {
 	if *addr != "" {
 		go drawer.StartHtmlDrawer(*addr)
 		go DrawToHtml(&w, &m)
+		log.Printf("drow to html ok, open host(%s) and view", *addr)
 	}
-	log.Printf("drow to html ok, open localhost:33339 and view")
 
 	// 输出图片文件
 	//picFile, _ := os.Create(*outname + ".jpg")
@@ -548,7 +548,7 @@ func main() {
 	}
 	log.Println("done w,h=", width, height, "maxColor=", maxColor, "nHills=", *nHills, "flowlen=0", "ridgelen=", ridge.length)
 
-	select {}
+	time.Sleep(time.Second * 100000)
 }
 
 func DrawToImg(img *image.RGBA, m *Topomap, w *WaterMap, maxColor float32, zoom *int, riverArrowScale *float64) {
