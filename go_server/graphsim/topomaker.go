@@ -159,7 +159,7 @@ func UpdateDroplets(times int, drops []*Droplet, m *Topomap, w *WaterMap) {
 		wg := sync.WaitGroup{}
 		for _, d := range drops {
 			wg.Add(1)
-			func() {
+			go func() {
 				d.Move(m, w)
 				wg.Done()
 			}()
@@ -191,10 +191,6 @@ func MakeDroplet(w *WaterMap) *Droplet {
 }
 
 func (d *Droplet) Move(m *Topomap, w *WaterMap) {
-	mu := sync.Mutex{}
-	mu.Lock()
-	defer mu.Unlock()
-
 	// 是否有场
 	oldIdx := int(d.x) + int(d.y)*w.width
 	if oldIdx >= len(w.data) {
@@ -202,17 +198,17 @@ func (d *Droplet) Move(m *Topomap, w *WaterMap) {
 		return
 	}
 
-	d.x += w.data[oldIdx].xPower
-	d.y += w.data[oldIdx].yPower
+	tmpX := d.x + w.data[oldIdx].xPower
+	tmpY := d.y + w.data[oldIdx].yPower
 
 	// 越界判断
-	if int(d.x) < 0 || int(d.x) > w.width-1 || int(d.y) < 0 || int(d.y) > w.height-1 {
+	if int(tmpX) < 0 || int(tmpX) > w.width-1 || int(tmpY) < 0 || int(tmpY) > w.height-1 {
 		// stay origin place
-		log.Printf("droplet move out of bound(x=%f,y=%f). stop move.", d.x, d.y)
+		log.Printf("droplet move out of bound(x=%f,y=%f). stop move.", tmpX, tmpY)
 		return
 	}
 
-	newIdx := int(d.x) + int(d.y)*w.width
+	newIdx := int(tmpX) + int(tmpY)*w.width
 	// 无力场，待在原地
 	if newIdx == oldIdx {
 		//log.Printf("no field power. stay here.")
@@ -224,9 +220,14 @@ func (d *Droplet) Move(m *Topomap, w *WaterMap) {
 		return
 	}
 
+	mu := sync.Mutex{}
+	mu.Lock()
+	defer mu.Unlock()
+
 	w.data[oldIdx].h--
 	w.data[newIdx].h++
 	w.data[oldIdx].q++ // 流出，才算流量
+	d.x, d.y = tmpX, tmpY
 }
 
 func (this *Topomap) Init(width int, height int) {
