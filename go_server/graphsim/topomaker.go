@@ -197,10 +197,10 @@ func (d *Droplet) Move(m *Topomap, w *WaterMap) {
 
 	// 是否有场
 	oldIdx := int(d.x) + int(d.y)*w.width
-	if oldIdx >= len(w.data) {
-		log.Printf("move out of data. stop it.")
-		return
-	}
+	//	if oldIdx >= len(w.data) {
+	//		log.Printf("move out of data. stop it.")
+	//		return
+	//	}
 
 	d.x += w.data[oldIdx].xPower
 	d.y += w.data[oldIdx].yPower
@@ -208,7 +208,7 @@ func (d *Droplet) Move(m *Topomap, w *WaterMap) {
 	// 越界判断
 	if int(d.x) < 0 || int(d.x) > w.width-1 || int(d.y) < 0 || int(d.y) > w.height-1 {
 		// stay origin place
-		log.Printf("droplet move out of bound. stop move.")
+		log.Printf("droplet move out of bound(x=%f,y=%f). stop move.", d.x, d.y)
 		return
 	}
 
@@ -220,7 +220,7 @@ func (d *Droplet) Move(m *Topomap, w *WaterMap) {
 	}
 
 	if newIdx > w.width*w.height {
-		log.Printf("out of data range, ignore")
+		log.Printf("newIdx(%d) out of data range, ignore", newIdx)
 		return
 	}
 
@@ -413,7 +413,7 @@ func main() {
 	var dropNum = flag.Int("dropnum", 100, "number of drops")
 	var times = flag.Int("times", 1000, "update times")
 	var zoom = flag.Int("zoom", 1, "zoom of out put")
-	var addr = flag.Int("addr", 1, "addr of http server to listen and to show img on html")
+	var addr = flag.String("addr", "", "addr of http server to listen and to show img on html")
 	var riverArrowScale = flag.Float64("river-arrow-scale", 0.8, "river arrow scale")
 
 	flag.Parse()
@@ -528,7 +528,7 @@ func main() {
 	DrawToImg(img, &m, &w, maxColor, zoom, riverArrowScale)
 
 	if *addr != "" {
-		go drawer.StartHtmlDrawer(":33399")
+		go drawer.StartHtmlDrawer(*addr)
 		go DrawToHtml(&w, &m)
 	}
 	log.Printf("drow to html ok, open localhost:33339 and view")
