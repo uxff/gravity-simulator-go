@@ -1,5 +1,5 @@
 /*
-	usage: ./topomaker -w 200 -h 200 -hill 10 -hill-wide 20 -times 1000 -dropnum 100 -zoom 5
+	usage: time ./topomaker -w 800 -h 800 -hill 200 -hill-wide 200 -times 1000 -dropnum 100 -zoom 5
     todo: table lize with http server
 */
 package main
@@ -165,8 +165,8 @@ func UpdateDroplets(times int, drops []*Droplet, m *Topomap, w *WaterMap) {
 			}()
 		}
 
+		wg.Wait()
 		if i%100 == 0 {
-			wg.Wait()
 			w.UpdateVector(m, 2, 0.1)
 		}
 	}
