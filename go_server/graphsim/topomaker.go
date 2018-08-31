@@ -408,9 +408,10 @@ func main() {
 	var nHills = flag.Int("hill", 100, "hill number for making rand topo by hill")
 	var hillWide = flag.Int("hill-wide", 100, "hill wide for making rand topo by hill")
 	var bShowMap = flag.Bool("print", false, "print map for debug")
-	var nRidge = flag.Int("ridge", 100, "ridge times for making ridge")
-	var ridgeWide = flag.Int("ridge-wide", 50, "ridge wide for making ridge")
-	var ridgeStep = flag.Int("ridge-step", 8, "ridge step for making ridge")
+	var nRidge = flag.Int("ridge", 1, "num of ridges for making ridges")
+	var ridgeWide = flag.Int("ridge-wide", 50, "ridge wide for making ridge each")
+	//var ridgeStep = flag.Int("ridge-step", 8, "ridge step for making ridge each")
+	var ridgeLen = flag.Int("ridge-len", 100, "ridge length when making ridge each")
 	var dropNum = flag.Int("dropnum", 100, "number of drops")
 	var times = flag.Int("times", 1000, "update times")
 	var zoom = flag.Int("zoom", 1, "zoom of out put")
@@ -421,23 +422,15 @@ func main() {
 
 	var m Topomap
 	var w WaterMap
-	var ridge FlowList
-	//var river FlowList
 
 	// 初始化 watermap topomap
 	w.Init(width, height)
 	m.Init(width, height)
 
-	// 初始化 非流动
-	//river.Init(width/2, height/2, &w, *times+1)
-	ridge.Init(width/2, height/2, &w, *nRidge)
-	ridge.step = float64(*ridgeStep)
-
 	if _, derr := os.Open(*outdir); derr != nil {
 		log.Println("output dir seems not exist:", *outdir, derr)
 		if cerr := os.Mkdir(*outdir, os.ModePerm); cerr != nil {
 			log.Println("os.mkdir:", *outdir, cerr)
-			//return
 		}
 	}
 
@@ -450,7 +443,10 @@ func main() {
 	}
 
 	// 转换痕迹为ridge 为每个环分配随机半径
-	ridgeHills := MakeRidge(int(ridge.length), *ridgeWide, width, height)
+	var ridgeHills []Hill
+	for ri := 0; ri < *nRidge; ri++ {
+		ridgeHills = append(ridgeHills, MakeRidge(*ridgeLen, *ridgeWide, width, height)...)
+	}
 	//log.Println("ridgeHills=", ridgeHills)
 
 	// 生成地图 制造地形
@@ -516,9 +512,11 @@ func main() {
 
 	DrawToImg(img, &m, &w, maxColor, zoom, riverArrowScale)
 
+	wgm := sync.WaitGroup{}
 	if *addr != "" {
-		go drawer.StartHtmlDrawer(*addr)
-		go DrawToHtml(&w, &m)
+		wgm.Add(2)
+		go func() { drawer.StartHtmlDrawer(*addr); wgm.Done() }()
+		go func() { DrawToHtml(&w, &m); wgm.Done() }()
 		log.Printf("drow to html ok, open host(%s) and view", *addr)
 	}
 
@@ -535,9 +533,9 @@ func main() {
 	if *bShowMap {
 		DrawToConsole(&m)
 	}
-	log.Println("done w,h=", width, height, "maxColor=", maxColor, "nHills=", *nHills, "flowlen=0", "ridgelen=", ridge.length)
+	log.Println("done w,h=", width, height, "maxColor=", maxColor, "nHills=", *nHills, "flowlen=0", "ridgelen=", *ridgeLen, "nRidge=", *nRidge)
 
-	time.Sleep(time.Second * 100000)
+	wgm.Wait()
 }
 
 func DrawToImg(img *image.RGBA, m *Topomap, w *WaterMap, maxColor float32, zoom *int, riverArrowScale *float64) {
