@@ -249,7 +249,7 @@ func (this *WaterMap) Init(width int, height int) {
 	}
 }
 
-type Ring struct {
+type Hill struct {
 	x       int
 	y       int
 	r       int
@@ -442,36 +442,24 @@ func main() {
 	}
 
 	// 随机n个圆圈 累加抬高
-	rings := make([]Ring, *nHills)
-	for ri, _ := range rings {
-		r := &rings[ri]
+	hills := make([]Hill, *nHills)
+	for ri, _ := range hills {
+		r := &hills[ri]
 		r.x, r.y, r.r, r.h = (rand.Int() % width), (rand.Int() % height), (rand.Int()%(*hillWide) + 1), (rand.Int()%(5) + 2)
 		r.tiltDir, r.tiltLen = rand.Float64()*math.Pi, (rand.Int()%10)+1
 	}
 
 	// 转换痕迹为ridge 为每个环分配随机半径
-	ridgeRings := make([]Ring, ridge.length)
-	baseTowardX, baseTowardY := (rand.Int()%width-width/2)/20, (rand.Int()%height-height/2)/20
-	for ri := 0; ri < int(ridge.length); ri++ {
-		r := &ridgeRings[ri]
-		if ri == 0 {
-			// 第一个
-			//r.x, r.y, r.r = ridge.List[ri]%width, ridge.List[ri]/width, (rand.Int() % (*ridgeWide))
-			r.x, r.y, r.r, r.h = (rand.Int() % width), (rand.Int() % height), (rand.Int()%(*ridgeWide) + 1), (rand.Int()%(5) + 2)
-		} else {
-			// 其他
-			r.x, r.y, r.r, r.h = ridgeRings[ri-1].x+(rand.Int()%*ridgeWide)-*ridgeWide/2+baseTowardX, ridgeRings[ri-1].y+(rand.Int()%*ridgeWide)-*ridgeWide/2+baseTowardY, (rand.Int()%(*ridgeWide) + 1), (rand.Int()%(5) + 2)
-		}
-	}
-	log.Println("ridgeRings=", ridgeRings)
+	ridgeHills := MakeRidge(int(ridge.length), *ridgeWide, width, height)
+	//log.Println("ridgeHills=", ridgeHills)
 
 	// 生成地图 制造地形
 	var tmpColor, maxColor float32 = 1, 1
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
 			tmpColor = 0
-			// 收集ridgeRings产生的attitude
-			for _, r := range ridgeRings {
+			// 收集ridgeHills产生的attitude
+			for _, r := range ridgeHills {
 				distM := (x-r.x)*(x-r.x) + (y-r.y)*(y-r.y)
 				rn := (r.r)
 				if distM <= r.r*r.r {
@@ -484,8 +472,8 @@ func main() {
 					//log.Println("color fill x,y,r,c=", x, y, r, tmpColor)
 				}
 			}
-			// 收集rings产生的attitude
-			for _, r := range rings {
+			// 收集hills产生的attitude
+			for _, r := range hills {
 				distM := (x-r.x)*(x-r.x) + (y-r.y)*(y-r.y)
 				//rn := float64(r.tiltLen)*math.Sin(r.tiltDir-math.Atan2(float64(y), float64(x))) + float64(r.r)	// 尝试倾斜地图中的圆环 尝试失败
 				rn := (r.r)
@@ -671,4 +659,21 @@ func DrawToHtml(w *WaterMap, m *Topomap) {
 		rw.Write([]byte(footerHtml))
 	})
 	log.Printf("draw to html ok")
+}
+
+func MakeRidge(ridgeLen, ridgeWide, width, height int) []Hill {
+	ridgeHills := make([]Hill, ridgeLen)
+	baseTowardX, baseTowardY := (rand.Int()%width-width/2)/20, (rand.Int()%height-height/2)/20
+	for ri := 0; ri < int(ridgeLen); ri++ {
+		r := &ridgeHills[ri]
+		if ri == 0 {
+			// 第一个
+			r.x, r.y, r.r, r.h = (rand.Int() % width), (rand.Int() % height), (rand.Int()%(ridgeWide) + 1), (rand.Int()%(5) + 2)
+		} else {
+			// 其他
+			r.x, r.y, r.r, r.h = ridgeHills[ri-1].x+(rand.Int()%ridgeWide)-ridgeWide/2+baseTowardX, ridgeHills[ri-1].y+(rand.Int()%ridgeWide)-ridgeWide/2+baseTowardY, (rand.Int()%(ridgeWide) + 1), (rand.Int()%(5) + 2)
+		}
+	}
+
+	return ridgeHills
 }
