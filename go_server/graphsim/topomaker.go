@@ -120,7 +120,7 @@ func (w *WaterMap) AssignVector(m *Topomap, ring int) {
 
 // 按照周围流量更新场向量
 // 周期性执行
-// power 一般指定0.1
+// power 一般指定小于1 比如0.1
 func (w *WaterMap) UpdateVector(m *Topomap, ring int, powerRate float32) {
 	for idx, curDot := range w.data {
 		// todo: use go
@@ -142,14 +142,14 @@ func (w *WaterMap) UpdateVector(m *Topomap, ring int, powerRate float32) {
 			}
 		}
 
-		// 四环 四环影响力是二环的1/16
+		// 四环 四环影响力是二环的1/16 暂不实现4环
 
 		if xPower != 0 || yPower != 0 {
 			//w.data[idx].dirPower = w.data[idx].dirPower + 1.0 //应该是邻居落差 // 无用
 			//w.data[idx].dir = math.Atan2(float64(yPower), float64(xPower))
-			//w.data[idx].xPower, w.data[idx].yPower = float32(math.Cos(w.data[idx].dir)), float32(math.Sin(w.data[idx].dir))
 			w.data[idx].xPower, w.data[idx].yPower = w.data[idx].xPower+float32(xPower)*powerRate, w.data[idx].yPower+float32(yPower)*powerRate
 			w.data[idx].dir = math.Atan2(float64(w.data[idx].yPower), float64(w.data[idx].xPower))
+			w.data[idx].xPower, w.data[idx].yPower = float32(math.Cos(w.data[idx].dir)), float32(math.Sin(w.data[idx].dir))
 		}
 	}
 }
