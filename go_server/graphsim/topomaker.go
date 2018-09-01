@@ -58,8 +58,7 @@ type WaterMap struct {
 // 预先处理每个点的场向量  只计算地势的影响，不考虑流量的影响
 // 假设每个点都有一个场，计算出这个场的方向
 // 启动只执行1次
-// Topomap is basic topomap
-// WaterMap is empty fields of all, to be inited
+// @param Topomap m is basic topomap
 // @param int ring 表示计算到几环 默认2环
 func (w *WaterMap) AssignVector(m *Topomap, ring int) {
 	for idx, curDot := range w.data {
@@ -81,7 +80,7 @@ func (w *WaterMap) AssignVector(m *Topomap, ring int) {
 			}
 		}
 
-		// 四环 四环影响力是二环的1/16
+		// 四环 四环影响力是二环的1/16 暂不实现4环
 
 		if xPower != 0 || yPower != 0 {
 			w.data[idx].dirPower = w.data[idx].dirPower + 1.0 //应该是邻居落差
@@ -93,10 +92,9 @@ func (w *WaterMap) AssignVector(m *Topomap, ring int) {
 
 // 按照周围流量更新场向量
 // 周期性执行
-// power 一般指定小于1 比如0.1
+// powerRate 一般指定小于1 比如0.1
 func (w *WaterMap) UpdateVector(m *Topomap, ring int, powerRate float32) {
 	for idx, curDot := range w.data {
-		// todo: use go
 		// xPower, yPower 单位为1
 		var xPower, yPower int
 		// 2nd ring
@@ -114,8 +112,6 @@ func (w *WaterMap) UpdateVector(m *Topomap, ring int, powerRate float32) {
 				yPower += neiPos.y - int(idx/w.width)
 			}
 		}
-
-		// 四环 四环影响力是二环的1/16 暂不实现4环
 
 		if xPower != 0 || yPower != 0 {
 			//w.data[idx].dir = math.Atan2(float64(yPower), float64(xPower))
@@ -175,7 +171,6 @@ func (d *Droplet) Move(m *Topomap, w *WaterMap) {
 
 	// 越界判断
 	if int(tmpX) < 0 || int(tmpX) > w.width-1 || int(tmpY) < 0 || int(tmpY) > w.height-1 {
-		// stay origin place
 		log.Printf("droplet move out of bound(x=%f,y=%f). stop move.", tmpX, tmpY)
 		return
 	}
@@ -217,7 +212,6 @@ func (this *WaterMap) Init(width int, height int) {
 		for y := 0; y < this.height; y++ {
 			this.data[x+y*this.width].x = float32(x) + 0.5
 			this.data[x+y*this.width].y = float32(y) + 0.5
-			//this.data[x+y*this.width].hasNext = false
 		}
 	}
 }
@@ -252,7 +246,6 @@ func colorTpl(colorTplFile string) []color.Color {
 func lineTo(img *image.RGBA, startX, startY, destX, destY int, lineColor, startColor color.Color, scale float64) {
 	distM := math.Sqrt(float64((startX-destX)*(startX-destX) + (startY-destY)*(startY-destY)))
 	var i float64
-	//scale = 1.0
 	for i = 0; i < distM*scale; i++ {
 		img.Set(startX+int(i/distM*float64(destX-startX)), startY+int(i/distM*float64(destY-startY)), lineColor)
 	}
@@ -365,7 +358,6 @@ func (d *WaterDot) getPostQuanNeighbors(arrNei []struct{ x, y int }, w *WaterMap
 func main() {
 	rand.Seed(int64(time.Now().UnixNano()))
 
-	//var times = flag.Int("flow", 5, "flow move times")
 	var width, height int = 500, 500
 	flag.IntVar(&width, "w", width, "width of map")
 	flag.IntVar(&height, "h", width, "height of map")
@@ -381,7 +373,7 @@ func main() {
 	var dropNum = flag.Int("dropnum", 100, "number of drops")
 	var times = flag.Int("times", 1000, "update times")
 	var zoom = flag.Int("zoom", 1, "zoom of out put image")
-	var addr = flag.String("addr", "", "addr of http server to listen and to show img on html")
+	var addr = flag.String("addr", "", "addr of http server to listen and to show img on html(deprecated)")
 	var riverArrowScale = flag.Float64("river-arrow-scale", 0.8, "river arrow scale")
 
 	flag.Parse()
@@ -415,7 +407,7 @@ func main() {
 	}
 	//log.Println("ridgeHills=", ridgeHills)
 
-	// 生成地图 制造地形
+	// 生成地图 制造地形 将上面生成的ridge和hills输出到m上
 	var tmpColor, maxColor float32 = 1, 1
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
@@ -453,7 +445,7 @@ func main() {
 			m.data[x+y*width] = uint8(tmpColor) //+ uint8(rand.Int()%2) //int8(width - x)
 		}
 	}
-	maxColor *= 2
+	maxColor *= 1.5
 
 	w.AssignVector(&m, 3)
 
@@ -504,8 +496,7 @@ func DrawToImg(img *image.RGBA, m *Topomap, w *WaterMap, maxColor float32, zoom 
 	// 获取颜色模板
 	var colorTplFile string = "image/color-tpl.png"
 	cs := colorTpl(colorTplFile)
-	//csmargin := 1
-	cslen := len(cs) - 1 // - csmargin
+	cslen := len(cs) - 1
 	// 地图背景地形绘制
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
@@ -524,10 +515,9 @@ func DrawToImg(img *image.RGBA, m *Topomap, w *WaterMap, maxColor float32, zoom 
 		}
 	}
 	// 绘制WaterMap
-	tmpLakeColor := color.RGBA{0, 0xFF, 0xFF, 0}
-	tmpLakeColor2 := color.RGBA{0xd0, 0x46, 0x93, 0} //#d04693    //purple
-	tmpLakeColor3 := color.RGBA{0xa0, 0xd2, 0xeb, 0} //#b0d2eb    // blue-gray
-	tmpLakeColor4 := color.RGBA{0xe7, 0xb0, 0xeb, 0} //#e7b0eb    // pink-white
+	tmpLakeColor := color.RGBA{0, 0xFF, 0xFF, 0xFF}     // alpha=255 表示不透明
+	tmpLakeColor2 := color.RGBA{0xd0, 0x46, 0x93, 0xFF} //#d04693    //purple
+	tmpLakeColor3 := color.RGBA{0xa0, 0xd2, 0xeb, 0xFF} //#b0d2eb    // blue-gray
 	for _, dot := range w.data {
 		// 绘制积水 点周围绘制
 		if dot.h > 0 {
@@ -545,7 +535,7 @@ func DrawToImg(img *image.RGBA, m *Topomap, w *WaterMap, maxColor float32, zoom 
 			img.Set(int(dot.x)*zoom+zoom/2+1, int(dot.y)*zoom+zoom/2, tmpLakeColor2)
 			img.Set(int(dot.x)*zoom+zoom/2, int(dot.y)*zoom+zoom/2-1, tmpLakeColor2)
 			img.Set(int(dot.x)*zoom+zoom/2-1, int(dot.y)*zoom+zoom/2, tmpLakeColor2)
-			img.Set(int(dot.x)*zoom+zoom/2, int(dot.y)*zoom+zoom/2+1, tmpLakeColor4)
+			img.Set(int(dot.x)*zoom+zoom/2, int(dot.y)*zoom+zoom/2+1, tmpLakeColor2)
 		}
 	}
 
@@ -596,12 +586,10 @@ func DrawToImg(img *image.RGBA, m *Topomap, w *WaterMap, maxColor float32, zoom 
 }
 
 func DrawToConsole(m *Topomap) {
-	width := m.width
-
 	str := "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ~!@#$%^&*-=_+()[]{}<>\\/;:,.???????????????????????????????????????"
 	for di, dd := range m.data {
 		fmt.Printf("%c", str[dd])
-		if di%width == (width - 1) {
+		if di%m.width == (m.width - 1) {
 			fmt.Printf("\n")
 		}
 	}
