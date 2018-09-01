@@ -23,9 +23,12 @@ import (
 
 // 使用水滴滚动
 type Droplet struct {
-	x      float32
-	y      float32
-	hisway []int
+	x         float32
+	y         float32
+	hisway    []int
+	fallPower int     // 落差能量
+	vx        float32 // 滑行速度
+	vy        float32
 }
 
 // 将变成固定不移动
@@ -38,7 +41,6 @@ type WaterDot struct {
 	q       int     // 流量 0=无 历史流量    //
 	xPowerQ float32 // v2 根据周围流量算出 每次update变化 基于Atan2 范围(-1,1)
 	yPowerQ float32 // v2
-	//dir     float64
 }
 type Topomap struct {
 	data   []uint8 // 对应坐标只保存高度
@@ -131,12 +133,11 @@ func UpdateDroplets(times int, drops []*Droplet, m *Topomap, w *WaterMap) {
 			}()
 		}
 
-		wg.Wait()
 		if i%100 == 0 {
+			wg.Wait()
 			w.UpdateVectorByQuantity(m, 2, 0.1)
 		}
 	}
-
 }
 
 func MakeDroplet(w *WaterMap) *Droplet {
@@ -158,14 +159,19 @@ func MakeDroplet(w *WaterMap) *Droplet {
 }
 
 func (d *Droplet) Move(m *Topomap, w *WaterMap) {
-	// 是否有场
 	oldIdx := int(d.x) + int(d.y)*w.width
 	if oldIdx >= len(w.data) {
 		log.Printf("oldIdx(%d) out of data. stop it.", oldIdx)
 		return
 	}
 
-	tmpX := d.x + w.data[oldIdx].xPower
+	if w.data[oldIdx].xPower == 0 && w.data[oldIdx].yPower == 0 {
+		//log.Printf("no field power, try slip(x=%f,y=%f)", d.x, d.y)
+		d.MoveByFallPower(m, w)
+		return
+	}
+
+	tmpX := d.x + w.data[oldIdx].xPower // todo:精度损失风险
 	tmpY := d.y + w.data[oldIdx].yPower
 
 	// 越界判断
@@ -181,7 +187,7 @@ func (d *Droplet) Move(m *Topomap, w *WaterMap) {
 		return
 	}
 
-	if newIdx > w.width*w.height {
+	if newIdx >= w.width*w.height {
 		log.Printf("newIdx(%d) out of data range, ignore", newIdx)
 		return
 	}
@@ -195,6 +201,52 @@ func (d *Droplet) Move(m *Topomap, w *WaterMap) {
 	w.data[oldIdx].q++ // 流出，才算流量
 	d.x, d.y = tmpX, tmpY
 	d.hisway = append(d.hisway, newIdx)
+	d.vx, d.vy = w.data[oldIdx].xPower, w.data[oldIdx].yPower
+	d.fallPower += int(m.data[oldIdx]-m.data[newIdx]) * 100
+}
+
+// 根据落差能量移动 类似滑行 slip
+func (d *Droplet) MoveByFallPower(m *Topomap, w *WaterMap) {
+	mu := sync.Mutex{}
+	mu.Lock()
+	defer mu.Unlock()
+
+	if d.fallPower > 0 {
+		oldIdx := int(d.x) + int(d.y)*w.width
+		if oldIdx >= len(w.data) {
+			log.Printf("oldIdx(%d) out of data. stop it.", oldIdx)
+			return
+		}
+
+		tmpX := d.x + d.vx // todo:精度损失风险
+		tmpY := d.y + d.vy
+
+		// 越界判断
+		if int(tmpX) < 0 || int(tmpX) > w.width-1 || int(tmpY) < 0 || int(tmpY) > w.height-1 {
+			log.Printf("droplet slip out of bound(x=%f,y=%f). stop move.", tmpX, tmpY)
+			return
+		}
+
+		newIdx := int(tmpX) + int(tmpY)*w.width
+		// 无力场，待在原地
+		if newIdx == oldIdx {
+			//log.Printf("no field power. stay here.")
+			return
+		}
+
+		if newIdx > w.width*w.height {
+			log.Printf("newIdx(%d) out of data range, ignore", newIdx)
+			return
+		}
+
+		w.data[oldIdx].h--
+		w.data[newIdx].h++
+		w.data[oldIdx].q++ // 流出，才算流量
+		d.x, d.y = tmpX, tmpY
+		d.hisway = append(d.hisway, newIdx)
+		d.fallPower--
+
+	}
 }
 
 func (this *Topomap) Init(width int, height int) {
@@ -520,7 +572,7 @@ func DrawToImg(img *image.RGBA, m *Topomap, w *WaterMap, maxColor float32, zoom 
 	for _, dot := range w.data {
 		// 绘制积水 点周围绘制
 		if dot.h > 0 {
-			img.Set(int(dot.x)*zoom+zoom/2, int(dot.y)*zoom+zoom/2, tmpLakeColor)
+			img.Set(int(dot.x)*zoom+zoom/2, int(dot.y)*zoom+zoom/2, tmpLakeColor) // self
 			img.Set(int(dot.x)*zoom+zoom/2+1, int(dot.y)*zoom+zoom/2+1, tmpLakeColor)
 			img.Set(int(dot.x)*zoom+zoom/2+1, int(dot.y)*zoom+zoom/2, tmpLakeColor)
 			img.Set(int(dot.x)*zoom+zoom/2+1, int(dot.y)*zoom+zoom/2-1, tmpLakeColor)
