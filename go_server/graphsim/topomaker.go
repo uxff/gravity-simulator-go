@@ -5,19 +5,17 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"image"
 	"image/color"
-	"net/http"
-	//"image/draw"
-	"flag"
-	"sync"
-	//"image/jpeg"
 	"image/png"
 	"log"
 	"math"
 	"math/rand"
+	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	drawer "./drawer"
@@ -32,14 +30,15 @@ type Droplet struct {
 
 // 将变成固定不移动
 type WaterDot struct {
-	x        float32 // 将不变化 =Topomap[x,y] +(0.5, 0.5)
-	y        float32
-	xPower   float32 // v2
-	yPower   float32 // v2
-	dir      float64
-	h        int     // 积水高度，产生积水不参与流动，流动停止 // v2将由水滴实体代替该变量
-	q        int     // 流量 0=无 历史流量    //
-	dirPower float32 // v2
+	x       float32 // 将不变化 =Topomap[x,y] +(0.5, 0.5)
+	y       float32
+	xPower  float32 // v2 根据地形得出 初始化后不变(地形改变则会变) 基于Atan2 范围(-1,1)
+	yPower  float32 // v2 根据地形得出 初始化后不变(地形改变则会变)
+	h       int     // 积水高度，产生积水不参与流动，流动停止 // v2将由水滴实体代替该变量
+	q       int     // 流量 0=无 历史流量    //
+	xPowerQ float32 // v2 根据周围流量算出 每次update变化 基于Atan2 范围(-1,1)
+	yPowerQ float32 // v2
+	//dir     float64
 }
 type Topomap struct {
 	data   []uint8 // 对应坐标只保存高度
@@ -83,18 +82,18 @@ func (w *WaterMap) AssignVector(m *Topomap, ring int) {
 		// 四环 四环影响力是二环的1/16 暂不实现4环
 
 		if xPower != 0 || yPower != 0 {
-			w.data[idx].dirPower = w.data[idx].dirPower + 1.0 //应该是邻居落差
-			w.data[idx].dir = math.Atan2(float64(yPower), float64(xPower))
-			w.data[idx].xPower, w.data[idx].yPower = float32(math.Cos(w.data[idx].dir)), float32(math.Sin(w.data[idx].dir))
+			thedir := math.Atan2(float64(yPower), float64(xPower))
+			w.data[idx].xPower, w.data[idx].yPower = float32(math.Cos(thedir)), float32(math.Sin(thedir))
 		}
 	}
 }
 
 // 按照周围流量更新场向量
-// 周期性执行
+// 周期性执行 todo: has bug here.
 // powerRate 一般指定小于1 比如0.1
-func (w *WaterMap) UpdateVector(m *Topomap, ring int, powerRate float32) {
+func (w *WaterMap) UpdateVectorByQuantity(m *Topomap, ring int, powerRate float32) {
 	for idx, curDot := range w.data {
+		//go func() {
 		// xPower, yPower 单位为1
 		var xPower, yPower int
 		// 2nd ring
@@ -114,10 +113,10 @@ func (w *WaterMap) UpdateVector(m *Topomap, ring int, powerRate float32) {
 		}
 
 		if xPower != 0 || yPower != 0 {
-			//w.data[idx].dir = math.Atan2(float64(yPower), float64(xPower))
-			w.data[idx].dir = math.Atan2(float64(w.data[idx].xPower+float32(xPower)*powerRate), float64(w.data[idx].yPower+float32(yPower)*powerRate))
-			w.data[idx].xPower, w.data[idx].yPower = float32(math.Cos(w.data[idx].dir)), float32(math.Sin(w.data[idx].dir))
+			thedir := math.Atan2(float64(yPower), float64(xPower))
+			w.data[idx].xPowerQ, w.data[idx].yPowerQ = float32(math.Cos(thedir))*powerRate, float32(math.Sin(thedir))*powerRate
 		}
+		//}() //可以不等待 //使用go反而慢
 	}
 }
 
@@ -134,7 +133,7 @@ func UpdateDroplets(times int, drops []*Droplet, m *Topomap, w *WaterMap) {
 
 		wg.Wait()
 		if i%100 == 0 {
-			w.UpdateVector(m, 2, 0.1)
+			w.UpdateVectorByQuantity(m, 2, 0.1)
 		}
 	}
 
@@ -449,7 +448,7 @@ func main() {
 
 	w.AssignVector(&m, 3)
 
-	// 随机来一组*Droplet
+	// 生成一组随机*Droplet
 	drops := make([]*Droplet, *dropNum)
 	for di := 0; di < *dropNum; di++ {
 		drops[di] = MakeDroplet(&w)
@@ -541,8 +540,8 @@ func DrawToImg(img *image.RGBA, m *Topomap, w *WaterMap, maxColor float32, zoom 
 
 	// 绘制流动 在v2下相当于场
 	for di, dot := range w.data {
-		// 如果是源头 则绘制白色
-		if dot.dirPower > 0.0 {
+		// 绘制当前点 如果是源头 则绘制白色
+		if dot.xPower != 0.0 || dot.yPower != 0.0 {
 			// 计算相对比例尺的高度
 			tmpLevel := int(m.data[di]) + dot.h
 			tmpLevel = int(float32(cslen*tmpLevel) / maxColor)
@@ -553,18 +552,10 @@ func DrawToImg(img *image.RGBA, m *Topomap, w *WaterMap, maxColor float32, zoom 
 			if tmpLevel < 0 {
 				tmpLevel = 0
 			}
-			// 下一点太远 放弃
-			//nextX, nextY := dot.x+dot.xPower, dot.y+dot.yPower
-			//if (nextX-int(dot.x))*(nextX-int(dot.x))+(nextY-int(dot.y))*(nextY-int(dot.y)) > 4 {
-			//log.Println("the next is too far:", dot)
-			//continue
-			//}
 
 			// 绘制流动方向 考虑缩放
 			tmpColor := cs[tmpLevel]
-			if dot.xPower != 0 || dot.yPower != 0 {
-				lineTo(img, int(dot.x)*zoom+zoom/2, int(dot.y)*zoom+zoom/2, int(dot.x)*zoom+zoom/2+int(float32(zoom)*dot.xPower), int(dot.y)*zoom+zoom/2+int(float32(zoom)*dot.yPower), color.RGBA{0, 0, 0xFF, 0xFF}, tmpColor, riverArrowScale)
-			}
+			lineTo(img, int(dot.x)*zoom+zoom/2, int(dot.y)*zoom+zoom/2, int(dot.x)*zoom+zoom/2+int(float32(zoom)*dot.xPower), int(dot.y)*zoom+zoom/2+int(float32(zoom)*dot.yPower), color.RGBA{0, 0, 0xFF, 0xFF}, tmpColor, riverArrowScale)
 		}
 	}
 	// 绘制droplets
@@ -596,14 +587,15 @@ func DrawToConsole(m *Topomap) {
 }
 
 func DrawToHtml(w *WaterMap, m *Topomap) {
+	// todo: use svg
 	footerHtml := "<table>"
 	for wi := 0; wi < w.width; wi++ {
 		footerHtml += "<tr>"
 		for hi := 0; hi < w.height; hi++ {
 			idx := hi*w.height + wi
 			tdot := &w.data[hi*w.height+wi]
-			footerHtml += fmt.Sprintf(`<td title="dir=%f hasdir=%v xpower=%f ypower=%f h=%d" style="width:1px;height:1px;background:rgb(0,%d,0)">&nbsp;&nbsp;</td>`,
-				tdot.dir, tdot.dirPower, tdot.xPower, tdot.yPower, m.data[idx], m.data[idx]*10)
+			footerHtml += fmt.Sprintf(`<td title="xpower=%f ypower=%f h=%d" style="width:1px;height:1px;background:rgb(0,%d,0)">&nbsp;&nbsp;</td>`,
+				tdot.xPower, tdot.yPower, m.data[idx], m.data[idx]*10)
 		}
 		footerHtml += "</tr>"
 	}
@@ -639,7 +631,6 @@ func ImgToFile(outputFilePath string, img *image.RGBA, format string) {
 		return
 	}
 	defer picFile2.Close()
-	//jpeg.Encode(picFile, img, nil)
 	if err := png.Encode(picFile2, img); err != nil {
 		log.Println("png.Encode error:", err)
 	}
