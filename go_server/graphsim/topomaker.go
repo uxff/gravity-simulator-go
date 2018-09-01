@@ -1,5 +1,5 @@
 /*
-	usage: time ./topomaker -w 800 -h 800 -hill 200 -hill-wide 200 -times 1000 -dropnum 100 -zoom 5
+	usage: time ./topomaker -w 800 -h 800 -hill 200 -hill-wide 200 -ridge 2 -ridge-wide 50 -times 1000 -dropnum 100 -zoom 5
     todo: table lize with http server
 */
 package main
@@ -118,10 +118,8 @@ func (w *WaterMap) UpdateVector(m *Topomap, ring int, powerRate float32) {
 		// 四环 四环影响力是二环的1/16 暂不实现4环
 
 		if xPower != 0 || yPower != 0 {
-			//w.data[idx].dirPower = w.data[idx].dirPower + 1.0 //应该是邻居落差 // 无用
 			//w.data[idx].dir = math.Atan2(float64(yPower), float64(xPower))
-			w.data[idx].xPower, w.data[idx].yPower = w.data[idx].xPower+float32(xPower)*powerRate, w.data[idx].yPower+float32(yPower)*powerRate
-			w.data[idx].dir = math.Atan2(float64(w.data[idx].yPower), float64(w.data[idx].xPower))
+			w.data[idx].dir = math.Atan2(float64(w.data[idx].xPower+float32(xPower)*powerRate), float64(w.data[idx].yPower+float32(yPower)*powerRate))
 			w.data[idx].xPower, w.data[idx].yPower = float32(math.Cos(w.data[idx].dir)), float32(math.Sin(w.data[idx].dir))
 		}
 	}
@@ -402,15 +400,15 @@ func main() {
 		}
 	}
 
-	// 随机n个圆圈 累加抬高
+	// 随机n个圆圈 累加抬高 输出到m中
 	hills := make([]Hill, *nHills)
 	for ri, _ := range hills {
 		r := &hills[ri]
 		r.x, r.y, r.r, r.h = (rand.Int() % width), (rand.Int() % height), (rand.Int()%(*hillWide) + 1), (rand.Int()%(5) + 2)
-		r.tiltDir, r.tiltLen = rand.Float64()*math.Pi, (rand.Int()%10)+1
+		r.tiltDir, r.tiltLen = rand.Float64()*math.Pi, (rand.Int()%20)+1
 	}
 
-	// 转换痕迹为ridge 为每个环分配随机半径
+	// 转换痕迹为ridge 为每个环分配随机半径 输出到m中
 	var ridgeHills []Hill
 	for ri := 0; ri < *nRidge; ri++ {
 		ridgeHills = append(ridgeHills, MakeRidge(*ridgeLen, *ridgeWide, width, height)...)
@@ -471,7 +469,7 @@ func main() {
 	// then draw
 	img := image.NewRGBA(image.Rect(0, 0, width**zoom, height**zoom))
 
-	DrawToImg(img, &m, &w, maxColor, *zoom, *riverArrowScale)
+	DrawToImg(img, &m, &w, maxColor, *zoom, *riverArrowScale, drops)
 
 	wgm := sync.WaitGroup{}
 	if *addr != "" {
@@ -494,11 +492,11 @@ func main() {
 		go func() { DrawToConsole(&m); wgm.Done() }()
 	}
 	wgm.Wait()
-	log.Println("done w,h=", width, height, "maxColor=", maxColor, "nHills=", *nHills, "flowlen=0", "ridgelen=", *ridgeLen, "nRidge=", *nRidge)
+	log.Println("done w,h=", width, height, "maxColor=", maxColor, "nHills=", *nHills, "nRidge=", *nRidge, "ridgelen=", *ridgeLen)
 
 }
 
-func DrawToImg(img *image.RGBA, m *Topomap, w *WaterMap, maxColor float32, zoom int, riverArrowScale float64) {
+func DrawToImg(img *image.RGBA, m *Topomap, w *WaterMap, maxColor float32, zoom int, riverArrowScale float64, drops []*Droplet) {
 	height := m.height
 	width := m.width
 	var tmpColor float32 = 1
@@ -526,7 +524,10 @@ func DrawToImg(img *image.RGBA, m *Topomap, w *WaterMap, maxColor float32, zoom 
 		}
 	}
 	// 绘制WaterMap
-	tmpLakeColor := color.RGBA{0, 0xFF, 0xFF, 0xFF}
+	tmpLakeColor := color.RGBA{0, 0xFF, 0xFF, 0}
+	tmpLakeColor2 := color.RGBA{0xd0, 0x46, 0x93, 0} //#d04693    //purple
+	tmpLakeColor3 := color.RGBA{0xa0, 0xd2, 0xeb, 0} //#b0d2eb    // blue-gray
+	tmpLakeColor4 := color.RGBA{0xe7, 0xb0, 0xeb, 0} //#e7b0eb    // pink-white
 	for _, dot := range w.data {
 		// 绘制积水 点周围绘制
 		if dot.h > 0 {
@@ -540,6 +541,12 @@ func DrawToImg(img *image.RGBA, m *Topomap, w *WaterMap, maxColor float32, zoom 
 			img.Set(int(dot.x)*zoom+zoom/2-1, int(dot.y)*zoom+zoom/2+1, tmpLakeColor)
 			img.Set(int(dot.x)*zoom+zoom/2, int(dot.y)*zoom+zoom/2+1, tmpLakeColor)
 		}
+		if dot.q > 0 {
+			img.Set(int(dot.x)*zoom+zoom/2+1, int(dot.y)*zoom+zoom/2, tmpLakeColor2)
+			img.Set(int(dot.x)*zoom+zoom/2, int(dot.y)*zoom+zoom/2-1, tmpLakeColor2)
+			img.Set(int(dot.x)*zoom+zoom/2-1, int(dot.y)*zoom+zoom/2, tmpLakeColor2)
+			img.Set(int(dot.x)*zoom+zoom/2, int(dot.y)*zoom+zoom/2+1, tmpLakeColor4)
+		}
 	}
 
 	// 绘制流动 在v2下相当于场
@@ -547,11 +554,11 @@ func DrawToImg(img *image.RGBA, m *Topomap, w *WaterMap, maxColor float32, zoom 
 		// 如果是源头 则绘制白色
 		if dot.dirPower > 0.0 {
 			// 计算相对比例尺的高度
-			tmpLevel := float32(m.data[di]) + float32(dot.h)
-			tmpLevel = float32(cslen) * (tmpLevel / maxColor)
+			tmpLevel := int(m.data[di]) + dot.h
+			tmpLevel = int(float32(cslen*tmpLevel) / maxColor)
 			// 防止越界
-			if int(tmpLevel) >= len(cs) {
-				tmpLevel = float32(len(cs) - 1)
+			if tmpLevel >= len(cs) {
+				tmpLevel = len(cs) - 1
 			}
 			if tmpLevel < 0 {
 				tmpLevel = 0
@@ -564,16 +571,19 @@ func DrawToImg(img *image.RGBA, m *Topomap, w *WaterMap, maxColor float32, zoom 
 			//}
 
 			// 绘制流动方向 考虑缩放
-			tmpColor := cs[int(tmpLevel)]
+			tmpColor := cs[tmpLevel]
 			if dot.xPower != 0 || dot.yPower != 0 {
 				lineTo(img, int(dot.x)*zoom+zoom/2, int(dot.y)*zoom+zoom/2, int(dot.x)*zoom+zoom/2+int(float32(zoom)*dot.xPower), int(dot.y)*zoom+zoom/2+int(float32(zoom)*dot.yPower), color.RGBA{0, 0, 0xFF, 0xFF}, tmpColor, riverArrowScale)
 			}
-			//log.Println("hasNext:", dot, w.data[dot.nextIdx])
-
-			// 如果是源头 则绘制白色
-			//if len(dot.input) == 0 {
-			//img.Set(int(dot.x)*zoom+zoom/2, int(dot.y)*zoom+zoom/2, color.White)
-			//}
+		}
+	}
+	// 绘制droplets
+	for _, drop := range drops {
+		for _, dxi := range drop.hisway {
+			img.Set(int(dxi%width)*zoom+zoom/2+1, int(dxi/width)*zoom+zoom/2+1, tmpLakeColor3)
+			img.Set(int(dxi%width)*zoom+zoom/2+1, int(dxi/width)*zoom+zoom/2-1, tmpLakeColor3)
+			img.Set(int(dxi%width)*zoom+zoom/2-1, int(dxi/width)*zoom+zoom/2-1, tmpLakeColor3)
+			img.Set(int(dxi%width)*zoom+zoom/2-1, int(dxi/width)*zoom+zoom/2+1, tmpLakeColor3)
 		}
 	}
 	// 绘制颜色模板
@@ -635,7 +645,6 @@ func MakeRidge(ridgeLen, ridgeWide, width, height int) []Hill {
 }
 
 func ImgToFile(outputFilePath string, img *image.RGBA, format string) {
-
 	picFile2, err := os.Create(outputFilePath)
 	if err != nil {
 		log.Printf("when create file %s error:%v", outputFilePath, err)
