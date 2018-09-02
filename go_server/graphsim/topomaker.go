@@ -165,14 +165,16 @@ func (d *Droplet) Move(m *Topomap, w *WaterMap) {
 		return
 	}
 
+	// 没有场 可撒欢
 	if w.data[oldIdx].xPower == 0 && w.data[oldIdx].yPower == 0 {
 		//log.Printf("no field power, try slip(x=%f,y=%f)", d.x, d.y)
 		d.MoveByFallPower(m, w)
 		return
 	}
 
-	tmpX := d.x + w.data[oldIdx].xPower // todo:精度损失风险
-	tmpY := d.y + w.data[oldIdx].yPower
+	// 场速度与自身速度的平均值
+	tmpX := d.x + (w.data[oldIdx].xPower+d.vx)/2 // todo:精度损失风险
+	tmpY := d.y + (w.data[oldIdx].yPower+d.vy)/2
 
 	// 越界判断
 	if int(tmpX) < 0 || int(tmpX) > w.width-1 || int(tmpY) < 0 || int(tmpY) > w.height-1 {
@@ -205,7 +207,7 @@ func (d *Droplet) Move(m *Topomap, w *WaterMap) {
 	d.fallPower += int(m.data[oldIdx]-m.data[newIdx]) * 100
 }
 
-// 根据落差能量移动 类似滑行 slip
+// 根据落差能量移动 类似滑行 slip todo:浮动(撒欢)
 func (d *Droplet) MoveByFallPower(m *Topomap, w *WaterMap) {
 	mu := sync.Mutex{}
 	mu.Lock()
@@ -218,8 +220,11 @@ func (d *Droplet) MoveByFallPower(m *Topomap, w *WaterMap) {
 			return
 		}
 
-		tmpX := d.x + d.vx // todo:精度损失风险
-		tmpY := d.y + d.vy
+		tmpDir := rand.Float64() - rand.Float64()
+		fx, fy := float32(math.Cos(tmpDir)), float32(math.Sin(tmpDir))
+		//d.vx, d.vy = d.vx+fx/2.0, d.vy+fy/2.0
+		tmpX := d.x + d.vx + fx/2.0 // todo:精度损失风险
+		tmpY := d.y + d.vy + fy/2.0
 
 		// 越界判断
 		if int(tmpX) < 0 || int(tmpX) > w.width-1 || int(tmpY) < 0 || int(tmpY) > w.height-1 {
@@ -245,7 +250,6 @@ func (d *Droplet) MoveByFallPower(m *Topomap, w *WaterMap) {
 		d.x, d.y = tmpX, tmpY
 		d.hisway = append(d.hisway, newIdx)
 		d.fallPower--
-
 	}
 }
 
