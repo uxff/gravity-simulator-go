@@ -124,17 +124,17 @@ func (w *WaterMap) UpdateVectorByQuantity(m *Topomap, ring int, powerRate float3
 
 func UpdateDroplets(times int, drops []*Droplet, m *Topomap, w *WaterMap) {
 	for i := 1; i <= times; i++ {
-		wg := sync.WaitGroup{}
+		wg := &sync.WaitGroup{}
 		for _, d := range drops {
 			wg.Add(1)
-			go func() {
+			go func(d *Droplet) {
 				d.Move(m, w)
 				wg.Done()
-			}()
+			}(d)
 		}
 
+		wg.Wait()
 		if i%100 == 0 {
-			wg.Wait()
 			w.UpdateVectorByQuantity(m, 2, 0.1)
 		}
 	}
@@ -198,13 +198,15 @@ func (d *Droplet) Move(m *Topomap, w *WaterMap) {
 	mu.Lock()
 	defer mu.Unlock()
 
-	w.data[oldIdx].h--
-	w.data[newIdx].h++
-	w.data[oldIdx].q++ // 流出，才算流量
+	// droplet no need lock
 	d.x, d.y = tmpX, tmpY
 	d.hisway = append(d.hisway, newIdx)
 	d.vx, d.vy = w.data[oldIdx].xPower, w.data[oldIdx].yPower
 	d.fallPower += int(m.data[oldIdx]-m.data[newIdx]) * 100
+
+	w.data[oldIdx].h--
+	w.data[newIdx].h++
+	w.data[oldIdx].q++ // 流出，才算流量
 }
 
 // 根据落差能量移动 类似滑行 slip todo:浮动(撒欢)
@@ -244,12 +246,14 @@ func (d *Droplet) MoveByFallPower(m *Topomap, w *WaterMap) {
 			return
 		}
 
-		w.data[oldIdx].h--
-		w.data[newIdx].h++
-		w.data[oldIdx].q++ // 流出，才算流量
+		// droplet no need lock
 		d.x, d.y = tmpX, tmpY
 		d.hisway = append(d.hisway, newIdx)
 		d.fallPower--
+
+		w.data[oldIdx].h--
+		w.data[newIdx].h++
+		w.data[oldIdx].q++ // 流出，才算流量
 	}
 }
 
@@ -467,7 +471,7 @@ func main() {
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
 			tmpColor = 0
-			// 收集ridgeHills产生的attitude
+			// 收集ridgeHills产生的altitude
 			for _, r := range ridgeHills {
 				distM := (x-r.x)*(x-r.x) + (y-r.y)*(y-r.y)
 				rn := (r.r)
