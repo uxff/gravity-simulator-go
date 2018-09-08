@@ -25,10 +25,10 @@ import (
 type Droplet struct {
 	x         float32
 	y         float32
-	hisway    []int
 	fallPower int     // 落差能量
 	vx        float32 // 滑行速度
 	vy        float32
+	hisway    []int
 }
 
 // 将变成固定不移动
@@ -53,8 +53,7 @@ type WaterMap struct {
 	height int
 }
 
-// 先处理场向量
-// 再注水流动
+// 先处理场向量 // 再注水流动
 
 // 预先处理每个点的场向量  只计算地势的影响，不考虑流量的影响
 // 假设每个点都有一个场，计算出这个场的方向
@@ -63,8 +62,7 @@ type WaterMap struct {
 // @param int ring 表示计算到几环 默认2环
 func (w *WaterMap) AssignVector(m *Topomap, ring int) {
 	for idx, curDot := range w.data {
-		// xPower, yPower 单位为1
-		var xPower, yPower int
+		var xPower, yPower int // xPower, yPower 单位为1
 		// 2nd ring
 		_, lowestPos := curDot.getLowestNeighbors(curDot.getNeighbors(w), m)
 		for _, neiPos := range lowestPos {
@@ -91,13 +89,11 @@ func (w *WaterMap) AssignVector(m *Topomap, ring int) {
 }
 
 // 按照周围流量更新场向量
-// 周期性执行 todo: has bug here.
 // powerRate 一般指定小于1 比如0.1
 func (w *WaterMap) UpdateVectorByQuantity(m *Topomap, ring int, powerRate float32) {
 	for idx, curDot := range w.data {
 		//go func() {
-		// xPower, yPower 单位为1
-		var xPower, yPower int
+		var xPower, yPower int // xPower, yPower 单位为1
 		// 2nd ring
 		_, mostQuanPos := curDot.getPostQuanNeighbors(curDot.getNeighbors(w), w)
 		for _, neiPos := range mostQuanPos {
@@ -122,7 +118,7 @@ func (w *WaterMap) UpdateVectorByQuantity(m *Topomap, ring int, powerRate float3
 	}
 }
 
-func UpdateDroplets(times int, drops []*Droplet, m *Topomap, w *WaterMap) {
+func UpdateDroplets(times int, drops []*Droplet, m *Topomap, w *WaterMap) []*Droplet {
 	for i := 1; i <= times; i++ {
 		wg := &sync.WaitGroup{}
 		for _, d := range drops {
@@ -136,8 +132,25 @@ func UpdateDroplets(times int, drops []*Droplet, m *Topomap, w *WaterMap) {
 		wg.Wait()
 		if i%100 == 0 {
 			w.UpdateVectorByQuantity(m, 2, 0.1)
+			drops = ClearDroplets(drops)
+			log.Printf("drops cleard len=%d", len(drops))
 		}
 	}
+	return drops
+}
+
+func ClearDroplets(drops []*Droplet) []*Droplet {
+	newDrops := make([]*Droplet, 0)
+	for idx, d := range drops {
+		if d.vx == 0 && d.vy == 0 {
+			log.Printf("clear:[%d]=%+v", idx, *d)
+			//drops = append(drops[:idx], drops[idx+1:]...)//panic
+			//idx--
+			continue
+		}
+		newDrops = append(newDrops, d)
+	}
+	return newDrops
 }
 
 func MakeDroplet(w *WaterMap) *Droplet {
@@ -148,13 +161,8 @@ func MakeDroplet(w *WaterMap) *Droplet {
 		hisway: []int{idx},
 	}
 
-	mu := sync.Mutex{}
-	mu.Lock()
-	defer mu.Unlock()
-
 	w.data[idx].h++
 	//w.data[idx].q++ //初次不算流量
-
 	return d
 }
 
@@ -514,8 +522,8 @@ func main() {
 		drops[di] = MakeDroplet(&w)
 	}
 
-	UpdateDroplets(*times, drops, &m, &w)
-	log.Printf("update done. times=%d num drops=%d", *times, *dropNum)
+	drops = UpdateDroplets(*times, drops, &m, &w)
+	log.Printf("update done. times=%d num drops=%d->%d", *times, *dropNum, len(drops))
 
 	// then draw
 	img := image.NewRGBA(image.Rect(0, 0, width**zoom, height**zoom))
@@ -544,6 +552,9 @@ func main() {
 	}
 	wgm.Wait()
 	log.Println("done w,h=", width, height, "maxColor=", maxColor, "nHills=", *nHills, "nRidge=", *nRidge, "ridgelen=", *ridgeLen)
+	for di, d := range drops {
+		log.Printf("[%d]=%+v", di, *d)
+	}
 
 }
 
