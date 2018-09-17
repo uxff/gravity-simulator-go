@@ -11,3 +11,5 @@ todo: use updater
 #represent topomap:
 <img src="https://github.com/uxff/gravity_sim_go/raw/master/image/topomap-20180902070444.png">
 
+- ridge appear
+- highland cover
