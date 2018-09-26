@@ -19,9 +19,9 @@
 
 ## 思路：
 
-有两个程序,calc_server和websocket_server  
-calc_server -> 计算数据保存到file/mc/redis  
-浏览器查看 -> websocket_server ->读取file/mc/redis的数据  
+有两个程序,calc_server和websocket_server
+calc_server -> 计算数据保存到file/mc/redis
+浏览器查看 -> websocket_server ->读取file/mc/redis的数据
 
 查看需要浏览器支持WebGL,比如chrome/firefox。
 ie各个版本/360急速/360安全浏览器无法查看。
@@ -166,6 +166,8 @@ $ ./websocket_server -addr 192.168.12.150:8081
 - 我们人类很庆幸出现在一个漩涡星系中。
 
 - 生命出现在一个动态变化，似乎不平衡，但又有些安静的角落里。比如太阳系，并不在银河系里，但又不在悬臂上。
+
+- 环形星系，车轮星系，外部的环应该是迅速扩大的。像火焰一样，迅速把星系周围的气体燃烧起来。
 
 ## 其他
 
