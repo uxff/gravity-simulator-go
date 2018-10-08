@@ -12,20 +12,25 @@ import (
 	"log"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/nwaples/rardecode"
 )
 
-func ReadLine(fileName string, handler func(string)) error {
+func ReadLine(fileName string, handleLine func(string), handleEnd func()) error {
 	f, err := os.Open(fileName)
 	if err != nil {
 		return err
+	}
+	defer f.Close()
+	if handleEnd != nil {
+		defer handleEnd()
 	}
 	buf := bufio.NewReader(f)
 	for {
 		line, err := buf.ReadString('\n')
 		line = strings.TrimSpace(line)
-		handler(line)
+		handleLine(line)
 		if err != nil {
 			if err == io.EOF {
 				return nil
@@ -48,19 +53,29 @@ func main() {
 	done := make(chan bool, 1)
 
 	go ReadLine(*weaklib, func(str string) {
+		log.Printf("will try %s", str)
+		str = strings.TrimSpace(str)
 		rangePwd <- str
+	}, func() {
+		log.Printf("read end")
+		close(rangePwd)
 	})
+
+	wg := &sync.WaitGroup{}
 
 	for {
 		select {
 		case pwd := <-rangePwd:
 			if pwd == "" {
-				break
+				log.Printf("empty, will over")
+				goto end
 			}
 
 			//log.Printf("try password:%s", pwd)
+			wg.Add(1)
 
 			go func(pwd string) {
+				defer wg.Done()
 
 				rarreader, err := rardecode.OpenReader(*rarFileName, pwd)
 				if err != nil {
@@ -93,6 +108,7 @@ func main() {
 					log.Printf("the legal pass=%s", pwd)
 					done <- true
 				}
+				log.Printf("pass is not enumed, lineNoInRar=%d", lineNoInRar)
 			}(pwd)
 
 		case <-done:
@@ -100,5 +116,7 @@ func main() {
 		}
 	}
 
+end:
+	wg.Wait()
 	// read rar end
 }
