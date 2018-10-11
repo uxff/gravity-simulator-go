@@ -55,10 +55,15 @@ func main() {
 	go ReadLine(*weaklib, func(str string) {
 		log.Printf("will try %s", str)
 		str = strings.TrimSpace(str)
+		if str == "" {
+			return
+		}
 		rangePwd <- str
 	}, func() {
 		log.Printf("read end")
+		rangePwd <- ""
 		close(rangePwd)
+		//done <- true
 	})
 
 	wg := &sync.WaitGroup{}
@@ -67,7 +72,7 @@ func main() {
 		select {
 		case pwd := <-rangePwd:
 			if pwd == "" {
-				log.Printf("empty, will over")
+				log.Printf("end line, will over")
 				goto end
 			}
 
@@ -106,13 +111,17 @@ func main() {
 
 				if isOk == true {
 					log.Printf("the legal pass=%s", pwd)
-					done <- true
+					//done <- true
+					//goto end
+					return
 				}
 				log.Printf("pass is not enumed, lineNoInRar=%d", lineNoInRar)
 			}(pwd)
 
 		case <-done:
-			break
+			log.Printf("done occur")
+			goto end
+			//break
 		}
 	}
 
