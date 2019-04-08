@@ -80,7 +80,7 @@ func UpdateOrbsOnce(oList []Orb, nStep int) int64 {
 	for i := 0; i < thelen; i++ {
 		//oList[i].idx = i
 		//oList[i].crashedBy = -1
-		go oList[i].Update(oList, i)
+		go func(i int) {oList[i].Update(oList, i)}(i)
 	}
 	for {
 		if nCount >= thelen {
@@ -105,8 +105,6 @@ func UpdateOrbsOnce(oList []Orb, nStep int) int64 {
 			target.Vz = (targetMassOld*target.Vz + o.Mass*o.Vz) / target.Mass
 			o.Mass = 0
 			//o.Stat = 2
-			//default:
-			//	log.Println("nothing when select")
 		}
 	}
 	return int64(thelen) * int64(nCount)

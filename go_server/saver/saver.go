@@ -11,10 +11,10 @@ import (
 	"strings"
 	"time"
 
-	orbs "../orbs"
-	//redis "github.com/alphazero/Go-Redis"
-	"github.com/bradfitz/gomemcache/memcache"
+	"github.com/uxff/gravity-simulator-go/go_server/orbs"
+
 	redigo "github.com/garyburd/redigo/redis"
+	"github.com/bradfitz/gomemcache/memcache"
 )
 
 const (

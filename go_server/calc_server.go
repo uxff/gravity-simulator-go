@@ -11,8 +11,10 @@ import (
 	"strings"
 	"time"
 
-	orbs "./orbs"
-	saverpkg "./saver"
+	//orbs "./orbs"
+	orbs "github.com/uxff/gravity-simulator-go/go_server/orbs"
+	//saverpkg "./saver"
+	saverpkg "github.com/uxff/gravity-simulator-go/go_server/saver"
 )
 
 // 默认最大天体数量
