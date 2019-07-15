@@ -33,9 +33,9 @@ chrome下支持100万粒子查看,并保持50+fps的流畅度,内存占用0.9-1.
 Mac/Linux/Windows
 ```
 #编译计算服务器
-$ go build go_server/calc_server.go
+$ go build go_server/calcserver/calc_server.go
 #编译通信服务器
-$ go build go_server/websocket_server.go
+$ go build go_server/websocketserver/websocket_server.go
 ```
 
 ## 使用方法：

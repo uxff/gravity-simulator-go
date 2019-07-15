@@ -12,9 +12,9 @@ import (
 	"time"
 
 	//orbs "./orbs"
-	orbs "github.com/uxff/gravity-simulator-go/go_server/orbs"
-	//saverpkg "./saver"
-	saverpkg "github.com/uxff/gravity-simulator-go/go_server/saver"
+	"github.com/uxff/gravity-simulator-go/go_server/orbs"
+	//saverpkg "./theSaver"
+	"github.com/uxff/gravity-simulator-go/go_server/saver"
 )
 
 // 默认最大天体数量
@@ -23,7 +23,7 @@ const MAX_PARTICLES = 100
 // 默认计算步数
 const FOR_TIMES = 10000
 
-var saver = saverpkg.Saver{}
+var theSaver = saver.Saver{}
 
 func main() {
 	numOrbs := MAX_PARTICLES
@@ -70,8 +70,8 @@ func main() {
 		loadPath = savePath
 	}
 
-	saver.SetLoadpath(loadPath)
-	saver.SetSavepath(savePath)
+	theSaver.SetLoadpath(loadPath)
+	theSaver.SetSavepath(savePath)
 
 	var oList []orbs.Orb
 
@@ -83,13 +83,13 @@ func main() {
 		initConfig := orbs.InitConfig{*configMass, *configWide, *configVelo, *configStyleArrange, *configStyleAssemble, *bigMass, *bigNum, *bigMassStyle}
 		oList = orbs.InitOrbs(numOrbs, &initConfig)
 	} else {
-		oList = saver.GetList(loadKey)
+		oList = theSaver.GetList(loadKey)
 		// 合并 取出savekey的数据，合并loadkey的数据后存放到savekey
 		if *doMerge {
 			if *loadKey == *saveKey {
 				fmt.Println("loadkey must not equal to save key when merge")
 			} else {
-				mList := saver.GetList(saveKey)
+				mList := theSaver.GetList(saveKey)
 				oList = append(oList, mList...)
 				// 重置id
 				for i := 0; i < len(oList); i++ {
@@ -99,7 +99,7 @@ func main() {
 						oList[i].Id = int32(i)
 					}
 				}
-				saver.SaveList(saveKey, oList)
+				theSaver.SaveList(saveKey, oList)
 			}
 		}
 		numOrbs = len(oList)
@@ -182,7 +182,7 @@ func main() {
 		tmpTimes := 0
 		for {
 			time.Sleep(time.Millisecond * time.Duration(*saveDuration))
-			saver.SaveList(saveKey, oList)
+			theSaver.SaveList(saveKey, oList)
 			tmpTimes++
 			if tmpTimes > 10 {
 				tmpTimes = 0
@@ -197,7 +197,7 @@ func main() {
 	//		realTimes += perTimes
 	//		//		tmpTimes += perTimes
 	//		//		if tmpTimes > 10000000 {
-	//		//			saver.SaveList(saveKey, oList)
+	//		//			theSaver.SaveList(saveKey, oList)
 	//		//			if i%10 == 1 { //orbs.GetCrashed()%10 == 9 &&
 	//		//				oList = orbs.ClearOrbList(oList)
 	//		//			}
@@ -213,13 +213,13 @@ func main() {
 	fmt.Printf("after calc, orbs:%d real times:%d used time:%6fs CPS:%e\n", len(oList), realTimes, timeUsed, float64(realTimes)/timeUsed)
 	orbs.ShowMonitorInfo()
 
-	saver.SaveList(saveKey, oList)
+	theSaver.SaveList(saveKey, oList)
 
 	endTimeNano = time.Now().UnixNano()
 	timeUsed2 := float64(endTimeNano-startTimeNano) / 1000000000.0
-	fmt.Printf("all used time with save:%6fs saveTimes:%d save/sec:%.2f clearTimes:%d crashed:%d\n", timeUsed2, saver.GetSavetimes(), float64(saver.GetSavetimes())/timeUsed, orbs.GetClearTimes(), orbs.GetCrashed())
+	fmt.Printf("all used time with save:%6fs saveTimes:%d save/sec:%.2f clearTimes:%d crashed:%d\n", timeUsed2, theSaver.GetSavetimes(), float64(theSaver.GetSavetimes())/timeUsed, orbs.GetClearTimes(), orbs.GetCrashed())
 
-	saver.Clear()
+	theSaver.Clear()
 }
 
 /*
