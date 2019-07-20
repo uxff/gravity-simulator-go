@@ -159,6 +159,8 @@ $ ./websocket_server -addr 192.168.12.150:8081
 
 - 一个漩涡结构的星系，其形状并不能稳定维持很长时间以上，即便寿命很长，他每经过10亿年的样子是完全不一样的。
 
+- 银河系从诞生到现在，自转不超过50圈。这么少的圈数，还很难形成稳定的沉淀结构，比如椭球星系一样的结构。
+
 - 一个星系状态达到椭圆星系以后，可以上百亿年保持这种形状。
 
 - 在一个椭圆星系中的文明，也许是悲哀的，虽然有稳定的条件，但是没有新星的出现催化生命的进化，提供丰富的原材料。
@@ -173,3 +175,8 @@ $ ./websocket_server -addr 192.168.12.150:8081
 
 - [js gravity simulator](https://github.com/uxff/gravity-simulator)
 - [gravity simulator mpi](https://github.com/uxff/gravity-simulator-mpi)
+
+cps:
+
+i7 4720H | 1.6e+08
+i7 8750H | 6.5e+08 
