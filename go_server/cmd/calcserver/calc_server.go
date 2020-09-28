@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+
 	//"net/url"
 	"runtime"
 	"strconv"
@@ -17,17 +18,17 @@ import (
 	"github.com/uxff/gravity-simulator-go/go_server/saver"
 )
 
-// 默认最大天体数量
-const MAX_PARTICLES = 100
+// MaxParticles 默认最大天体数量
+const MaxParticles = 100
 
-// 默认计算步数
-const FOR_TIMES = 10000
+// LoopTimes 默认计算步数
+const LoopTimes = 10000
 
 var theSaver = saver.Saver{}
 
 func main() {
-	numOrbs := MAX_PARTICLES
-	numTimes := FOR_TIMES
+	numOrbs := MaxParticles
+	numTimes := LoopTimes
 	var numCpu int
 
 	flag.IntVar(&numOrbs, "init-orbs", 0, "how many orbs init, do init when its value >1")
