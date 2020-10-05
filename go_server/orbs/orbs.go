@@ -80,7 +80,7 @@ func UpdateOrbsOnce(oList []Orb, nStep int) int64 {
 	for i := 0; i < thelen; i++ {
 		//oList[i].idx = i
 		//oList[i].crashedBy = -1
-		go func(i int) {oList[i].Update(oList, i)}(i)
+		go func(i int) { oList[i].Update(oList, i) }(i)
 	}
 	for {
 		if nCount >= thelen {
@@ -178,6 +178,10 @@ func (o *Orb) CalcGravityAll(oList []Orb, idx int) Acc {
 		} else {
 			// 作用正常，累计计算受到的所有的万有引力
 			gTmp := o.CalcGravity(&oList[i], dist)
+			// ---------- 计算斥力start ----------
+			rTmp := o.CalcRepulsion(&oList[i], dist)
+			gTmp.add(&rTmp)
+			// ---------- 计算斥力end ----------
 			gAll.Ax += gTmp.Ax
 			gAll.Ay += gTmp.Ay
 			gAll.Az += gTmp.Az
