@@ -40,10 +40,10 @@ type CrashEvent struct {
 }
 
 // 万有引力常数
-const G = 0.000005
+const G = 0.0005
 
-// 最小天体距离值 两天体距离小于此值了会相撞
-const MIN_CRITICAL_DIST = 2
+// 最小天体距离值 两天体距离小于此值了会相撞 应当远大于速度 比如大于速度1000倍以上 如果考虑斥力则使用小于1的值比较合适
+const MIN_CRITICAL_DIST = 0.2
 
 // 监控速度和加速度
 var maxVeloX, maxVeloY, maxVeloZ, maxAccX, maxAccY, maxAccZ, maxMass, allMass, allWC float64 = 0, 0, 0, 0, 0, 0, 0, 0, 0

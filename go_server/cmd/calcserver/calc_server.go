@@ -12,9 +12,7 @@ import (
 	"strings"
 	"time"
 
-	//orbs "./orbs"
 	"github.com/uxff/gravity-simulator-go/go_server/orbs"
-	//saverpkg "./theSaver"
 	"github.com/uxff/gravity-simulator-go/go_server/saver"
 )
 
