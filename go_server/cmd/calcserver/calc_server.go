@@ -41,7 +41,7 @@ func main() {
 	var bigNum = flag.Int("bignum", 1, "config of number of big mass orbs, generally center has 1")
 	var bigMassStyle = flag.Int("bigstyle", 0, "config of big mass orb distribute style: 0=center,1=outer edge,2=middle of a radius,3=random")
 	var configCpu = flag.Int("config-cpu", 0, "how many cpu u want use, 0=all")
-	var savePath = flag.String("savepath", "mc://127.0.0.1:11211", "where to save, support mc/file/redis\n\tlike: file://./filecache/")
+	var savePath = flag.String("savepath", "file://./", "where to save, support mc/file/redis\n\tlike: file://./filecache/")
 	var saveKey = flag.String("savekey", "thelist1", "key name to save, like key of memcache, or filename in save dir")
 	var loadPath = flag.String("loadpath", "", "where to load, support mc/file/redis\n\tlike: file://./filecache/, use savepath if no given")
 	var loadKey = flag.String("loadkey", "", "key name to load, like key of memcache, or filename in save dir, use savekey if no given")
@@ -89,14 +89,24 @@ func main() {
 				fmt.Println("loadkey must not equal to save key when merge")
 			} else {
 				mList := theSaver.GetList(saveKey)
-				oList = append(oList, mList...)
-				// 重置id
+				// oList = append(oList, mList...)
+				// // 重置id
+				// for i := 0; i < len(oList); i++ {
+				// 	if oList[i].Id < 0 {
+				// 		oList[i].Id = -int32(i + 1)
+				// 	} else {
+				// 		oList[i].Id = int32(i)
+				// 	}
+				// }
+				oMaxId := int32(0)
 				for i := 0; i < len(oList); i++ {
-					if oList[i].Id < 0 {
-						oList[i].Id = -int32(i + 1)
-					} else {
-						oList[i].Id = int32(i)
+					if oList[i].Id > oMaxId {
+						oMaxId = oList[i].Id
 					}
+				}
+				for i := 0; i < len(mList); i++ {
+					mList[i].Id = oMaxId + 1 + int32(i)
+					oList = append(oList, mList[i])
 				}
 				theSaver.SaveList(saveKey, oList)
 			}
@@ -145,7 +155,7 @@ func main() {
 			o := &oList[i]
 			for ek := range expParamMap {
 				s := expParamMap[ek]
-				if len(s) < 3 {
+				if len(s) < 2 {
 					fmt.Println("illegal move exp:", s)
 					continue
 				}
@@ -172,7 +182,7 @@ func main() {
 
 	}
 
-	fmt.Printf("start calc, orbs:%d will times:%d use cpu core:%d allMass=%e\n", numOrbs, int64(numTimes)*int64(numOrbs)*int64(numOrbs), numCpu, orbs.GetAllMass())
+	fmt.Printf("start calc, orbs:%d will times:%d use cpu core:%d allMass=%e\n", numOrbs, int64(numTimes)*int64(numOrbs)*int64(numOrbs), numCpu, orbs.GetAllMass(oList))
 
 	//realTimes, perTimes, tmpTimes := 0, 0, 0
 	startTimeNano := time.Now().UnixNano()
@@ -210,7 +220,7 @@ func main() {
 	endTimeNano := time.Now().UnixNano()
 	timeUsed := float64(endTimeNano-startTimeNano) / 1000000000.0
 	fmt.Printf("after calc, orbs:%d real times:%d used time:%6fs CPS:%e\n", len(oList), realTimes, timeUsed, float64(realTimes)/timeUsed)
-	orbs.ShowMonitorInfo()
+	orbs.ShowMonitorInfo(oList)
 
 	theSaver.SaveList(saveKey, oList)
 

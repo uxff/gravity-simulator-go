@@ -1,5 +1,5 @@
 /*
-	天体及天体计算框架
+天体及天体计算框架
 */
 package orbs
 
@@ -37,16 +37,20 @@ type Acc struct {
 type CrashEvent struct {
 	Idx       int
 	CrashedBy int
+	Reason    int8
 }
 
 // 万有引力常数
-const G = 0.0005
+const G = 0.000005
 
 // 最小天体距离值 两天体距离小于此值了会相撞 应当远大于速度 比如大于速度1000倍以上 如果考虑斥力则使用小于1的值比较合适
 const MIN_CRITICAL_DIST = 0.2
 
+// 天体速度差大于此值时，会被撕裂 问题: 质量凭空丢失?
+const MAX_SPLIT_SPEED = 3.0
+
 // 监控速度和加速度
-var maxVeloX, maxVeloY, maxVeloZ, maxAccX, maxAccY, maxAccZ, maxMass, allMass, allWC float64 = 0, 0, 0, 0, 0, 0, 0, 0, 0
+var maxVeloX, maxVeloY, maxVeloZ, maxAccX, maxAccY, maxAccZ, maxMass, allMass float64 = 0, 0, 0, 0, 0, 0, 0, 0
 var maxMassId int32 = 0
 var clearTimes, willTimes, realTimes int64 = 0, 0, 0
 
@@ -76,7 +80,7 @@ func UpdateOrbsOnce(oList []Orb, nStep int) int64 {
 	thelen := len(oList)
 	nCount := 0
 	var o, target *Orb
-	var targetMassOld float64
+	// var targetMassOld float64
 	for i := 0; i < thelen; i++ {
 		//oList[i].idx = i
 		//oList[i].crashedBy = -1
@@ -98,11 +102,12 @@ func UpdateOrbsOnce(oList []Orb, nStep int) int64 {
 			// 只处理自己被谁撞击合并
 			target = &oList[anEvent.CrashedBy]
 			log.Println("a CrashEvent:", o.Id, "crashed by", target.Id, "index:", anEvent, "nCrashed:", nCrashed, "nStep:", nStep)
-			targetMassOld = target.Mass
+			// targetMassOld = target.Mass
 			target.Mass += o.Mass
-			target.Vx = (targetMassOld*target.Vx + o.Mass*o.Vx) / target.Mass
-			target.Vy = (targetMassOld*target.Vy + o.Mass*o.Vy) / target.Mass
-			target.Vz = (targetMassOld*target.Vz + o.Mass*o.Vz) / target.Mass
+			// 碰撞后动量传递 有必要？
+			// target.Vx = (targetMassOld*target.Vx + o.Mass*o.Vx) / target.Mass
+			// target.Vy = (targetMassOld*target.Vy + o.Mass*o.Vy) / target.Mass
+			// target.Vz = (targetMassOld*target.Vz + o.Mass*o.Vz) / target.Mass
 			o.Mass = 0
 			//o.Stat = 2
 		}
@@ -113,7 +118,7 @@ func UpdateOrbsOnce(oList []Orb, nStep int) int64 {
 // 天体运动一次
 func (o *Orb) Update(oList []Orb, idx int) {
 	// 先把位置移动起来，再计算环境中的加速度，再更新速度，为了更好地解决并行计算数据同步问题
-	if o.Id >= 0 /*o.Stat == 1*/ {
+	if o.Id > 0 /*o.Stat == 1*/ {
 		aAll := o.CalcGravityAll(oList, idx)
 		o.X += o.Vx
 		o.Y += o.Vy
@@ -160,17 +165,23 @@ func (o *Orb) CalcGravityAll(oList []Orb, idx int) Acc {
 
 		dist := o.CalcDist(target)
 
+		crashReason := int8(0)
 		// 距离太近，被撞
-		isTooNearly := dist*dist < MIN_CRITICAL_DIST*MIN_CRITICAL_DIST
+		if isTooNearly := dist*dist < MIN_CRITICAL_DIST*MIN_CRITICAL_DIST; isTooNearly {
+			crashReason = crashReason | 1
+		}
 		// 速度太快，被撕裂 me ripped by ta
-		isMeRipped := dist < math.Sqrt(o.Vx*o.Vx+o.Vy*o.Vy+o.Vz*o.Vz)*8
+		// isMeRipped := dist < math.Sqrt(o.Vx*o.Vx+o.Vy*o.Vy+o.Vz*o.Vz)*8
+		if isMeRipped := o.Vx > MAX_SPLIT_SPEED || o.Vy > MAX_SPLIT_SPEED || o.Vz > MAX_SPLIT_SPEED; isMeRipped {
+			crashReason = crashReason | 2
+		}
 
-		if isTooNearly || isMeRipped {
+		if crashReason > 0 {
 			// 碰撞机制 非弹性碰撞 动量守恒 m1v1+m2v2=(m1+m2)v
 			if o.Mass < target.Mass {
 				// 碰撞事件交给主goroutine处理对方的质量改变，这里发送信息，不做修改操作
 				o.Id = -o.Id //o.Stat = 2 // 此处必须对自己标记，否则会出现被多个ta撞击的事件
-				crashEventChan <- CrashEvent{idx, i}
+				crashEventChan <- CrashEvent{idx, i, crashReason}
 				//o.crashedBy = i // 不能取target.idx // 待思考为什么 协程间数据共享，不安全
 				// 由于并发数据分离，当前goroutine只允许操作当前orb,不允许操作别的orb，所以不允许操作ta的数据
 			}
@@ -179,9 +190,13 @@ func (o *Orb) CalcGravityAll(oList []Orb, idx int) Acc {
 			// 作用正常，累计计算受到的所有的万有引力
 			gTmp := o.CalcGravity(&oList[i], dist)
 			// ---------- 计算斥力start ----------
-			rTmp := o.CalcRepulsion(&oList[i], dist)
-			gTmp.add(&rTmp)
+			// rTmp := o.CalcRepulsionF(&oList[i], dist)
+			// gTmp.add(&rTmp)
 			// ---------- 计算斥力end ----------
+			// ---------- 附加计算旋转力start ----------
+			// spinForce := o.CalcSpinningF(&oList[i], dist)
+			// gTmp.add(&spinForce)
+			// ---------- 附加计算旋转力end ----------
 			gAll.Ax += gTmp.Ax
 			gAll.Ay += gTmp.Ay
 			gAll.Az += gTmp.Az
@@ -225,10 +240,10 @@ func (o *Orb) SetCrashedBy(crashedBy int) {
 */
 // 清理orbList中的垃圾
 func ClearOrbList(oList []Orb) []Orb {
-	allWC = 0
+	allMass = 0
 	//var alive int = len(oList)
 	for i := 0; i < len(oList); i++ {
-		allWC += oList[i].Mass
+		allMass += oList[i].Mass
 		if oList[i].Id < 0 {
 			oList = append(oList[:i], oList[i+1:]...)
 			i--
@@ -241,8 +256,8 @@ func ClearOrbList(oList []Orb) []Orb {
 	return oList
 }
 
-func ShowMonitorInfo() {
-	log.Printf("maxVelo=%.6g %.6g %.6g maxAcc=%.6g %.6g %.6g maxMass=%d %e allMass=%e\n", maxVeloX, maxVeloY, maxVeloZ, maxAccX, maxAccY, maxAccZ, maxMassId, maxMass, allWC)
+func ShowMonitorInfo(oList []Orb) {
+	log.Printf("maxVelo=%.6g %.6g %.6g maxAcc=%.6g %.6g %.6g maxMass(%d)=%e allMass=%e\n", maxVeloX, maxVeloY, maxVeloZ, maxAccX, maxAccY, maxAccZ, maxMassId, maxMass, GetAllMass(oList))
 }
 func GetClearTimes() int64 {
 	return clearTimes
@@ -250,12 +265,17 @@ func GetClearTimes() int64 {
 func GetCrashed() int {
 	return nCrashed
 }
-func GetAllMass() float64 {
+func GetAllMass(oList []Orb) float64 {
+	allMass = 0
+	for i := 0; i < len(oList); i++ {
+		allMass += oList[i].Mass
+	}
 	return allMass
 }
-func GetRealTimes() int64 {
-	return realTimes
-}
-func GetWillTimes() int64 {
-	return willTimes
-}
+
+// func GetRealTimes() int64 {
+// 	return realTimes
+// }
+// func GetWillTimes() int64 {
+// 	return willTimes
+// }

@@ -8,7 +8,7 @@ const (
 // 斥力与距离的三次方成反比
 
 // 计算天体与目标的引力 与距离三次方成反比
-func (o *Orb) CalcRepulsion(target *Orb, dist float64) Acc {
+func (o *Orb) CalcRepulsionF(target *Orb, dist float64) Acc {
 	var a Acc
 
 	// 万有斥力

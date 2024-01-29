@@ -12,9 +12,9 @@
 
 效果图：
 
-<img src="https://github.com/uxff/gravity_sim_go/raw/master/image/gravity_sim_20170430204800.jpg">
-<img src="https://github.com/uxff/gravity_sim_go/raw/master/image/gravity_sim_20170430213314.jpg">
-<img src="https://github.com/uxff/gravity_sim_go/raw/master/image/gravity_sim_20170430210511.jpg">
+<img src="https://github.com/uxff/gravity-simulator-go/raw/master/image/gravity_sim_20170430204800.jpg">
+<img src="https://github.com/uxff/gravity-simulator-go/raw/master/image/gravity_sim_20170430213314.jpg">
+<img src="https://github.com/uxff/gravity-simulator-go/raw/master/image/gravity_sim_20170430210511.jpg">
 
 
 ## 思路：
