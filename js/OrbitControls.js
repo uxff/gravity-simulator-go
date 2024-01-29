@@ -128,8 +128,8 @@ THREE.OrbitControls = function ( object, domElement ) {
 	// pass in distance in world space to move left
 	this.panLeft = function ( distance ) {
 
-		var panOffset = new THREE.Vector3();
-		var te = this.object.matrix.elements;
+		let panOffset = new THREE.Vector3();
+		let te = this.object.matrix.elements;
 		// get X column of matrix
 		panOffset.set( te[0], te[1], te[2] );
 		panOffset.multiplyScalar(-distance);
@@ -141,8 +141,8 @@ THREE.OrbitControls = function ( object, domElement ) {
 	// pass in distance in world space to move up
 	this.panUp = function ( distance ) {
 
-		var panOffset = new THREE.Vector3();
-		var te = this.object.matrix.elements;
+		let panOffset = new THREE.Vector3();
+		let te = this.object.matrix.elements;
 		// get Y column of matrix
 		panOffset.set( te[4], te[5], te[6] );
 		panOffset.multiplyScalar(distance);
@@ -154,14 +154,14 @@ THREE.OrbitControls = function ( object, domElement ) {
 	// right and down are positive
 	this.pan = function ( delta ) {
 
-		var element = scope.domElement === document ? scope.domElement.body : scope.domElement;
+		let element = scope.domElement === document ? scope.domElement.body : scope.domElement;
 
 		if ( scope.object.fov !== undefined ) {
 
 			// perspective
-			var position = scope.object.position;
-			var offset = position.clone().sub( scope.target );
-			var targetDistance = offset.length();
+			let position = scope.object.position;
+			let offset = position.clone().sub( scope.target );
+			let targetDistance = offset.length();
 
 			// half of the fov is center to top of screen
 			targetDistance *= Math.tan( (scope.object.fov/2) * Math.PI / 180.0 );
@@ -210,16 +210,16 @@ THREE.OrbitControls = function ( object, domElement ) {
 
 	this.update = function () {
 
-		var position = this.object.position;
-		var offset = position.clone().sub( this.target );
+		let position = this.object.position;
+		let offset = position.clone().sub( this.target );
 
 		// angle from z-axis around y-axis
 
-		var theta = Math.atan2( offset.x, offset.z );
+		let theta = Math.atan2( offset.x, offset.z );
 
 		// angle from y-axis
 
-		var phi = Math.atan2( Math.sqrt( offset.x * offset.x + offset.z * offset.z ), offset.y );
+		let phi = Math.atan2( Math.sqrt( offset.x * offset.x + offset.z * offset.z ), offset.y );
 
 		if ( this.autoRotate ) {
 
@@ -236,7 +236,7 @@ THREE.OrbitControls = function ( object, domElement ) {
 		// restrict phi to be betwee EPS and PI-EPS
 		phi = Math.max( EPS, Math.min( Math.PI - EPS, phi ) );
 
-		var radius = offset.length() * scale;
+		let radius = offset.length() * scale;
 
 		// restrict radius to be between desired limits
 		radius = Math.max( this.minDistance, Math.min( this.maxDistance, radius ) );
@@ -320,7 +320,7 @@ THREE.OrbitControls = function ( object, domElement ) {
 
 		event.preventDefault();
 
-		var element = scope.domElement === document ? scope.domElement.body : scope.domElement;
+		let element = scope.domElement === document ? scope.domElement.body : scope.domElement;
 
 		if ( state === STATE.ROTATE ) {
 
@@ -389,7 +389,7 @@ THREE.OrbitControls = function ( object, domElement ) {
 
 		if ( scope.enabled === false || scope.noZoom === true ) return;
 
-		var delta = 0;
+		let delta = 0;
 
 		if ( event.wheelDelta ) { // WebKit / Opera / Explorer 9
 
@@ -421,7 +421,7 @@ THREE.OrbitControls = function ( object, domElement ) {
 
 		// pan a pixel - I guess for precise positioning?
 		// Greggman fix: https://github.com/greggman/three.js/commit/fde9f9917d6d8381f06bf22cdff766029d1761be
-		var needUpdate = false;
+		let needUpdate = false;
 		
 		switch ( event.keyCode ) {
 
@@ -471,9 +471,9 @@ THREE.OrbitControls = function ( object, domElement ) {
 
 				state = STATE.TOUCH_DOLLY;
 
-				var dx = event.touches[ 0 ].pageX - event.touches[ 1 ].pageX;
-				var dy = event.touches[ 0 ].pageY - event.touches[ 1 ].pageY;
-				var distance = Math.sqrt( dx * dx + dy * dy );
+				let dx = event.touches[ 0 ].pageX - event.touches[ 1 ].pageX;
+				let dy = event.touches[ 0 ].pageY - event.touches[ 1 ].pageY;
+				let distance = Math.sqrt( dx * dx + dy * dy );
 				dollyStart.set( 0, distance );
 				break;
 
@@ -498,7 +498,7 @@ THREE.OrbitControls = function ( object, domElement ) {
 		event.preventDefault();
 		event.stopPropagation();
 
-		var element = scope.domElement === document ? scope.domElement.body : scope.domElement;
+		let element = scope.domElement === document ? scope.domElement.body : scope.domElement;
 
 		switch ( event.touches.length ) {
 
@@ -521,9 +521,9 @@ THREE.OrbitControls = function ( object, domElement ) {
 				if ( scope.noZoom === true ) { return; }
 				if ( state !== STATE.TOUCH_DOLLY ) { return; }
 
-				var dx = event.touches[ 0 ].pageX - event.touches[ 1 ].pageX;
-				var dy = event.touches[ 0 ].pageY - event.touches[ 1 ].pageY;
-				var distance = Math.sqrt( dx * dx + dy * dy );
+				let dx = event.touches[ 0 ].pageX - event.touches[ 1 ].pageX;
+				let dy = event.touches[ 0 ].pageY - event.touches[ 1 ].pageY;
+				let distance = Math.sqrt( dx * dx + dy * dy );
 
 				dollyEnd.set( 0, distance );
 				dollyDelta.subVectors( dollyEnd, dollyStart );

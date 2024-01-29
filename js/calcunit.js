@@ -37,9 +37,9 @@ var CalcUnit = {
         } else {
             //console.log(this.feedList);
             for (i in this.feedList) {
-                var crashedBy = calcOrbs(this.feedList[i], this.orbList);
-                var o = this.orbList[this.feedList[i]];
-                var content = 'cmd=recvorb&k='+this.key+'&idx='+this.feedList[i]
+                let crashedBy = calcOrbs(this.feedList[i], this.orbList);
+                let o = this.orbList[this.feedList[i]];
+                let content = 'cmd=recvorb&k='+this.key+'&idx='+this.feedList[i]
                     +'&crashedBy='+crashedBy+'&o='+JSON.stringify(o)+'&stage='+this.stage;
                 MyWebsocket.doSend(content);
             }
@@ -50,11 +50,11 @@ var CalcUnit = {
         }
     },
     reloadOrbList: function() {
-        var content = 'cmd=orbs&k=thelist1';
+        let content = 'cmd=orbs&k=thelist1';
         MyWebsocket.doSend(content);
     },
     reloadFeedList: function() {
-        var content = 'cmd=taketask&k=thelist1&calcnum=10';
+        let content = 'cmd=taketask&k=thelist1&calcnum=10';
         MyWebsocket.doSend(content);
     },
     start: function() {
@@ -77,28 +77,28 @@ calcOrbs = function(orbId, orbList) {
         console.log('orbList as no id: '+orbId);
         return false;
     }
-    var o = orbList[orbId];
+    let o = orbList[orbId];
     if (o.st != 1 || o.m == 0) {
         console.log('orb status not ok:'+orbId, o);
         return false;
     }
-    var crashedBy = -1;
-    var gAll = {x:0,y:0,z:0};
-    for (var i in orbList) {
-        var ta = orbList[i];
+    let crashedBy = -1;
+    let gAll = {x:0,y:0,z:0};
+    for (let i in orbList) {
+        let ta = orbList[i];
         if (ta.id == o.id || ta.st != 1 || o.st != 1) {
             continue;
         }
-        var dist = calcDist(o, ta);
-        var isTooNearly = dist*dist < 2*2;
-        var isMeRipped = dist < Math.sqrt(o.vx*o.vx+o.vy*o.vy+o.vz*o.vz) * 8
+        let dist = calcDist(o, ta);
+        let isTooNearly = dist*dist < 2*2;
+        let isMeRipped = dist < Math.sqrt(o.vx*o.vx+o.vy*o.vy+o.vz*o.vz) * 8
         if (isTooNearly || isMeRipped) {
             if (o.m < ta.m) {
                 crashedBy = i;
                 o.st = 2;
             }
         } else {
-            var gTmp = calcGravity(o, ta, dist);
+            let gTmp = calcGravity(o, ta, dist);
             gAll.x += gTmp.x;
             gAll.y += gTmp.y;
             gAll.z += gTmp.z;
@@ -123,8 +123,8 @@ calcDist = function(o, target) {
     return Math.sqrt((o.x-target.x)*(o.x-target.x) + (o.y-target.y)*(o.y-target.y) + (o.z-target.z)*(o.z-target.z));
 }
 calcGravity = function(o, target, dist) {
-    var a = target.m / (dist*dist) * G;
-    var aAll = {x:0,y:0,z:0};
+    let a = target.m / (dist*dist) * G;
+    let aAll = {x:0,y:0,z:0};
     aAll.x = - a * (o.x - target.x) / dist;
     aAll.y = - a * (o.y - target.y) / dist;
     aAll.z = - a * (o.z - target.z) / dist;

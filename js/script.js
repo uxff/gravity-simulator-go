@@ -52,11 +52,11 @@ var lesson1 = {
         // create main scene
         this.scene = new THREE.Scene();
 
-        var SCREEN_WIDTH = window.innerWidth,
+        let SCREEN_WIDTH = window.innerWidth,
             SCREEN_HEIGHT = window.innerHeight;
 
         // prepare camera
-        var VIEW_ANGLE = 45, ASPECT = SCREEN_WIDTH / SCREEN_HEIGHT, NEAR = 2, FAR = 1000000;
+        let VIEW_ANGLE = 45, ASPECT = SCREEN_WIDTH / SCREEN_HEIGHT, NEAR = 2, FAR = 1000000;
         this.camera = new THREE.PerspectiveCamera( VIEW_ANGLE, ASPECT, NEAR, FAR);
         this.scene.add(this.camera);
         this.camera.position.set(1500, 3000, 3000);
@@ -93,11 +93,11 @@ var lesson1 = {
         this.container.appendChild( this.stats.domElement );
 
         // 坐标系
-        var axisHelper = new THREE.AxisHelper(1000); // 500 is size
+        let axisHelper = new THREE.AxisHelper(1000); // 500 is size
         this.scene.add(axisHelper);
 
         // add directional light
-        var dLight = new THREE.DirectionalLight(0xffffff);
+        let dLight = new THREE.DirectionalLight(0xffffff);
         dLight.position.set(1, 1000, 1);
         dLight.castShadow = true;
         dLight.shadowCameraVisible = false;//true;
@@ -111,7 +111,7 @@ var lesson1 = {
         //this.scene.add(particleLight);
 
         // add simple ground
-        //var groundGeometry = new THREE.PlaneGeometry(1000, 1000, 1, 1);
+        //let groundGeometry = new THREE.PlaneGeometry(1000, 1000, 1, 1);
         //ground = new THREE.Mesh(groundGeometry, new THREE.MeshLambertMaterial({
         //    color: this.getRandColor()
         //}));
@@ -121,7 +121,7 @@ var lesson1 = {
         //this.scene.add(ground);
 
         // add sphere shape
-        //var sphere = new THREE.Mesh(new THREE.SphereGeometry(70, 32, 32), new THREE.MeshLambertMaterial({ color: this.getRandColor() }));
+        //let sphere = new THREE.Mesh(new THREE.SphereGeometry(70, 32, 32), new THREE.MeshLambertMaterial({ color: this.getRandColor() }));
         //sphere.rotation.y = -Math.PI / 2;
         //sphere.position.x = 100;
         //sphere.position.y = 150;
@@ -140,15 +140,15 @@ var lesson1 = {
             return false;
         }
         NUM_PARTICLES = list.length;
-        for (var i in this.orbList) {
+        for (let i in this.orbList) {
             this.scene.remove(this.orbList[i]);
         }
-        for (var i in list) {
-            var orb = list[i];
-            var orbColor = new THREE.Color();
+        for (let i in list) {
+            let orb = list[i];
+            let orbColor = new THREE.Color();
             orbColor.setHSL( Math.random(), 1.0, 0.5 );
-            var orbSize = Math.sqrt(Math.sqrt(orb[3])) * 10;
-            var sphere = new THREE.Mesh(new THREE.SphereGeometry(orbSize, 12, 12), new THREE.MeshLambertMaterial({ color: orbColor }));
+            let orbSize = Math.sqrt(Math.sqrt(orb[3])) * 10;
+            let sphere = new THREE.Mesh(new THREE.SphereGeometry(orbSize, 12, 12), new THREE.MeshLambertMaterial({ color: orbColor }));
             //sphere.rotation.y = -Math.PI / 2;
             sphere.position.x = orb[0];
             sphere.position.y = orb[1];
@@ -168,9 +168,9 @@ var lesson1 = {
         if (list.length != NUM_PARTICLES) {
             return this.initOrbs(list);
         }
-        for (var i in list) {
-            var orb = list[i];
-            var sphere = this.orbList[i];
+        for (let i in list) {
+            let orb = list[i];
+            let sphere = this.orbList[i];
             //console.log(sphere);
             sphere.position.x = orb[0] * zoomBase;
             sphere.position.y = orb[1] * zoomBase;
@@ -181,7 +181,7 @@ var lesson1 = {
 };
 
 var RecvMessage = function(data) {
-    var cmd = data.data.cmd || undefined;
+    let cmd = data.data.cmd || undefined;
     switch (cmd) {
         case 'orbs':
             lesson1.updateOrbs(data.data.list);
@@ -231,7 +231,7 @@ function update() {
         MyWebsocket.doSend(sendVal);
     }
     //// smoothly move the particleLight
-    //var timer = Date.now() * 0.000025;
+    //let timer = Date.now() * 0.000025;
     //particleLight.position.x = Math.sin(timer * 5) * 300;
     //particleLight.position.z = Math.cos(timer * 5) * 300;
 }

@@ -44,7 +44,7 @@ var MyWebsocket = {
 
     onMessage: function (evt) {
         try {
-            var data = eval('('+evt.data+')');
+            let data = eval('('+evt.data+')');
             this.lastRecvData = evt.data;
             //console.log(data);
             if (this.receiveCallback != undefined) {
@@ -53,7 +53,7 @@ var MyWebsocket = {
         } catch (e) {
             console.log(e);
         }
-        //for (var i in data.data.list) {
+        //for (let i in data.data.list) {
         //    //writeToScreen(data.data.list[i].id);
         //}
         //websocket.close();
@@ -75,7 +75,7 @@ var MyWebsocket = {
     },
 
     writeToScreen: function (message) {
-        var pre = document.createElement("p");
+        let pre = document.createElement("p");
         pre.style.wordWrap = "break-word";
         //pre.innerHTML = message;
         //output.appendChild(pre);
