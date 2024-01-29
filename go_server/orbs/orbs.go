@@ -47,7 +47,7 @@ const G = 0.000005
 const MIN_CRITICAL_DIST = 0.2
 
 // 天体速度差大于此值时，会被撕裂 问题: 质量凭空丢失?
-const MAX_SPLIT_SPEED = 3.0
+const SPEED_LIMIT = 3.0
 
 // 监控速度和加速度
 var maxVeloX, maxVeloY, maxVeloZ, maxAccX, maxAccY, maxAccZ, maxMass, allMass float64 = 0, 0, 0, 0, 0, 0, 0, 0
@@ -127,6 +127,12 @@ func (o *Orb) Update(oList []Orb, idx int) {
 		o.Vy += aAll.Ay
 		o.Vz += aAll.Az
 		// 监控速度和加速度
+		// isMeRipped := dist < math.Sqrt(o.Vx*o.Vx+o.Vy*o.Vy+o.Vz*o.Vz)*8
+		if isMeRipped := o.Vx > SPEED_LIMIT || o.Vy > SPEED_LIMIT || o.Vz > SPEED_LIMIT; isMeRipped {
+			// crashReason = crashReason | 2
+			o.Id = -o.Id //o.Stat = 2 // 此处必须对自己标记，否则会出现被多个ta撞击的事件
+			crashEventChan <- CrashEvent{idx, 0, 2}
+		}
 		if maxVeloX < math.Abs(o.Vx) {
 			maxVeloX = o.Vx
 		}
@@ -172,9 +178,9 @@ func (o *Orb) CalcGravityAll(oList []Orb, idx int) Acc {
 		}
 		// 速度太快，被撕裂 me ripped by ta
 		// isMeRipped := dist < math.Sqrt(o.Vx*o.Vx+o.Vy*o.Vy+o.Vz*o.Vz)*8
-		if isMeRipped := o.Vx > MAX_SPLIT_SPEED || o.Vy > MAX_SPLIT_SPEED || o.Vz > MAX_SPLIT_SPEED; isMeRipped {
-			crashReason = crashReason | 2
-		}
+		// if isMeRipped := o.Vx > SPEED_LIMIT || o.Vy > SPEED_LIMIT || o.Vz > SPEED_LIMIT; isMeRipped {
+		// 	crashReason = crashReason | 2
+		// }
 
 		if crashReason > 0 {
 			// 碰撞机制 非弹性碰撞 动量守恒 m1v1+m2v2=(m1+m2)v
@@ -184,6 +190,7 @@ func (o *Orb) CalcGravityAll(oList []Orb, idx int) Acc {
 				crashEventChan <- CrashEvent{idx, i, crashReason}
 				//o.crashedBy = i // 不能取target.idx // 待思考为什么 协程间数据共享，不安全
 				// 由于并发数据分离，当前goroutine只允许操作当前orb,不允许操作别的orb，所以不允许操作ta的数据
+				break
 			}
 			// no else 在循环时可能有多个o crashed ta,但是只有一个o crashed by ta
 		} else {
