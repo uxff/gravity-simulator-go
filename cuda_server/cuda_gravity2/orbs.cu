@@ -28,12 +28,12 @@ struct OrbList {
 };
 
 const double PI = 3.14159265358979323846;
-const double G  = 0.0005;
+const double G  = 0.00005;
 const double SPEED_LIMIT = 4.0;
 const double MIN_DIST = 0.5;
 const double MASS_RANGE = 100;
 const double DISTRI_WIDE = 10000;
-const double VELO_RANGE = 0.05;
+const double VELO_RANGE = 0.005;
 
 __device__ void OrbUpdate(Orb *o, Orb *oList, int nOrb) {
   if (o->id > 0) {
@@ -90,7 +90,7 @@ void PrintOrbList(Orb *oList, int nOrb) {
   }
 }
 
-void SaveOrbList(Orb *oList, int nOrb, char* filename) {
+void SaveOrbList(Orb *oList, int nOrb, const char* filename) {
   FILE* f = fopen(filename, "w");
   if (f == NULL) {
     printf("Error opening file %s!\n", filename);
@@ -113,10 +113,10 @@ const char *saveFile = "list1.json";
 void* ThreadSavingOrbList(void* ptr) {
   OrbList *oList = (OrbList*)ptr;
   while (true) {
-    usleep(100000);
+    usleep(500000);
     // printf("I'm pretending to saving orb list to somewhere.\n");
     // PrintOrbList(oList->list, oList->n);
-    SaveOrbList(oList->list, oList->n, loadFile);
+    SaveOrbList(oList->list, oList->n, saveFile);
   }
   return NULL;
 }
@@ -219,8 +219,7 @@ int main(int argc, char *argv[]) {
       fclose(f);
     }
 
-    printf("init ok, nOrb:%d nTimes:%d, will times:%ld loadFile:%s\n", nOrb, nTimes, long(nOrb)*long(nOrb)*long(nTimes), loadFile);
-    PrintOrbList(oList, nOrb);
+    //PrintOrbList(oList, nOrb);
     clock_t timeStart = clock();
 
     // 申请device内存
@@ -230,9 +229,11 @@ int main(int argc, char *argv[]) {
     // 将host数据拷贝到device
     cudaMemcpy((void*)doList, (void*)oList, nOrb*sizeof(Orb), cudaMemcpyHostToDevice);
     
-    // 定义kernel的执行配置
-    dim3 blockSize(256);
+    // 定义kernel的执行配置 // only 1024 work well
+    dim3 blockSize(1024);
     dim3 gridSize((nOrb + blockSize.x - 1) / blockSize.x);
+
+    printf("init ok, nOrb:%d nTimes:%d, will times:%ld loadFile:%s gridSize:%d blockSize:%d\n", nOrb, nTimes, long(nOrb)*long(nOrb)*long(nTimes), loadFile, gridSize.x, blockSize.x);
 
     // Start a thread to save orb list
     OrbList list = {oList2, nOrb};
@@ -244,7 +245,7 @@ int main(int argc, char *argv[]) {
       ThreadUpdateOrb <<< gridSize, blockSize >>>(doList, nOrb);
       cudaDeviceSynchronize(); //调用次数越少越好
       if (nTimes >= 10 && (i+1)%(nTimes/10) == 0) {
-        printf("times process:%d/%d\n", i, nTimes);
+        printf("aimes process:%d/%d\n", i, nTimes);
         cudaMemcpy((void*)oList2, (void*)doList, nOrb*sizeof(Orb), cudaMemcpyDeviceToHost);
         //PrintOrbList(oList2, nOrb);
       }

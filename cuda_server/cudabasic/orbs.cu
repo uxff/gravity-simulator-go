@@ -28,7 +28,7 @@ const double SPEED_LIMIT = 4.0;
 const double MIN_DIST = 0.5;
 const double MASS_RANGE = 100;
 const double DISTRI_WIDE = 10000;
-const double VELO_RANGE = 0.05;
+const double VELO_RANGE = 0.005;
 
 __device__ void OrbUpdate(Orb *o, Orb *oList, int nOrb) {
   //printf("DEBUG:"__FILE__":%d id:%d tid:%d\n",__LINE__,o->id,threadIdx.x + blockIdx.x * blockDim.x);
@@ -48,7 +48,7 @@ __device__ void OrbUpdate(Orb *o, Orb *oList, int nOrb) {
         // here need transfer mass to target
         target->mass += o->mass; // will cause concurrency problem.
         o->mass = 0.000000001;
-        printf("Orb(%d) got crashed by dist too close\n", o->id);
+        //printf("Orb(%d) got crashed by dist too close\n", o->id);
         break;
       }
       
@@ -68,7 +68,7 @@ __device__ void OrbUpdate(Orb *o, Orb *oList, int nOrb) {
     //printf("\t[%f,%f,%f,%f,%f,%f,%f,%d](%e,%e,%e)\n", o->x, o->y, o->z, o->vx, o->vy, o->vz, o->mass, o->id, gAllx, gAlly, gAllz);
     if (o->vx > SPEED_LIMIT || o->vy > SPEED_LIMIT || o->vz > SPEED_LIMIT) {
       o->id = - o->id;
-      printf("Orb(%d) get crashed by overspeed\n", o->id);
+      //printf("Orb(%d) get crashed by overspeed\n", o->id);
       return;
     }
   }
@@ -108,8 +108,8 @@ void DiffOrbList(Orb *oList, int nOrb, Orb *oListDiff) {
 
 int main()
 {
-    int nOrb = 3;
-    int nTimes = 40000;
+    int nOrb = 30000;
+    int nTimes = 40;
     srand(time(NULL));
     
     // 申请host内存
@@ -130,7 +130,7 @@ int main()
     }
 
     printf("init ok, nOrb:%d nTimes:%d, will times:%ld\n", nOrb, nTimes, long(nOrb)*long(nOrb)*long(nTimes));
-    PrintOrbList(oList, nOrb);
+    //PrintOrbList(oList, nOrb);
     clock_t timeStart = clock();
 
     // 申请device内存
@@ -150,8 +150,8 @@ int main()
       cudaDeviceSynchronize(); //调用次数越少越好
       if (nTimes >= 10 && (i+1)%(nTimes/10) == 0) {
         printf("times process:%d/%d\n", i, nTimes);
-        cudaMemcpy((void*)oList2, (void*)doList, nOrb*sizeof(Orb), cudaMemcpyDeviceToHost);
-        PrintOrbList(oList2, nOrb);
+        //cudaMemcpy((void*)oList2, (void*)doList, nOrb*sizeof(Orb), cudaMemcpyDeviceToHost);
+        //PrintOrbList(oList2, nOrb);
       }
     }
 
@@ -167,8 +167,8 @@ int main()
       double(timeEnd-timeStart)/CLOCKS_PER_SEC, 
       double(long(nOrb)*long(nOrb)*long(nTimes))/(double(timeEnd-timeStart)/CLOCKS_PER_SEC));
     
-    DiffOrbList(oList, nOrb, oList2);
-    PrintOrbList(oList2, nOrb);
+    //DiffOrbList(oList, nOrb, oList2);
+    //PrintOrbList(oList2, nOrb);
 
     // 释放device内存 & 释放host内存
     cudaFree(doList);
