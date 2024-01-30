@@ -44,7 +44,7 @@ type CrashEvent struct {
 const G = 0.000005
 
 // 最小天体距离值 两天体距离小于此值了会相撞 应当远大于速度 比如大于速度1000倍以上 如果考虑斥力则使用小于1的值比较合适
-const MIN_CRITICAL_DIST = 0.2
+const MIN_CRITICAL_DIST = 0.5
 
 // 天体速度差大于此值时，会被撕裂 问题: 质量凭空丢失?
 const SPEED_LIMIT = 3.0
@@ -169,11 +169,11 @@ func (o *Orb) CalcGravityAll(oList []Orb, idx int) Acc {
 			continue
 		}
 
-		dist := o.CalcDist(target)
+		distSq := (o.X-target.X)*(o.X-target.X) + (o.Y-target.Y)*(o.Y-target.Y) + (o.Z-target.Z)*(o.Z-target.Z)
 
 		crashReason := int8(0)
 		// 距离太近，被撞
-		if isTooNearly := dist*dist < MIN_CRITICAL_DIST*MIN_CRITICAL_DIST; isTooNearly {
+		if isTooNearly := distSq < MIN_CRITICAL_DIST*MIN_CRITICAL_DIST; isTooNearly {
 			crashReason = crashReason | 1
 		}
 		// 速度太快，被撕裂 me ripped by ta
@@ -194,6 +194,7 @@ func (o *Orb) CalcGravityAll(oList []Orb, idx int) Acc {
 			}
 			// no else 在循环时可能有多个o crashed ta,但是只有一个o crashed by ta
 		} else {
+			dist := o.CalcDist(target)
 			// 作用正常，累计计算受到的所有的万有引力
 			gTmp := o.CalcGravity(&oList[i], dist)
 			// ---------- 计算斥力start ----------
