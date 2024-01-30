@@ -4,6 +4,7 @@
 //cps:1.588200e+13 in Google Colab with A100 GPU
 //cps:3.656473e+11 in Google Colab with A100 GPU
 //cps:3.549229e+10 in Google Colab with T4 GPU, more size of orbs will run faster.
+// build: nvcc -o Orbs Orbs.cu -lm
 #include<stdio.h>
 #include<stdlib.h>
 #include<cuda.h>
@@ -172,6 +173,7 @@ int main()
     // 释放device内存 & 释放host内存
     cudaFree(doList);
     free(oList);
+    free(oList2);
 
     return 0;
 }
