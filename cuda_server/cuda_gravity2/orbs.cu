@@ -239,9 +239,7 @@ int main(int argc, char *argv[]) {
       }
       fclose(f);
     }
-
     //PrintOrbList(oList, nOrb);
-    clock_t timeStart = clock();
 
     // 申请device内存
     Orb *doList;
@@ -260,6 +258,8 @@ int main(int argc, char *argv[]) {
     OrbList list = {oList2, nOrb};
     pthread_t tid;
     pthread_create(&tid, NULL, ThreadSavingOrbList, &list);
+
+    clock_t timeStart = clock();
 
     // 执行kernel
     for (int i=0; i<nTimes; ++i) {
