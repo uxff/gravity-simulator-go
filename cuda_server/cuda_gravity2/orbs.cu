@@ -265,8 +265,8 @@ int main(int argc, char *argv[]) {
     for (int i=0; i<nTimes; ++i) {
       ThreadUpdateOrb <<< gridSize, blockSize >>>(doList, nOrb);
       cudaDeviceSynchronize(); //调用次数越少越好
-      if (nTimes >= 100 && i<(nTimes/10) && (i+1)%(nTimes/100) == 0) {
-        printf("times process:%d/%d == 1%%\n", i+1, nTimes);
+      if (nTimes >= 100 && i<(nTimes/10-1) && (i+1)%(nTimes/100) == 0) {
+        printf("times process:%d/%d == %f%%\r", i+1, nTimes, double(i+1)/double(nTimes)*100);
       }
       if (nTimes >= 10 && (i+1)%(nTimes/10) == 0) {
         printf("times process:%d/%d, time estimate remain:%fs\n", i+1, nTimes, double(nTimes-i-1)/double(i+1)*(double(clock()-timeStart)/CLOCKS_PER_SEC));
