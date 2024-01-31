@@ -12,13 +12,13 @@
 #include<pthread.h>
 
 struct Orb {
-  double x;
-  double y;
-  double z;
-  double vx;
-  double vy;
-  double vz;
-  double mass;
+  float x;
+  float y;
+  float z;
+  float vx;
+  float vy;
+  float vz;
+  float mass;
   int id;
 };
 
@@ -27,24 +27,24 @@ struct OrbList {
   int n;
 };
 
-const double PI = 3.14159265358979323846;
-const double G  = 0.00005;
-const double SPEED_LIMIT = 4.0;
-const double MIN_DIST = 0.5;
-const double MASS_RANGE = 100;
-const double DISTRI_WIDE = 10000;
-const double VELO_RANGE = 0.005;
+const float PI = 3.14159265358979323846;
+const float G  = 0.00005;
+const float SPEED_LIMIT = 4.0;
+const float MIN_DIST = 0.5;
+const float MASS_RANGE = 100;
+const float DISTRI_WIDE = 10000;
+const float VELO_RANGE = 0.005;
 
 __device__ void OrbUpdate(Orb *o, Orb *oList, int nOrb) {
   if (o->id > 0) {
-    double gAllx = 0, gAlly = 0, gAllz = 0;
+    float gAllx = 0, gAlly = 0, gAllz = 0;
     for (int i=0; i<nOrb; ++i) {
       Orb *target = &oList[i];
       if (target->id < 0 || target->id == o->id) {
         continue;
       }
 
-      double distSq = (o->x-target->x)*(o->x-target->x) + (o->y-target->y)*(o->y-target->y) + (o->z-target->z)*(o->z-target->z);
+      float distSq = (o->x-target->x)*(o->x-target->x) + (o->y-target->y)*(o->y-target->y) + (o->z-target->z)*(o->z-target->z);
       // if tooNearly or overSpeeded
       if (distSq < MIN_DIST*MIN_DIST) {
         o->id = - o->id; // mark status
@@ -54,8 +54,8 @@ __device__ void OrbUpdate(Orb *o, Orb *oList, int nOrb) {
         break;
       }
       
-      double rdist = rsqrt(distSq);
-      double gTar = target->mass / distSq * G;
+      float rdist = rsqrtf(distSq);
+      float gTar = target->mass / distSq * G;
       gAllx += -gTar * (o->x-target->x) * rdist;
       gAlly += -gTar * (o->y-target->y) * rdist;
       gAllz += -gTar * (o->z-target->z) * rdist;
@@ -101,13 +101,13 @@ void DiffOrbList(Orb *oList, int nOrb, Orb *oListDiff) {
     oSum.vz += oListDiff[i].vz - oList[i].vz;
     oSum.mass += oListDiff[i].mass - oList[i].mass;
   }
-  oSum.x /= double(nOrb);
-  oSum.y /= double(nOrb);
-  oSum.z /= double(nOrb);
-  oSum.vx /= double(nOrb);
-  oSum.vy /= double(nOrb);
-  oSum.vz /= double(nOrb);
-  oSum.mass /= double(nOrb);
+  oSum.x /= float(nOrb);
+  oSum.y /= float(nOrb);
+  oSum.z /= float(nOrb);
+  oSum.vx /= float(nOrb);
+  oSum.vy /= float(nOrb);
+  oSum.vz /= float(nOrb);
+  oSum.mass /= float(nOrb);
   printf("avg diff:%g,%g,%g,%g,%g,%g,%g\n", oSum.x, oSum.y, oSum.z, oSum.vx, oSum.vy, oSum.vz, oSum.mass);
 }
 
@@ -175,12 +175,12 @@ int main(int argc, char *argv[]) {
       oList2 = (Orb*)malloc(nOrb * sizeof(Orb));
       for (int i = 0; i < nOrb; ++i) {
         oList[i].id = i+1;
-        oList[i].mass = (double)rand() / RAND_MAX * MASS_RANGE;
-        double radius = DISTRI_WIDE * (double)rand() / RAND_MAX;
-        double idx = (double)rand() / RAND_MAX * PI * 2;
+        oList[i].mass = (float)rand() / RAND_MAX * MASS_RANGE;
+        float radius = DISTRI_WIDE * (float)rand() / RAND_MAX;
+        float idx = (float)rand() / RAND_MAX * PI * 2;
         oList[i].x = cos(idx) * radius;
         oList[i].y = sin(idx) * radius;
-        oList[i].z = ((double)rand() / RAND_MAX - 0.5)*2*DISTRI_WIDE/1000;
+        oList[i].z = ((float)rand() / RAND_MAX - 0.5)*2*DISTRI_WIDE/1000;
         oList[i].vx = cos(idx+PI/2.0) * VELO_RANGE;
         oList[i].vy = sin(idx+PI/2.0) * VELO_RANGE;
       }
@@ -265,7 +265,7 @@ int main(int argc, char *argv[]) {
       ThreadUpdateOrb <<< gridSize, blockSize >>>(doList, nOrb);
       cudaDeviceSynchronize(); //调用次数越少越好
       if (nTimes >= 10 && (i+1)%(nTimes/10) == 0) {
-        printf("process:%d/%d, time:%.3f cps:%e estimate remain:%.3fs\n", i+1, nTimes, (double(clock()-timeStart)/CLOCKS_PER_SEC), double(long(nOrb)*long(nOrb)*long(i+1))/(double(clock()-timeStart)/CLOCKS_PER_SEC), double(nTimes-i-1)/double(i+1)*(double(clock()-timeStart)/CLOCKS_PER_SEC));
+        printf("process:%d/%d, time:%.3f cps:%e estimate remain:%.3fs\n", i+1, nTimes, (float(clock()-timeStart)/CLOCKS_PER_SEC), float(long(nOrb)*long(nOrb)*long(i+1))/(float(clock()-timeStart)/CLOCKS_PER_SEC), float(nTimes-i-1)/float(i+1)*(float(clock()-timeStart)/CLOCKS_PER_SEC));
         cudaMemcpy((void*)oList2, (void*)doList, nOrb*sizeof(Orb), cudaMemcpyDeviceToHost);
       }
     }
@@ -281,8 +281,8 @@ int main(int argc, char *argv[]) {
     printf("all done. nOrb:%d times:%ld use time:%f cps:%e\n", 
       nOrb, 
       long(nOrb)*long(nOrb)*long(nTimes), 
-      double(timeEnd-timeStart)/CLOCKS_PER_SEC, 
-      double(long(nOrb)*long(nOrb)*long(nTimes))/(double(timeEnd-timeStart)/CLOCKS_PER_SEC));
+      float(timeEnd-timeStart)/CLOCKS_PER_SEC, 
+      float(long(nOrb)*long(nOrb)*long(nTimes))/(float(timeEnd-timeStart)/CLOCKS_PER_SEC));
     
     // 释放device内存 & 释放host内存
     cudaFree(doList);
