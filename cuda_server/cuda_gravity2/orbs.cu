@@ -90,6 +90,27 @@ void PrintOrbList(Orb *oList, int nOrb) {
   }
 }
 
+void DiffOrbList(Orb *oList, int nOrb, Orb *oListDiff) {
+  Orb oSum;
+  for (int i=0; i<nOrb; ++i) {
+    oSum.x += oListDiff[i].x - oList[i].x;
+    oSum.y += oListDiff[i].y - oList[i].y;
+    oSum.z += oListDiff[i].z - oList[i].z;
+    oSum.vx += oListDiff[i].vx - oList[i].vx;
+    oSum.vy += oListDiff[i].vy - oList[i].vy;
+    oSum.vz += oListDiff[i].vz - oList[i].vz;
+    oSum.mass += oListDiff[i].mass - oList[i].mass;
+  }
+  oSum.x /= double(nOrb);
+  oSum.y /= double(nOrb);
+  oSum.z /= double(nOrb);
+  oSum.vx /= double(nOrb);
+  oSum.vy /= double(nOrb);
+  oSum.vz /= double(nOrb);
+  oSum.mass /= double(nOrb);
+  printf("avg diff:%g,%g,%g,%g,%g,%g,%g\n", oSum.x, oSum.y, oSum.z, oSum.vx, oSum.vy, oSum.vz, oSum.mass);
+}
+
 void SaveOrbList(Orb *oList, int nOrb, const char* filename) {
   FILE* f = fopen(filename, "w");
   if (f == NULL) {
@@ -98,7 +119,7 @@ void SaveOrbList(Orb *oList, int nOrb, const char* filename) {
   }
   fputs("[", f);
   for (int i=0; i<nOrb; ++i) {
-      fprintf(f, "[%f,%f,%f,%e,%e,%e,%f,%d]", oList[i].x, oList[i].y, oList[i].z, oList[i].vx, oList[i].vy, oList[i].vz, oList[i].mass, oList[i].id);
+      fprintf(f, "[%.15g,%.15g,%.15g,%.15g,%.15g,%.15g,%g,%d]", oList[i].x, oList[i].y, oList[i].z, oList[i].vx, oList[i].vy, oList[i].vz, oList[i].mass, oList[i].id);
       if (i < nOrb-1) {
         fputs(",", f);
       }
@@ -245,7 +266,7 @@ int main(int argc, char *argv[]) {
       ThreadUpdateOrb <<< gridSize, blockSize >>>(doList, nOrb);
       cudaDeviceSynchronize(); //调用次数越少越好
       if (nTimes >= 10 && (i+1)%(nTimes/10) == 0) {
-        printf("aimes process:%d/%d\n", i, nTimes);
+        printf("times process:%d/%d\n", i, nTimes);
         cudaMemcpy((void*)oList2, (void*)doList, nOrb*sizeof(Orb), cudaMemcpyDeviceToHost);
         //PrintOrbList(oList2, nOrb);
       }
@@ -255,6 +276,7 @@ int main(int argc, char *argv[]) {
     cudaMemcpy((void*)oList2, (void*)doList, nOrb*sizeof(Orb), cudaMemcpyDeviceToHost);
 
     clock_t timeEnd = clock();
+    DiffOrbList(oList, nOrb, oList2);
     SaveOrbList(oList2, nOrb, saveFile);
 
     // 检查执行结果
