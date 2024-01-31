@@ -266,7 +266,7 @@ int main(int argc, char *argv[]) {
       ThreadUpdateOrb <<< gridSize, blockSize >>>(doList, nOrb);
       cudaDeviceSynchronize(); //调用次数越少越好
       if (nTimes >= 10 && (i+1)%(nTimes/10) == 0) {
-        printf("times process:%d/%d\n", i, nTimes);
+        printf("times process:%d/%d\n", i+1, nTimes);
         cudaMemcpy((void*)oList2, (void*)doList, nOrb*sizeof(Orb), cudaMemcpyDeviceToHost);
         //PrintOrbList(oList2, nOrb);
       }
