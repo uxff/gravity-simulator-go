@@ -181,7 +181,7 @@ int main(int argc, char *argv[]) {
         double idx = (double)rand() / RAND_MAX * PI * 2;
         oList[i].x = cos(idx) * radius;
         oList[i].y = sin(idx) * radius;
-        oList[i].z = (((double)rand() / RAND_MAX - 0.5)*2*DISTRI_WIDE/1000;
+        oList[i].z = ((double)rand() / RAND_MAX - 0.5)*2*DISTRI_WIDE/1000;
         oList[i].vx = cos(idx+PI/2.0) * VELO_RANGE;
         oList[i].vy = sin(idx+PI/2.0) * VELO_RANGE;
       }
