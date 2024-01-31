@@ -48,17 +48,17 @@ __device__ void OrbUpdate(Orb *o, Orb *oList, int nOrb) {
       // if tooNearly or overSpeeded
       if (distSq < MIN_DIST*MIN_DIST) {
         o->id = - o->id; // mark status
-        target->mass += o->mass; // transfer mass to target, will cause concurrency problem.
-        o->mass = 0.000000001;
-        printf("%d crashed by MIN_DIST\n", o->id);
+        //target->mass += o->mass; // transfer mass to target, will cause concurrency problem.
+        //o->mass = 0.000000001;
+        //printf("%d crashed by MIN_DIST\n", o->id);
         break;
       }
       
-      double dist = sqrt(distSq);
+      double rdist = rsqrt(distSq);
       double gTar = target->mass / distSq * G;
-      gAllx += -gTar * (o->x-target->x) / dist;
-      gAlly += -gTar * (o->y-target->y) / dist;
-      gAllz += -gTar * (o->z-target->z) / dist;
+      gAllx += -gTar * (o->x-target->x) * rdist;
+      gAlly += -gTar * (o->y-target->y) * rdist;
+      gAllz += -gTar * (o->z-target->z) * rdist;
     }
     
     o->x += o->vx;
@@ -70,7 +70,7 @@ __device__ void OrbUpdate(Orb *o, Orb *oList, int nOrb) {
 
     if (o->vx > SPEED_LIMIT || o->vy > SPEED_LIMIT || o->vz > SPEED_LIMIT) {
       o->id = - o->id;
-      printf("%d crashed by overspeed\n", o->id);
+      //printf("%d crashed by overspeed\n", o->id);
       return;
     }
   }
