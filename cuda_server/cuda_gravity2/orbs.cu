@@ -269,7 +269,7 @@ int main(int argc, char *argv[]) {
         printf("process:%d/%d == %f%%\n", i+1, nTimes, double(i+1)/double(nTimes)*100);
       }
       if (nTimes >= 10 && (i+1)%(nTimes/10) == 0) {
-        printf("process:%d/%d, time:%.3f cps:%f estimate remain:%.3fs\n", i+1, nTimes, (double(clock()-timeStart)/CLOCKS_PER_SEC), double(long(nOrb)*long(nOrb)*long(i+1))/(double(timeEnd-timeStart)/CLOCKS_PER_SEC)), double(nTimes-i-1)/double(i+1)*(double(clock()-timeStart)/CLOCKS_PER_SEC));
+        printf("process:%d/%d, time:%.3f cps:%f estimate remain:%.3fs\n", i+1, nTimes, (double(clock()-timeStart)/CLOCKS_PER_SEC), double(long(nOrb)*long(nOrb)*long(i+1))/(double(timeEnd-timeStart)/CLOCKS_PER_SEC), double(nTimes-i-1)/double(i+1)*(double(clock()-timeStart)/CLOCKS_PER_SEC));
         cudaMemcpy((void*)oList2, (void*)doList, nOrb*sizeof(Orb), cudaMemcpyDeviceToHost);
         //PrintOrbList(oList2, nOrb);
       }
