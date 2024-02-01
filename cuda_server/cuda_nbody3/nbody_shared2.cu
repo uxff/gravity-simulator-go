@@ -29,12 +29,12 @@ void randomizeBodyList(Body *oList, int n)
 {
     for (int i = 0; i < n; i++)
     {
-        oList[i].x = 2.0f * (rand() / (float)RAND_MAX) - 1.0f;
-        oList[i].y = 2.0f * (rand() / (float)RAND_MAX) - 1.0f;
-        oList[i].z = 2.0f * (rand() / (float)RAND_MAX) - 1.0f;
-        oList[i].vx = 2.0f * (rand() / (float)RAND_MAX) - 1.0f;
-        oList[i].vy = 2.0f * (rand() / (float)RAND_MAX) - 1.0f;
-        oList[i].vz = 2.0f * (rand() / (float)RAND_MAX) - 1.0f;
+        oList[i].x = 2000.0f * (2.0*(rand() / (float)RAND_MAX) - 1.0f);
+        oList[i].y = 2000.0f * (2.0*(rand() / (float)RAND_MAX) - 1.0f);
+        oList[i].z = 2000.0f * (2.0*(rand() / (float)RAND_MAX) - 1.0f);
+        oList[i].vx = 0.2f * (2.0*(rand() / (float)RAND_MAX) - 1.0f);
+        oList[i].vy = 0.2f * (2.0*(rand() / (float)RAND_MAX) - 1.0f);
+        oList[i].vz = 0.2f * (2.0*(rand() / (float)RAND_MAX) - 1.0f);
     }
 }
 
