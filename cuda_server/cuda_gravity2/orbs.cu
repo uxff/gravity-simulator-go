@@ -163,7 +163,7 @@ Orb *LoadOrbList(const char* loadFile, int *nOrbLoaded) {
       for (int i=0; i<256 && buf[i] != '\0'; ++i) {
           bracketIndent += buf[i] == '[' ? 1 : 0;
           bracketIndent -= buf[i] == ']' ? 1 : 0;
-          if (restLine[i] == '[') {
+          if (buf[i] == '[') {
             nOrb += 1;
           }
       }
