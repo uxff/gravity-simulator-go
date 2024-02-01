@@ -302,6 +302,7 @@ int main(int argc, char *argv[]) {
       }
     }
 
+    param.state = 0; // stop the thread
     // 将device得到的结果拷贝到host
     cudaMemcpy((void*)oList2, (void*)doList, nOrb*sizeof(Orb), cudaMemcpyDeviceToHost);
 
@@ -316,7 +317,6 @@ int main(int argc, char *argv[]) {
       double(timeEnd-timeStart)/CLOCKS_PER_SEC, 
       double(long(nOrb)*long(nOrb)*long(nTimes))/(double(timeEnd-timeStart)/CLOCKS_PER_SEC));
     
-    param.state = 0; // stop the thread
     // 释放device内存 & 释放host内存
     cudaFree(doList);
     free(oList);
