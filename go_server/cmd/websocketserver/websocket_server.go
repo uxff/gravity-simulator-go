@@ -3,10 +3,12 @@ package main
 import (
 	"encoding/json"
 	"flag"
+
 	//"fmt"
 	"log"
 	"net/http"
 	"net/url"
+
 	//"time"
 	"github.com/uxff/gravity-simulator-go/go_server/orbs"
 	"github.com/uxff/gravity-simulator-go/go_server/saver"
@@ -159,8 +161,10 @@ func handleOrbs(w http.ResponseWriter, r *http.Request) {
 //	homeTemplate.Execute(w, "ws://"+r.Host+"/echo")
 //}
 
+// you must run it in the dir of index.html
 func main() {
-	var savePath = flag.String("savepath", "mc://127.0.0.1:11211", "where to save, support mc/file/redis\n\tlike: file://./filecache/")
+	var savePath = flag.String("savepath", "file://./", "where to save, support mc/file/redis\n\tlike: file://./filecache/\n\tor\n\tmc://127.0.0.1:11211")
+	var webRoot = flag.String("webroot", ".", "where to serve web root, generally use the root of this project which include static files like index.html")
 	flag.Parse()
 
 	theSaver.SetSavepath(savePath)
@@ -168,7 +172,7 @@ func main() {
 
 	log.SetFlags(log.Lshortfile | log.LstdFlags)
 
-	http.Handle("/", http.FileServer(http.Dir(".")))
+	http.Handle("/", http.FileServer(http.Dir(*webRoot)))
 	http.HandleFunc("/echo", echo)
 	http.HandleFunc("/orbs", handleOrbs)
 	log.Println("server will start at", *addr)
