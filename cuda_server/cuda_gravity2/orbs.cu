@@ -35,7 +35,7 @@ struct SavingThreadParam {
 };
 
 const double PI = 3.14159265358979323846;
-const double G  = 0.00005;
+const double G  = 0.000005;
 const double SPEED_LIMIT = 4.0;
 const double MIN_DIST = 0.5;
 const double MASS_RANGE = 100;
@@ -144,7 +144,7 @@ void* ThreadSavingOrbList(void* ptr) {
   SavingThreadParam *param = (SavingThreadParam*)ptr;
   while (param->state == 1) {
     usleep(500000);
-    cudaMemcpy((void*)param->list, (void*)param->dolist, param->n*sizeof(Body), cudaMemcpyDeviceToHost);
+    cudaMemcpy((void*)param->list, (void*)param->dolist, param->n*sizeof(Orb), cudaMemcpyDeviceToHost);
     SaveOrbList(param->list, param->n, saveFile);
   }
   return NULL;
