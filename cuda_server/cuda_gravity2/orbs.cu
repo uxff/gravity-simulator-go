@@ -179,12 +179,11 @@ Orb *LoadOrbList(const char* loadFile, int *nOrbLoaded) {
 
     rewind(f);
     bracketIndent = 0;
-    int lastLeftBracket = 0, lastRightBracket = 0, orbIdx = 0;
+    int orbIdx = 0;
     char restLine[512] = "";
     while (fgets(buf, 256, f) != NULL) {
       strcat(restLine, buf);
-      lastLeftBracket = -1;
-      lastRightBracket = -1;
+      int lastLeftBracket = -1;
       //printf("the restLine len:%d we will handle:<<%s>>\n", strlen(restLine), restLine);
       for (int i=0; i<512 && restLine[i] != '\0'; ++i) {
           if (restLine[i] == '[') {
@@ -194,7 +193,6 @@ Orb *LoadOrbList(const char* loadFile, int *nOrbLoaded) {
           }
           if (restLine[i] == ']') {
             bracketIndent -= 1;
-            lastRightBracket = i;
             //printf("find ] at:%d bracketIndent:%d\n", lastRightBracket, bracketIndent);
             if (bracketIndent == 1) {
               
@@ -208,7 +206,7 @@ Orb *LoadOrbList(const char* loadFile, int *nOrbLoaded) {
           }
       }
       if (bracketIndent == 2) {
-        strcpy(restLine, buf+lastLeftBracket+1);
+        strcpy(restLine, restLine+lastLeftBracket+1);
       } else {
 	restLine[0] = '\0';
       }
@@ -262,10 +260,16 @@ int main(int argc, char *argv[]) {
         oList[i].vx = cos(idx+PI/2.0) * VELO_RANGE;
         oList[i].vy = sin(idx+PI/2.0) * VELO_RANGE;
       }
+      memcpy(oList2, oList, nOrb*sizeof(Orb));
     } else {
       // load file from json
       oList = LoadOrbList(loadFile, &nOrb);
+      if (oList == NULL) {
+	 printf("load from loadFile %s failed\n", loadFile);
+	 return 0;
+      }
       oList2 = (Orb*)malloc(nOrb *sizeof(Orb));
+      memcpy(oList2, oList, nOrb*sizeof(Orb));
     }
     //PrintOrbList(oList, nOrb);
 
