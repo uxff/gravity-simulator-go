@@ -189,7 +189,7 @@ int main(const int argc, const char** argv) {
   checkPerformance(buf, billionsOfOpsPerSecond, salt);
 #else
   checkAccuracy(buf, nBodies);
-  printf("%d Bodies: average %0.3f Billion Interactions / second\n", nBodies, billionsOfOpsPerSecond);
+  printf("%d Bodies cps:%e\n", nBodies, nBodies * nBodies / avgTime);
   salt += 1;
 #endif
   /*******************************************************************/
