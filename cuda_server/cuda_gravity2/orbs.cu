@@ -163,12 +163,19 @@ Orb *LoadOrbList(const char* loadFile, int *nOrbLoaded) {
       for (int i=0; i<256 && buf[i] != '\0'; ++i) {
           bracketIndent += buf[i] == '[' ? 1 : 0;
           bracketIndent -= buf[i] == ']' ? 1 : 0;
-          nOrb += bracketIndent == 2 ? 1 : 0;
+          if (restLine[i] == '[') {
+            nOrb += 1;
+          }
       }
     }
+    nOrb--;
     printf("according to loadFile, nOrb:%d lastIndent:%d\n", nOrb, bracketIndent);
+    if (nOrb <= 0 || bracketIndent != 0) {
+      printf("file content error! no orbs loaded\n");
+      fclose(f);
+      return NULL;
+    }
     oList = (Orb*)malloc(nOrb * sizeof(Orb));
-    // oList2 = (Orb*)malloc(nOrb * sizeof(Orb));
 
     rewind(f);
     bracketIndent = 0;
@@ -178,15 +185,19 @@ Orb *LoadOrbList(const char* loadFile, int *nOrbLoaded) {
       if (restLine[0] != '\0') {
         strcat(restLine, buf);
       }
+      printf("the restLine len:%d\n", strlen(restLine));
       for (int i=0; i<512 && restLine[i] != '\0'; ++i) {
           if (restLine[i] == '[') {
             bracketIndent += 1;
             lastLeftBracket = i;
+            printf("find leftBracket:%d bracketIndent:%d\n", lastLeftBracket, bracketIndent);
           }
           if (restLine[i] == ']') {
             bracketIndent -= 1;
             lastRightBracket = i;
+            printf("find rightBracket:%d bracketIndent:%d\n", lastRightBracket, bracketIndent);
             if (bracketIndent == 1) {
+              
               // 扫到右括号才开始解析
               sscanf(restLine+lastLeftBracket+1, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%d", 
                 &oList[orbIdx].x, &oList[orbIdx].y, &oList[orbIdx].z, &oList[orbIdx].vx, &oList[orbIdx].vy, &oList[orbIdx].vz, &oList[orbIdx].mass, &oList[orbIdx].id);
