@@ -1,6 +1,8 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <pthread.h>
 #include "timer.h"
 #include "check.h"
 #include <cuda_runtime.h>
@@ -17,6 +19,14 @@ typedef struct
 
 const char *loadFile = "";
 const char *saveFile = "list1.json";
+
+struct SavingThreadParam {
+  Body *list;
+  Body *dolist;
+  int n;
+  int state; //1==running, 0==stop
+  pthread_t tid;
+};
 
 void randomizeBodies(float *data, int n)
 {
@@ -149,7 +159,8 @@ Body *LoadOrbList(const char* loadFile, int *nOrbLoaded) {
       fclose(f);
       return NULL;
     }
-    oList = (Body*)malloc(nOrb * sizeof(Body));
+    //oList = (Body*)malloc(nOrb * sizeof(Body));
+    cudaMallocHost(&oList, nOrb * sizeof(Body));
 
     rewind(f);
     bracketIndent = 0;
@@ -190,6 +201,16 @@ Body *LoadOrbList(const char* loadFile, int *nOrbLoaded) {
     return oList;
 }
 
+void* ThreadSavingOrbList(void* ptr) {
+  //OrbList *oList = (OrbList*)ptr;
+  SavingThreadParam *param = (SavingThreadParam*)ptr;
+  while (param->state == 1) {
+    usleep(500000);
+    cudaMemcpy((void*)param->list, (void*)param->dolist, param->n*sizeof(Body), cudaMemcpyDeviceToHost);
+    SaveNBody(param->list, param->n, saveFile);
+  }
+  return NULL;
+}
 
 int main(const int argc, const char **argv)
 {
@@ -227,12 +248,10 @@ int main(const int argc, const char **argv)
       }
     }
 
-    int nBytes = nBodies * sizeof(Body);
-    // float *buf;
     Body *oList = NULL;
-    cudaMallocHost(&oList, nBytes);
 
     if (strcmp(loadFile, "") == 0) {
+    	cudaMallocHost(&oList, nBodies * sizeof(Body));
         // randomizeBodies(buf, 6 * nBodies); // Init pos / vel data
         randomizeBodyList(oList, nBodies); // Init pos / vel data
     } else {
@@ -243,6 +262,8 @@ int main(const int argc, const char **argv)
           return 1;
         }
     }
+
+    int nBytes = nBodies * sizeof(Body);
 
     double totalTime = 0.0;
 
@@ -262,6 +283,9 @@ int main(const int argc, const char **argv)
    */
 
     cudaMemcpy((void*)doList, (void*)oList, nBytes, cudaMemcpyHostToDevice);
+
+    SavingThreadParam param = {oList, doList, nBodies, 1};
+    pthread_create(&param.tid, NULL, ThreadSavingOrbList, &param);
 
     clock_t timeStart = clock();
 
@@ -293,21 +317,28 @@ int main(const int argc, const char **argv)
         const double tElapsed = GetTimer() / 1000.0;
         totalTime += tElapsed;
 
+        if (nIters >= 10 && (iter+1)%(nIters/10) == 0) {
+            printf("process:%d/%d, time:%.3f cps:%e estimate remain:%.3fs\n", iter+1, nIters, (double(clock()-timeStart)/CLOCKS_PER_SEC), double(long(nBodies)*long(nBodies)*long(iter+1))/(double(clock()-timeStart)/CLOCKS_PER_SEC), double(nIters-iter-1)/double(iter+1)*(double(clock()-timeStart)/CLOCKS_PER_SEC));
+            cudaMemcpy((void*)oList, (void*)doList, nBytes, cudaMemcpyDeviceToHost);
+            //SaveNBody(oList, nBodies, saveFile);//moved into 
+        }
+
+
         // should do it in a thread async
-    	SaveNBody(oList, nBodies, saveFile);
     }
 
     double avgTime = totalTime / (double)(nIters);
     float billionsOfOpsPerSecond = 1e-9 * nBodies * nBodies / avgTime;
 
     clock_t timeUsed = clock() - timeStart;
+    param.state = 0; // stop thread
 
 #ifdef ASSESS
     checkPerformance((void*)oList, billionsOfOpsPerSecond, salt);
 #else
     checkAccuracy((float*)oList, nBodies);
     SaveNBody(oList, nBodies, saveFile);
-    printf("%d Bodies: average %0.3f Billion Interactions / second, cps:%e\n", nBodies, billionsOfOpsPerSecond, double(timeUsed)/(double(nBodies)*double(nBodies)*double(nIters)) / CLOCKS_PER_SEC);
+    printf("%d Bodies: average %0.3f Billion Interactions / second, cps:%e\n", nBodies, billionsOfOpsPerSecond, (double(nBodies)*double(nBodies)*double(nIters))/(double(clock()-timeStart) / CLOCKS_PER_SEC));
     salt += 1;
 #endif
     /*******************************************************************/
