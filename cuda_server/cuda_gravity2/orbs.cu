@@ -200,7 +200,7 @@ Orb *LoadOrbList(const char* loadFile, int *nOrbLoaded) {
               sscanf(restLine+lastLeftBracket+1, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%d", 
                 &oList[orbIdx].x, &oList[orbIdx].y, &oList[orbIdx].z, &oList[orbIdx].vx, &oList[orbIdx].vy, &oList[orbIdx].vz, &oList[orbIdx].mass, &oList[orbIdx].id);
               ;
-	      //printf("loaded orb:%e,%e,%e,%e,%e,%e,%e,%d\n", oList[orbIdx].x, oList[orbIdx].y, oList[orbIdx].z, oList[orbIdx].vx, oList[orbIdx].vy, oList[orbIdx].vz, oList[orbIdx].mass, oList[orbIdx].id);
+	            //printf("loaded orb:%e,%e,%e,%e,%e,%e,%e,%d\n", oList[orbIdx].x, oList[orbIdx].y, oList[orbIdx].z, oList[orbIdx].vx, oList[orbIdx].vy, oList[orbIdx].vz, oList[orbIdx].mass, oList[orbIdx].id);
               orbIdx += 1;
             }
           }
@@ -208,7 +208,7 @@ Orb *LoadOrbList(const char* loadFile, int *nOrbLoaded) {
       if (bracketIndent == 2) {
         strcpy(restLine, restLine+lastLeftBracket+1);
       } else {
-	restLine[0] = '\0';
+        restLine[0] = '\0';
       }
       //printf("bracketIndent:%d [ at:%d ] at:%d restLine:%s\n", bracketIndent, lastLeftBracket, lastRightBracket, restLine);
     }

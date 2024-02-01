@@ -11,7 +11,8 @@
 
 typedef struct
 {
-    float x, y, z, vx, vy, vz;
+    float x, y, z, vx, vy, vz, mass;
+    int id;
 } Body;
 
 const char *loadFile = "";
@@ -22,6 +23,18 @@ void randomizeBodies(float *data, int n)
     for (int i = 0; i < n; i++)
     {
         data[i] = 2.0f * (rand() / (float)RAND_MAX) - 1.0f;
+    }
+}
+void randomizeBodyList(Body *oList, int n)
+{
+    for (int i = 0; i < n; i++)
+    {
+        oList[i].x = 2.0f * (rand() / (float)RAND_MAX) - 1.0f;
+        oList[i].y = 2.0f * (rand() / (float)RAND_MAX) - 1.0f;
+        oList[i].z = 2.0f * (rand() / (float)RAND_MAX) - 1.0f;
+        oList[i].vx = 2.0f * (rand() / (float)RAND_MAX) - 1.0f;
+        oList[i].vy = 2.0f * (rand() / (float)RAND_MAX) - 1.0f;
+        oList[i].vz = 2.0f * (rand() / (float)RAND_MAX) - 1.0f;
     }
 }
 
@@ -106,6 +119,74 @@ void SaveNBody(Body *oList, int nOrb, const char* filename) {
   fclose(f);
 }
 
+Body *LoadOrbList(const char* loadFile, int *nOrbLoaded) {
+    Body *oList = NULL;
+    int nOrb = 0;
+    FILE* f = fopen(loadFile, "r");
+    if (f == NULL) {
+      printf("Error loading file %s!\n", loadFile);
+      return NULL;
+    }
+    // read file and count the orbs
+    char buf[256] = "";
+    int bracketIndent = 0;
+    while (fgets(buf, 256, f) != NULL) {
+      for (int i=0; i<256 && buf[i] != '\0'; ++i) {
+          bracketIndent += buf[i] == '[' ? 1 : 0;
+          bracketIndent -= buf[i] == ']' ? 1 : 0;
+          if (buf[i] == '[') {
+            nOrb += 1;
+          }
+      }
+    }
+    nOrb--;
+    printf("according to loadFile, nOrb:%d lastIndent:%d\n", nOrb, bracketIndent);
+    if (nOrb <= 0 || bracketIndent != 0) {
+      printf("file content error! no orbs loaded\n");
+      fclose(f);
+      return NULL;
+    }
+    oList = (Body*)malloc(nOrb * sizeof(Body));
+
+    rewind(f);
+    bracketIndent = 0;
+    int orbIdx = 0;
+    char restLine[512] = "";
+    while (fgets(buf, 256, f) != NULL) {
+      strcat(restLine, buf);
+      int lastLeftBracket = -1;
+      //printf("the restLine len:%d we will handle:<<%s>>\n", strlen(restLine), restLine);
+      for (int i=0; i<512 && restLine[i] != '\0'; ++i) {
+          if (restLine[i] == '[') {
+            bracketIndent += 1;
+            lastLeftBracket = i;
+            //printf("find [ at:%d bracketIndent:%d\n", lastLeftBracket, bracketIndent);
+          }
+          if (restLine[i] == ']') {
+            bracketIndent -= 1;
+            //printf("find ] at:%d bracketIndent:%d\n", lastRightBracket, bracketIndent);
+            if (bracketIndent == 1) {
+              // 扫到右括号才开始解析
+              sscanf(restLine+lastLeftBracket+1, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%d", 
+                &oList[orbIdx].x, &oList[orbIdx].y, &oList[orbIdx].z, &oList[orbIdx].vx, &oList[orbIdx].vy, &oList[orbIdx].vz, &oList[orbIdx].mass, &oList[orbIdx].id);
+              ;
+              //printf("loaded orb:%e,%e,%e,%e,%e,%e,%e,%d\n", oList[orbIdx].x, oList[orbIdx].y, oList[orbIdx].z, oList[orbIdx].vx, oList[orbIdx].vy, oList[orbIdx].vz, oList[orbIdx].mass, oList[orbIdx].id);
+              orbIdx += 1;
+            }
+          }
+      }
+      if (bracketIndent == 2) {
+        strcpy(restLine, restLine+lastLeftBracket+1);
+      } else {
+        restLine[0] = '\0';
+      }
+      //printf("bracketIndent:%d [ at:%d ] at:%d restLine:%s\n", bracketIndent, lastLeftBracket, lastRightBracket, restLine);
+    }
+    fclose(f);
+    *nOrbLoaded = nOrb;
+    return oList;
+}
+
 
 int main(const int argc, const char **argv)
 {
@@ -143,11 +224,22 @@ int main(const int argc, const char **argv)
       }
     }
 
-    int bytes = nBodies * sizeof(Body);
-    float *buf;
-    cudaMallocHost(&buf, bytes);
+    int nBytes = nBodies * sizeof(Body);
+    // float *buf;
+    Body *oList = NULL;
+    cudaMallocHost(&oList, nBytes);
 
-    randomizeBodies(buf, 6 * nBodies); // Init pos / vel data
+    if (strcmp(loadFile, "") == 0) {
+        // randomizeBodies(buf, 6 * nBodies); // Init pos / vel data
+        randomizeBodyList(oList, nBodies); // Init pos / vel data
+    } else {
+        int nOrbLoaded = 0;
+        oList = LoadOrbList(loadFile, &nBodies);
+        if (oList == NULL || nBodies == 0) {
+          printf("load orb list failed!\n");
+          return 1;
+        }
+    }
 
     double totalTime = 0.0;
 
@@ -157,15 +249,16 @@ int main(const int argc, const char **argv)
     size_t threadsPerBlock = BLOCK_SIZE;
     size_t numberOfBlocks = (nBodies + threadsPerBlock - 1) / threadsPerBlock;
 
-    float *d_buf;
-    cudaMalloc(&d_buf, bytes);
-    Body *d_p = (Body *)d_buf;
+    // float *d_buf;
+    Body *doList = NULL;//(Body *)d_buf;
+    // cudaMalloc(&d_buf, nBytes);
+    cudaMalloc((void**)&doList, nBytes);
     /*
    * This simulation will run for 10 cycles of time, calculating gravitational
    * interaction amongst bodies, and adjusting their positions to reflect.
    */
 
-    cudaMemcpy(d_buf, buf, bytes, cudaMemcpyHostToDevice);
+    cudaMemcpy((void*)doList, (void*)oList, nBytes, cudaMemcpyHostToDevice);
 
     clock_t timeStart = clock();
 
@@ -180,16 +273,16 @@ int main(const int argc, const char **argv)
         * You will likely wish to refactor the work being done in `bodyForce`,
         * as well as the work to integrate the positions.
         */
-        bodyForce<<<numberOfBlocks * BLOCK_STRIDE, threadsPerBlock>>>(d_p, dt, nBodies); // compute interbody forces
+        bodyForce<<<numberOfBlocks * BLOCK_STRIDE, threadsPerBlock>>>(doList, dt, nBodies); // compute interbody forces
         /*
         * This position integration cannot occur until this round of `bodyForce` has completed.
         * Also, the next round of `bodyForce` cannot begin until the integration is complete.
         */
-        integrate_position<<<nBodies / threadsPerBlock, threadsPerBlock>>>(d_p, dt, nBodies);
+        integrate_position<<<nBodies / threadsPerBlock, threadsPerBlock>>>(doList, dt, nBodies);
 
         if (iter == nIters - 1)
         {
-            cudaMemcpy(buf, d_buf, bytes, cudaMemcpyDeviceToHost);
+            cudaMemcpy((void*)oList, (void*)doList, nBytes, cudaMemcpyDeviceToHost);
         }
 
     /*******************************************************************/
@@ -206,10 +299,10 @@ int main(const int argc, const char **argv)
     clock_t timeUsed = clock() - timeStart;
 
 #ifdef ASSESS
-    checkPerformance(buf, billionsOfOpsPerSecond, salt);
+    checkPerformance((void*)oList, billionsOfOpsPerSecond, salt);
 #else
-    checkAccuracy(buf, nBodies);
-    SaveNBody((Body*)buf, nBodies, "result.txt");
+    checkAccuracy((void*)oList, nBodies);
+    SaveNBody(oList, nBodies, "result.txt");
     printf("%d Bodies: average %0.3f Billion Interactions / second, cps:%e\n", nBodies, billionsOfOpsPerSecond, double(timeUsed)/(double(nBodies)*double(nBodies)*double(nIters)) / CLOCKS_PER_SEC);
     salt += 1;
 #endif
@@ -218,6 +311,6 @@ int main(const int argc, const char **argv)
     /*
    * Feel free to modify code below.
    */
-    cudaFree(d_buf);
-    cudaFreeHost(buf);
+    cudaFree(doList);
+    cudaFreeHost(oList);
 }
