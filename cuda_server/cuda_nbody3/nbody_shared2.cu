@@ -103,6 +103,9 @@ __global__ void integrate_position(Body *pList, float dt, int n)
 }
 
 void SaveNBody(Body *oList, int nOrb, const char* filename) {
+  if (strcmp(filename, "") == 0) {
+    return;
+  }
   FILE* f = fopen(filename, "w");
   if (f == NULL) {
     printf("Error opening file %s!\n", filename);
@@ -302,7 +305,7 @@ int main(const int argc, const char **argv)
     checkPerformance((void*)oList, billionsOfOpsPerSecond, salt);
 #else
     checkAccuracy((void*)oList, nBodies);
-    SaveNBody(oList, nBodies, "result.txt");
+    SaveNBody(oList, nBodies, saveFile);
     printf("%d Bodies: average %0.3f Billion Interactions / second, cps:%e\n", nBodies, billionsOfOpsPerSecond, double(timeUsed)/(double(nBodies)*double(nBodies)*double(nIters)) / CLOCKS_PER_SEC);
     salt += 1;
 #endif
