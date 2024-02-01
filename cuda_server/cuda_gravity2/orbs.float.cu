@@ -26,9 +26,16 @@ struct OrbList {
   Orb *list;
   int n;
 };
+struct SavingThreadParam {
+  Orb *list;
+  Orb *dolist;
+  int n;
+  int state; //1==running, 0==stop
+  pthread_t tid;
+};
 
 const float PI = 3.14159265358979323846;
-const float G  = 0.00005;
+const float G  = 0.000005;
 const float SPEED_LIMIT = 4.0;
 const float MIN_DIST = 0.5;
 const float MASS_RANGE = 100;
@@ -37,7 +44,7 @@ const float VELO_RANGE = 0.005;
 
 __device__ void OrbUpdate(Orb *o, Orb *oList, int nOrb) {
   if (o->id > 0) {
-    float gAllx = 0, gAlly = 0, gAllz = 0;
+    float gAllx = 0, gAlly = 0, gAllz = 0; // double3 gAll = {0, 0, 0};
     for (int i=0; i<nOrb; ++i) {
       Orb *target = &oList[i];
       if (target->id < 0 || target->id == o->id) {
@@ -54,7 +61,7 @@ __device__ void OrbUpdate(Orb *o, Orb *oList, int nOrb) {
         break;
       }
       
-      float rdist = rsqrtf(distSq);
+      float rdist = rsqrt(distSq);
       float gTar = target->mass / distSq * G;
       gAllx += -gTar * (o->x-target->x) * rdist;
       gAlly += -gTar * (o->y-target->y) * rdist;
@@ -133,12 +140,83 @@ const char *saveFile = "list1.json";
 
 // need exclusive parameter
 void* ThreadSavingOrbList(void* ptr) {
-  OrbList *oList = (OrbList*)ptr;
-  while (true) {
+  //OrbList *oList = (OrbList*)ptr;
+  SavingThreadParam *param = (SavingThreadParam*)ptr;
+  while (param->state == 1) {
     usleep(500000);
-    SaveOrbList(oList->list, oList->n, saveFile);
+    cudaMemcpy((void*)param->list, (void*)param->dolist, param->n*sizeof(Orb), cudaMemcpyDeviceToHost);
+    SaveOrbList(param->list, param->n, saveFile);
   }
   return NULL;
+}
+
+Orb *LoadOrbList(const char* loadFile, int *nOrbLoaded) {
+    Orb *oList = NULL;
+    int nOrb = 0;
+    FILE* f = fopen(loadFile, "r");
+    if (f == NULL) {
+      printf("Error loading file %s!\n", loadFile);
+      return NULL;
+    }
+    // read file and count the orbs
+    char buf[256] = "";
+    int bracketIndent = 0;
+    while (fgets(buf, 256, f) != NULL) {
+      for (int i=0; i<256 && buf[i] != '\0'; ++i) {
+          bracketIndent += buf[i] == '[' ? 1 : 0;
+          bracketIndent -= buf[i] == ']' ? 1 : 0;
+          if (buf[i] == '[') {
+            nOrb += 1;
+          }
+      }
+    }
+    nOrb--;
+    printf("according to loadFile, nOrb:%d lastIndent:%d\n", nOrb, bracketIndent);
+    if (nOrb <= 0 || bracketIndent != 0) {
+      printf("file content error! no orbs loaded\n");
+      fclose(f);
+      return NULL;
+    }
+    oList = (Orb*)malloc(nOrb * sizeof(Orb));
+
+    rewind(f);
+    bracketIndent = 0;
+    int orbIdx = 0;
+    char restLine[512] = "";
+    while (fgets(buf, 256, f) != NULL) {
+      strcat(restLine, buf);
+      int lastLeftBracket = -1;
+      //printf("the restLine len:%d we will handle:<<%s>>\n", strlen(restLine), restLine);
+      for (int i=0; i<512 && restLine[i] != '\0'; ++i) {
+          if (restLine[i] == '[') {
+            bracketIndent += 1;
+            lastLeftBracket = i;
+            //printf("find [ at:%d bracketIndent:%d\n", lastLeftBracket, bracketIndent);
+          }
+          if (restLine[i] == ']') {
+            bracketIndent -= 1;
+            //printf("find ] at:%d bracketIndent:%d\n", lastRightBracket, bracketIndent);
+            if (bracketIndent == 1) {
+              
+              // 扫到右括号才开始解析
+              sscanf(restLine+lastLeftBracket+1, "%f,%f,%f,%f,%f,%f,%f,%d", 
+                &oList[orbIdx].x, &oList[orbIdx].y, &oList[orbIdx].z, &oList[orbIdx].vx, &oList[orbIdx].vy, &oList[orbIdx].vz, &oList[orbIdx].mass, &oList[orbIdx].id);
+              ;
+	            //printf("loaded orb:%e,%e,%e,%e,%e,%e,%e,%d\n", oList[orbIdx].x, oList[orbIdx].y, oList[orbIdx].z, oList[orbIdx].vx, oList[orbIdx].vy, oList[orbIdx].vz, oList[orbIdx].mass, oList[orbIdx].id);
+              orbIdx += 1;
+            }
+          }
+      }
+      if (bracketIndent == 2) {
+        strcpy(restLine, restLine+lastLeftBracket+1);
+      } else {
+        restLine[0] = '\0';
+      }
+      //printf("bracketIndent:%d [ at:%d ] at:%d restLine:%s\n", bracketIndent, lastLeftBracket, lastRightBracket, restLine);
+    }
+    fclose(f);
+    *nOrbLoaded = nOrb;
+    return oList;
 }
 
 // ./Orbs -n 3 -t 40000 -l list1.json -s list1.json
@@ -184,59 +262,16 @@ int main(int argc, char *argv[]) {
         oList[i].vx = cos(idx+PI/2.0) * VELO_RANGE;
         oList[i].vy = sin(idx+PI/2.0) * VELO_RANGE;
       }
+      memcpy(oList2, oList, nOrb*sizeof(Orb));
     } else {
       // load file from json
-      nOrb = 0;
-      FILE* f = fopen(loadFile, "r");
-      if (f == NULL) {
-        printf("Error loading file %s!\n", loadFile);
-        return 1;
+      oList = LoadOrbList(loadFile, &nOrb);
+      if (oList == NULL || nOrb <= 0) {
+        printf("load from loadFile %s failed\n", loadFile);
+        return 0;
       }
-      // read file and count the orbs
-      char buf[256] = "";
-      int bracketIndent = 0;
-      while (fgets(buf, 256, f) != NULL) {
-        for (int i=0; i<256 && buf[i] != '\0'; ++i) {
-            bracketIndent += buf[i] == '[' ? 1 : 0;
-            bracketIndent -= buf[i] == ']' ? 1 : 0;
-            nOrb += bracketIndent == 2 ? 1 : 0;
-        }
-      }
-      printf("according to loadFile, nOrb:%d lastIndent:%d\n", nOrb, bracketIndent);
-      oList = (Orb*)malloc(nOrb * sizeof(Orb));
-      oList2 = (Orb*)malloc(nOrb * sizeof(Orb));
-
-      rewind(f);
-      bracketIndent = 0;
-      int lastLeftBracket = 0, lastRightBracket = 0, orbIdx = 0;
-      char restLine[512] = "";
-      while (fgets(buf, 256, f) != NULL) {
-        if (restLine[0] != '\0') {
-          strcat(restLine, buf);
-        }
-        for (int i=0; i<512 && restLine[i] != '\0'; ++i) {
-            if (restLine[i] == '[') {
-              bracketIndent += 1;
-              lastLeftBracket = i;
-            }
-            if (restLine[i] == ']') {
-              bracketIndent -= 1;
-              lastRightBracket = i;
-              if (bracketIndent == 1) {
-                // 扫到右括号才开始解析
-                sscanf(restLine+lastLeftBracket+1, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%d", 
-                  &oList[orbIdx].x, &oList[orbIdx].y, &oList[orbIdx].z, &oList[orbIdx].vx, &oList[orbIdx].vy, &oList[orbIdx].vz, &oList[orbIdx].mass, &oList[orbIdx].id);
-                ;
-                orbIdx += 1;
-              }
-            }
-        }
-        if (bracketIndent == 2) {
-          strcpy(restLine, buf+lastLeftBracket+1);
-        }
-        printf("bracketIndent:%d leftBracket:%d rightBracket:%d restLine:%s\n", bracketIndent, lastLeftBracket, lastRightBracket, restLine);
-      }
-      fclose(f);
+      oList2 = (Orb*)malloc(nOrb *sizeof(Orb));
+      memcpy(oList2, oList, nOrb*sizeof(Orb));
     }
     //PrintOrbList(oList, nOrb);
 
@@ -254,9 +289,8 @@ int main(int argc, char *argv[]) {
     printf("init ok, nOrb:%d nTimes:%d, will times:%ld loadFile:%s gridSize:%d blockSize:%d\n", nOrb, nTimes, long(nOrb)*long(nOrb)*long(nTimes), loadFile, gridSize.x, blockSize.x);
 
     // Start a thread to save orb list
-    OrbList list = {oList2, nOrb};
-    pthread_t tid;
-    pthread_create(&tid, NULL, ThreadSavingOrbList, &list);
+    SavingThreadParam param = {oList2, doList, nOrb, 1};
+    pthread_create(&param.tid, NULL, ThreadSavingOrbList, &param);
 
     clock_t timeStart = clock();
 
@@ -270,6 +304,7 @@ int main(int argc, char *argv[]) {
       }
     }
 
+    param.state = 0; // stop the thread
     // 将device得到的结果拷贝到host
     cudaMemcpy((void*)oList2, (void*)doList, nOrb*sizeof(Orb), cudaMemcpyDeviceToHost);
 
