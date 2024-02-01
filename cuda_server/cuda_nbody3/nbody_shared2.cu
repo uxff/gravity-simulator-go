@@ -170,7 +170,7 @@ Body *LoadOrbList(const char* loadFile, int *nOrbLoaded) {
             //printf("find ] at:%d bracketIndent:%d\n", lastRightBracket, bracketIndent);
             if (bracketIndent == 1) {
               // 扫到右括号才开始解析
-              sscanf(restLine+lastLeftBracket+1, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%d", 
+              sscanf(restLine+lastLeftBracket+1, "%f,%f,%f,%f,%f,%f,%f,%d", 
                 &oList[orbIdx].x, &oList[orbIdx].y, &oList[orbIdx].z, &oList[orbIdx].vx, &oList[orbIdx].vy, &oList[orbIdx].vz, &oList[orbIdx].mass, &oList[orbIdx].id);
               ;
               //printf("loaded orb:%e,%e,%e,%e,%e,%e,%e,%d\n", oList[orbIdx].x, oList[orbIdx].y, oList[orbIdx].z, oList[orbIdx].vx, oList[orbIdx].vy, oList[orbIdx].vz, oList[orbIdx].mass, oList[orbIdx].id);
@@ -236,7 +236,7 @@ int main(const int argc, const char **argv)
         // randomizeBodies(buf, 6 * nBodies); // Init pos / vel data
         randomizeBodyList(oList, nBodies); // Init pos / vel data
     } else {
-        int nOrbLoaded = 0;
+        //int nOrbLoaded = 0;
         oList = LoadOrbList(loadFile, &nBodies);
         if (oList == NULL || nBodies == 0) {
           printf("load orb list failed!\n");
@@ -293,7 +293,8 @@ int main(const int argc, const char **argv)
         const double tElapsed = GetTimer() / 1000.0;
         totalTime += tElapsed;
 
-        //
+        // should do it in a thread async
+    	SaveNBody(oList, nBodies, saveFile);
     }
 
     double avgTime = totalTime / (double)(nIters);
@@ -304,7 +305,7 @@ int main(const int argc, const char **argv)
 #ifdef ASSESS
     checkPerformance((void*)oList, billionsOfOpsPerSecond, salt);
 #else
-    checkAccuracy((void*)oList, nBodies);
+    checkAccuracy((float*)oList, nBodies);
     SaveNBody(oList, nBodies, saveFile);
     printf("%d Bodies: average %0.3f Billion Interactions / second, cps:%e\n", nBodies, billionsOfOpsPerSecond, double(timeUsed)/(double(nBodies)*double(nBodies)*double(nIters)) / CLOCKS_PER_SEC);
     salt += 1;
