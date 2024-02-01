@@ -37,7 +37,7 @@ const double VELO_RANGE = 0.005;
 
 __device__ void OrbUpdate(Orb *o, Orb *oList, int nOrb) {
   if (o->id > 0) {
-    double gAllx = 0, gAlly = 0, gAllz = 0;
+    double gAllx = 0, gAlly = 0, gAllz = 0; // double3 gAll = {0, 0, 0};
     for (int i=0; i<nOrb; ++i) {
       Orb *target = &oList[i];
       if (target->id < 0 || target->id == o->id) {
