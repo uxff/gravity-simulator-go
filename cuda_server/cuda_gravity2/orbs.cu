@@ -28,6 +28,7 @@ struct OrbList {
 };
 struct SavingThreadParam {
   Orb *list;
+  Orb *dolist;
   int n;
   int state; //1==running, 0==stop
   pthread_t tid;
@@ -143,6 +144,7 @@ void* ThreadSavingOrbList(void* ptr) {
   SavingThreadParam *param = (SavingThreadParam*)ptr;
   while (param->state == 1) {
     usleep(500000);
+    cudaMemcpy((void*)param->list, (void*)param->dolist, param->n*sizeof(Body), cudaMemcpyDeviceToHost);
     SaveOrbList(param->list, param->n, saveFile);
   }
   return NULL;
@@ -264,9 +266,9 @@ int main(int argc, char *argv[]) {
     } else {
       // load file from json
       oList = LoadOrbList(loadFile, &nOrb);
-      if (oList == NULL) {
-	 printf("load from loadFile %s failed\n", loadFile);
-	 return 0;
+      if (oList == NULL || nOrb <= 0) {
+        printf("load from loadFile %s failed\n", loadFile);
+        return 0;
       }
       oList2 = (Orb*)malloc(nOrb *sizeof(Orb));
       memcpy(oList2, oList, nOrb*sizeof(Orb));
@@ -287,7 +289,7 @@ int main(int argc, char *argv[]) {
     printf("init ok, nOrb:%d nTimes:%d, will times:%ld loadFile:%s gridSize:%d blockSize:%d\n", nOrb, nTimes, long(nOrb)*long(nOrb)*long(nTimes), loadFile, gridSize.x, blockSize.x);
 
     // Start a thread to save orb list
-    SavingThreadParam param = {oList2, nOrb, 1};
+    SavingThreadParam param = {oList2, doList, nOrb, 1};
     pthread_create(&param.tid, NULL, ThreadSavingOrbList, &param);
 
     clock_t timeStart = clock();
