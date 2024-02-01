@@ -141,7 +141,8 @@ void* ThreadSavingOrbList(void* ptr) {
   return NULL;
 }
 
-Orb *oList LoadOrbList(const char* loadFile, int *nOrbLoaded) {
+Orb *LoadOrbList(const char* loadFile, int *nOrbLoaded) {
+    Orb *oList = NULL;
     int nOrb = 0;
     FILE* f = fopen(loadFile, "r");
     if (f == NULL) {
@@ -160,7 +161,7 @@ Orb *oList LoadOrbList(const char* loadFile, int *nOrbLoaded) {
     }
     printf("according to loadFile, nOrb:%d lastIndent:%d\n", nOrb, bracketIndent);
     oList = (Orb*)malloc(nOrb * sizeof(Orb));
-    oList2 = (Orb*)malloc(nOrb * sizeof(Orb));
+    // oList2 = (Orb*)malloc(nOrb * sizeof(Orb));
 
     rewind(f);
     bracketIndent = 0;
@@ -194,6 +195,7 @@ Orb *oList LoadOrbList(const char* loadFile, int *nOrbLoaded) {
     }
     fclose(f);
     *nOrbLoaded = nOrb;
+    return oList;
 }
 
 // ./Orbs -n 3 -t 40000 -l list1.json -s list1.json
