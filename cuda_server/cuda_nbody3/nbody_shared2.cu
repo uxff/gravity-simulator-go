@@ -123,7 +123,7 @@ int main(const int argc, const char **argv)
         salt = atoi(argv[2]);
 
     const float dt = 0.01f; // time step
-    const int nIters = 10;  // simulation iterations
+    int nIters = 10;  // simulation iterations
 
     // Parse arguments
     if (argc >= 2) {
@@ -209,7 +209,7 @@ int main(const int argc, const char **argv)
     checkPerformance(buf, billionsOfOpsPerSecond, salt);
 #else
     checkAccuracy(buf, nBodies);
-    SaveNBody(buf, nBodies, "result.txt");
+    SaveNBody((Body*)buf, nBodies, "result.txt");
     printf("%d Bodies: average %0.3f Billion Interactions / second, cps:%e\n", nBodies, billionsOfOpsPerSecond, double(timeUsed)/(double(nBodies)*double(nBodies)*double(nIters)) / CLOCKS_PER_SEC);
     salt += 1;
 #endif
