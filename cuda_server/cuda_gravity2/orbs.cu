@@ -141,6 +141,61 @@ void* ThreadSavingOrbList(void* ptr) {
   return NULL;
 }
 
+Orb *oList LoadOrbList(const char* loadFile, int *nOrbLoaded) {
+    int nOrb = 0;
+    FILE* f = fopen(loadFile, "r");
+    if (f == NULL) {
+      printf("Error loading file %s!\n", loadFile);
+      return NULL;
+    }
+    // read file and count the orbs
+    char buf[256] = "";
+    int bracketIndent = 0;
+    while (fgets(buf, 256, f) != NULL) {
+      for (int i=0; i<256 && buf[i] != '\0'; ++i) {
+          bracketIndent += buf[i] == '[' ? 1 : 0;
+          bracketIndent -= buf[i] == ']' ? 1 : 0;
+          nOrb += bracketIndent == 2 ? 1 : 0;
+      }
+    }
+    printf("according to loadFile, nOrb:%d lastIndent:%d\n", nOrb, bracketIndent);
+    oList = (Orb*)malloc(nOrb * sizeof(Orb));
+    oList2 = (Orb*)malloc(nOrb * sizeof(Orb));
+
+    rewind(f);
+    bracketIndent = 0;
+    int lastLeftBracket = 0, lastRightBracket = 0, orbIdx = 0;
+    char restLine[512] = "";
+    while (fgets(buf, 256, f) != NULL) {
+      if (restLine[0] != '\0') {
+        strcat(restLine, buf);
+      }
+      for (int i=0; i<512 && restLine[i] != '\0'; ++i) {
+          if (restLine[i] == '[') {
+            bracketIndent += 1;
+            lastLeftBracket = i;
+          }
+          if (restLine[i] == ']') {
+            bracketIndent -= 1;
+            lastRightBracket = i;
+            if (bracketIndent == 1) {
+              // 扫到右括号才开始解析
+              sscanf(restLine+lastLeftBracket+1, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%d", 
+                &oList[orbIdx].x, &oList[orbIdx].y, &oList[orbIdx].z, &oList[orbIdx].vx, &oList[orbIdx].vy, &oList[orbIdx].vz, &oList[orbIdx].mass, &oList[orbIdx].id);
+              ;
+              orbIdx += 1;
+            }
+          }
+      }
+      if (bracketIndent == 2) {
+        strcpy(restLine, buf+lastLeftBracket+1);
+      }
+      printf("bracketIndent:%d leftBracket:%d rightBracket:%d restLine:%s\n", bracketIndent, lastLeftBracket, lastRightBracket, restLine);
+    }
+    fclose(f);
+    *nOrbLoaded = nOrb;
+}
+
 // ./Orbs -n 3 -t 40000 -l list1.json -s list1.json
 int main(int argc, char *argv[]) {
     int nOrb = 3;
@@ -186,57 +241,7 @@ int main(int argc, char *argv[]) {
       }
     } else {
       // load file from json
-      nOrb = 0;
-      FILE* f = fopen(loadFile, "r");
-      if (f == NULL) {
-        printf("Error loading file %s!\n", loadFile);
-        return 1;
-      }
-      // read file and count the orbs
-      char buf[256] = "";
-      int bracketIndent = 0;
-      while (fgets(buf, 256, f) != NULL) {
-        for (int i=0; i<256 && buf[i] != '\0'; ++i) {
-            bracketIndent += buf[i] == '[' ? 1 : 0;
-            bracketIndent -= buf[i] == ']' ? 1 : 0;
-            nOrb += bracketIndent == 2 ? 1 : 0;
-        }
-      }
-      printf("according to loadFile, nOrb:%d lastIndent:%d\n", nOrb, bracketIndent);
-      oList = (Orb*)malloc(nOrb * sizeof(Orb));
-      oList2 = (Orb*)malloc(nOrb * sizeof(Orb));
-
-      rewind(f);
-      bracketIndent = 0;
-      int lastLeftBracket = 0, lastRightBracket = 0, orbIdx = 0;
-      char restLine[512] = "";
-      while (fgets(buf, 256, f) != NULL) {
-        if (restLine[0] != '\0') {
-          strcat(restLine, buf);
-        }
-        for (int i=0; i<512 && restLine[i] != '\0'; ++i) {
-            if (restLine[i] == '[') {
-              bracketIndent += 1;
-              lastLeftBracket = i;
-            }
-            if (restLine[i] == ']') {
-              bracketIndent -= 1;
-              lastRightBracket = i;
-              if (bracketIndent == 1) {
-                // 扫到右括号才开始解析
-                sscanf(restLine+lastLeftBracket+1, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%d", 
-                  &oList[orbIdx].x, &oList[orbIdx].y, &oList[orbIdx].z, &oList[orbIdx].vx, &oList[orbIdx].vy, &oList[orbIdx].vz, &oList[orbIdx].mass, &oList[orbIdx].id);
-                ;
-                orbIdx += 1;
-              }
-            }
-        }
-        if (bracketIndent == 2) {
-          strcpy(restLine, buf+lastLeftBracket+1);
-        }
-        printf("bracketIndent:%d leftBracket:%d rightBracket:%d restLine:%s\n", bracketIndent, lastLeftBracket, lastRightBracket, restLine);
-      }
-      fclose(f);
+      oList = LoadOrbList(loadFile, &nOrb);
     }
     //PrintOrbList(oList, nOrb);
 
