@@ -26,6 +26,12 @@ struct OrbList {
   Orb *list;
   int n;
 };
+struct SavingThreadParam {
+  Orb *list;
+  int n;
+  int state; //1==running, 0==stop
+  pthread_t tid;
+};
 
 const double PI = 3.14159265358979323846;
 const double G  = 0.00005;
@@ -133,10 +139,11 @@ const char *saveFile = "list1.json";
 
 // need exclusive parameter
 void* ThreadSavingOrbList(void* ptr) {
-  OrbList *oList = (OrbList*)ptr;
-  while (true) {
+  //OrbList *oList = (OrbList*)ptr;
+  SavingThreadParam *param = (SavingThreadParam*)ptr;
+  while (param->state == 1) {
     usleep(500000);
-    SaveOrbList(oList->list, oList->n, saveFile);
+    SaveOrbList(param->list, param->n, saveFile);
   }
   return NULL;
 }
@@ -261,9 +268,8 @@ int main(int argc, char *argv[]) {
     printf("init ok, nOrb:%d nTimes:%d, will times:%ld loadFile:%s gridSize:%d blockSize:%d\n", nOrb, nTimes, long(nOrb)*long(nOrb)*long(nTimes), loadFile, gridSize.x, blockSize.x);
 
     // Start a thread to save orb list
-    OrbList list = {oList2, nOrb};
-    pthread_t tid;
-    pthread_create(&tid, NULL, ThreadSavingOrbList, &list);
+    SavingThreadParam param = {oList2, nOrb, 1};
+    pthread_create(&param.tid, NULL, ThreadSavingOrbList, &param);
 
     clock_t timeStart = clock();
 
@@ -291,6 +297,7 @@ int main(int argc, char *argv[]) {
       double(timeEnd-timeStart)/CLOCKS_PER_SEC, 
       double(long(nOrb)*long(nOrb)*long(nTimes))/(double(timeEnd-timeStart)/CLOCKS_PER_SEC));
     
+    param.state = 0; // stop the thread
     // 释放device内存 & 释放host内存
     cudaFree(doList);
     free(oList);
