@@ -1,3 +1,4 @@
+//计算后内存居然没更新！！计算失败！
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -98,6 +99,7 @@ __global__ void bodyForce(Body *pList, float dt, int n)
         // pList[i].vx += dt * Fx;
         // pList[i].vy += dt * Fy;
         // pList[i].vz += dt * Fz;
+	__syncthreads();
     }
 }
 
@@ -110,6 +112,7 @@ __global__ void integrate_position(Body *pList, float dt, int n)
         pList[i].y += pList[i].vy * dt;
         pList[i].z += pList[i].vz * dt;
     }
+    __syncthreads();
 }
 
 void SaveNBody(Body *oList, int nOrb, const char* filename) {
@@ -130,6 +133,7 @@ void SaveNBody(Body *oList, int nOrb, const char* filename) {
   }
   fputs("]", f);
   fclose(f);
+  //printf("saved %d\n", nOrb);
 }
 
 Body *LoadOrbList(const char* loadFile, int *nOrbLoaded) {
@@ -263,6 +267,8 @@ int main(const int argc, const char **argv)
         }
     }
 
+    printf("%d orbs loaded\n", nBodies);
+
     int nBytes = nBodies * sizeof(Body);
 
     double totalTime = 0.0;
@@ -319,6 +325,7 @@ int main(const int argc, const char **argv)
 
         if (nIters >= 10 && (iter+1)%(nIters/10) == 0) {
             printf("process:%d/%d, time:%.3f cps:%e estimate remain:%.3fs\n", iter+1, nIters, (double(clock()-timeStart)/CLOCKS_PER_SEC), double(long(nBodies)*long(nBodies)*long(iter+1))/(double(clock()-timeStart)/CLOCKS_PER_SEC), double(nIters-iter-1)/double(iter+1)*(double(clock()-timeStart)/CLOCKS_PER_SEC));
+	    cudaDeviceSynchronize(); //调用次数越少越好
             cudaMemcpy((void*)oList, (void*)doList, nBytes, cudaMemcpyDeviceToHost);
             //SaveNBody(oList, nBodies, saveFile);//moved into 
         }
@@ -332,6 +339,8 @@ int main(const int argc, const char **argv)
 
     clock_t timeUsed = clock() - timeStart;
     param.state = 0; // stop thread
+    cudaDeviceSynchronize(); //调用次数越少越好
+
 
 #ifdef ASSESS
     checkPerformance((void*)oList, billionsOfOpsPerSecond, salt);
