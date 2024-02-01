@@ -14,6 +14,9 @@ typedef struct
     float x, y, z, vx, vy, vz;
 } Body;
 
+const char *loadFile = "";
+const char *saveFile = "list1.json";
+
 void randomizeBodies(float *data, int n)
 {
     for (int i = 0; i < n; i++)
@@ -122,6 +125,24 @@ int main(const int argc, const char **argv)
     const float dt = 0.01f; // time step
     const int nIters = 10;  // simulation iterations
 
+    // Parse arguments
+    if (argc >= 2) {
+      for (int i = 0; i < argc; ++i) {
+        if (strcmp(argv[i], "-n") == 0 && i+1 < argc) {
+            nBodies = atoi(argv[i+1]);
+        }
+        if (strcmp(argv[i], "-t") == 0 && i+1 < argc) {
+            nIters = atoi(argv[i+1]);
+        }
+        if (strcmp(argv[i], "-l") == 0 && i+1 < argc) {
+            loadFile = argv[i+1];
+        }
+        if (strcmp(argv[i], "-s") == 0 && i+1 < argc) {
+            saveFile = argv[i+1];
+        }
+      }
+    }
+
     int bytes = nBodies * sizeof(Body);
     float *buf;
     cudaMallocHost(&buf, bytes);
@@ -188,6 +209,7 @@ int main(const int argc, const char **argv)
     checkPerformance(buf, billionsOfOpsPerSecond, salt);
 #else
     checkAccuracy(buf, nBodies);
+    SaveNBody(buf, nBodies, "result.txt");
     printf("%d Bodies: average %0.3f Billion Interactions / second, cps:%e\n", nBodies, billionsOfOpsPerSecond, double(timeUsed)/(double(nBodies)*double(nBodies)*double(nIters)) / CLOCKS_PER_SEC);
     salt += 1;
 #endif
