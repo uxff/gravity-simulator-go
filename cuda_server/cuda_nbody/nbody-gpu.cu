@@ -132,7 +132,7 @@ int main(const int argc, const char** argv) {
   size_t threadsPerBlock;
   size_t numberOfBlocks;
 
-  threadsPerBlock = 256;
+  threadsPerBlock = 1024;
   numberOfBlocks = 32 * numberOfSMs;
 
   cudaMemPrefetchAsync(p, bytes, deviceId);
