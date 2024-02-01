@@ -182,34 +182,37 @@ Orb *LoadOrbList(const char* loadFile, int *nOrbLoaded) {
     int lastLeftBracket = 0, lastRightBracket = 0, orbIdx = 0;
     char restLine[512] = "";
     while (fgets(buf, 256, f) != NULL) {
-      if (restLine[0] != '\0') {
-        strcat(restLine, buf);
-      }
-      printf("the restLine len:%d\n", strlen(restLine));
+      strcat(restLine, buf);
+      lastLeftBracket = -1;
+      lastRightBracket = -1;
+      //printf("the restLine len:%d we will handle:<<%s>>\n", strlen(restLine), restLine);
       for (int i=0; i<512 && restLine[i] != '\0'; ++i) {
           if (restLine[i] == '[') {
             bracketIndent += 1;
             lastLeftBracket = i;
-            printf("find leftBracket:%d bracketIndent:%d\n", lastLeftBracket, bracketIndent);
+            //printf("find [ at:%d bracketIndent:%d\n", lastLeftBracket, bracketIndent);
           }
           if (restLine[i] == ']') {
             bracketIndent -= 1;
             lastRightBracket = i;
-            printf("find rightBracket:%d bracketIndent:%d\n", lastRightBracket, bracketIndent);
+            //printf("find ] at:%d bracketIndent:%d\n", lastRightBracket, bracketIndent);
             if (bracketIndent == 1) {
               
               // 扫到右括号才开始解析
               sscanf(restLine+lastLeftBracket+1, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%d", 
                 &oList[orbIdx].x, &oList[orbIdx].y, &oList[orbIdx].z, &oList[orbIdx].vx, &oList[orbIdx].vy, &oList[orbIdx].vz, &oList[orbIdx].mass, &oList[orbIdx].id);
               ;
+	      //printf("loaded orb:%e,%e,%e,%e,%e,%e,%e,%d\n", oList[orbIdx].x, oList[orbIdx].y, oList[orbIdx].z, oList[orbIdx].vx, oList[orbIdx].vy, oList[orbIdx].vz, oList[orbIdx].mass, oList[orbIdx].id);
               orbIdx += 1;
             }
           }
       }
       if (bracketIndent == 2) {
         strcpy(restLine, buf+lastLeftBracket+1);
+      } else {
+	restLine[0] = '\0';
       }
-      printf("bracketIndent:%d leftBracket:%d rightBracket:%d restLine:%s\n", bracketIndent, lastLeftBracket, lastRightBracket, restLine);
+      //printf("bracketIndent:%d [ at:%d ] at:%d restLine:%s\n", bracketIndent, lastLeftBracket, lastRightBracket, restLine);
     }
     fclose(f);
     *nOrbLoaded = nOrb;
@@ -262,6 +265,7 @@ int main(int argc, char *argv[]) {
     } else {
       // load file from json
       oList = LoadOrbList(loadFile, &nOrb);
+      oList2 = (Orb*)malloc(nOrb *sizeof(Orb));
     }
     //PrintOrbList(oList, nOrb);
 
