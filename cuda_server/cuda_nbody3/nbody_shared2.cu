@@ -1,4 +1,5 @@
 //计算后内存居然没更新！！计算失败！
+// ref: https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html?highlight=gencode#cuda-dynamic-parallelism
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
